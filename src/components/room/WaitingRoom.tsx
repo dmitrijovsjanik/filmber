@@ -61,25 +61,6 @@ export function WaitingRoom({
         )}
       </div>
 
-      {/* Connection status indicators */}
-      <div className="flex gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {locale === 'ru' ? 'Вы' : 'You'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-3 h-3 rounded-full ${
-              isPartnerConnected ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-          />
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {locale === 'ru' ? 'Партнёр' : 'Partner'}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

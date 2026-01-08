@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { MovieCard } from './MovieCard';
+import { MovieCard, MovieCardRef } from './MovieCard';
 import { useSwipeStore } from '@/stores/swipeStore';
 import { useSocket } from '@/hooks/useSocket';
 import type { Movie } from '@/types/movie';
@@ -23,6 +23,16 @@ export function MovieStack({
 }: MovieStackProps) {
   const { currentIndex, addSwipe, incrementIndex } = useSwipeStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
+  const topCardRef = useRef<MovieCardRef | null>(null);
+
+  // Callback ref to ensure proper assignment
+  // We only set to null explicitly when we want to, not when React unmounts old components
+  const setTopCardRef = useCallback((instance: MovieCardRef | null) => {
+    console.log('[MovieStack] setTopCardRef called', { instance, hasSwipe: !!instance?.swipe });
+    if (instance !== null) {
+      topCardRef.current = instance;
+    }
+  }, []);
 
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', movieId: number) => {
@@ -36,6 +46,22 @@ export function MovieStack({
 
   // Get visible cards (current + next 2)
   const visibleMovies = movies.slice(currentIndex, currentIndex + 3);
+
+  const handleButtonClick = (direction: 'left' | 'right') => {
+    console.log('[MovieStack] handleButtonClick called', {
+      direction,
+      hasRef: !!topCardRef.current,
+      hasVisibleMovies: visibleMovies.length > 0,
+      topMovieId: visibleMovies[0]?.tmdbId,
+      currentIndex
+    });
+    if (topCardRef.current && visibleMovies[0]) {
+      console.log('[MovieStack] Calling swipe on ref');
+      topCardRef.current.swipe(direction);
+    } else {
+      console.log('[MovieStack] Cannot swipe - ref or movies missing');
+    }
+  };
 
   if (currentIndex >= movies.length) {
     return (
@@ -58,24 +84,28 @@ export function MovieStack({
       {/* Card stack */}
       <div className="relative w-[340px] h-[520px]">
         <AnimatePresence>
-          {visibleMovies.map((movie, index) => (
-            <MovieCard
-              key={movie.tmdbId}
-              movie={movie}
-              onSwipe={(dir) => handleSwipe(dir, movie.tmdbId)}
-              isTop={index === 0}
-              locale={locale}
-            />
-          )).reverse()}
+          {/* Render in reverse order so top card is rendered last (on top) */}
+          {[...visibleMovies].reverse().map((movie, index) => {
+            const isTop = index === visibleMovies.length - 1;
+            console.log('[MovieStack] Rendering card', { movieId: movie.tmdbId, index, isTop, willGetRef: isTop });
+            return (
+              <MovieCard
+                key={`${movie.tmdbId}-${currentIndex}`}
+                ref={isTop ? setTopCardRef : null}
+                movie={movie}
+                onSwipe={(dir) => handleSwipe(dir, movie.tmdbId)}
+                isTop={isTop}
+                locale={locale}
+              />
+            );
+          })}
         </AnimatePresence>
       </div>
 
       {/* Action buttons */}
       <div className="flex gap-8">
         <button
-          onClick={() =>
-            visibleMovies[0] && handleSwipe('left', visibleMovies[0].tmdbId)
-          }
+          onClick={() => handleButtonClick('left')}
           className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 transition-transform hover:scale-110 active:scale-95"
           aria-label="Skip"
         >
@@ -95,9 +125,7 @@ export function MovieStack({
         </button>
 
         <button
-          onClick={() =>
-            visibleMovies[0] && handleSwipe('right', visibleMovies[0].tmdbId)
-          }
+          onClick={() => handleButtonClick('right')}
           className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/25 transition-transform hover:scale-110 active:scale-95"
           aria-label="Like"
         >

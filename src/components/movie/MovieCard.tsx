@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import { RatingBadge } from './RatingBadge';
 import type { Movie } from '@/types/movie';
@@ -12,16 +13,21 @@ interface MovieCardProps {
   locale?: string;
 }
 
-export function MovieCard({
-  movie,
-  onSwipe,
-  isTop = false,
-  locale = 'en',
-}: MovieCardProps) {
+export interface MovieCardRef {
+  swipe: (direction: 'left' | 'right') => void;
+}
+
+export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function MovieCard(
+  { movie, onSwipe, isTop = false, locale = 'en' },
+  ref
+) {
+  useEffect(() => {
+    console.log('[MovieCard] mounted/updated', { movieId: movie.tmdbId, isTop, hasRef: !!ref });
+  }, [movie.tmdbId, isTop, ref]);
+
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
-
   // Overlay opacity for like/skip indicators
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const skipOpacity = useTransform(x, [-100, 0], [1, 0]);
@@ -30,12 +36,39 @@ export function MovieCard({
   const overview =
     locale === 'ru' && movie.overviewRu ? movie.overviewRu : movie.overview;
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
+  // Animate card flying off screen then trigger callback
+  const animateSwipe = useCallback(
+    async (direction: 'left' | 'right') => {
+      console.log('[MovieCard] animateSwipe called', { direction, movieId: movie.tmdbId, isTop });
+      const targetX = direction === 'right' ? 400 : -400;
+
+      try {
+        console.log('[MovieCard] Starting animation, x current value:', x.get());
+        await animate(x, targetX, {
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1]
+        });
+        console.log('[MovieCard] Animation complete, x final value:', x.get());
+        onSwipe(direction);
+      } catch (error) {
+        console.error('[MovieCard] Animation error:', error);
+      }
+    },
+    [x, onSwipe, movie.tmdbId, isTop]
+  );
+
+  // Expose swipe method via ref for button clicks
+  useImperativeHandle(ref, () => {
+    console.log('[MovieCard] useImperativeHandle called, exposing swipe for movie:', movie.tmdbId);
+    return { swipe: animateSwipe };
+  }, [animateSwipe, movie.tmdbId]);
+
+  const handleDragEnd = async (_: unknown, info: PanInfo) => {
     const threshold = 100;
     if (info.offset.x > threshold) {
-      onSwipe('right');
+      await animateSwipe('right');
     } else if (info.offset.x < -threshold) {
-      onSwipe('left');
+      await animateSwipe('left');
     }
   };
 
@@ -128,4 +161,4 @@ export function MovieCard({
       </div>
     </motion.div>
   );
-}
+});

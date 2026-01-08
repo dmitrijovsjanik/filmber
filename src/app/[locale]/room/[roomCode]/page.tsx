@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { PinInput } from '@/components/room/PinInput';
 import { Button } from '@/components/ui/Button';
@@ -13,13 +13,16 @@ export default function JoinRoomPage() {
   const locale = useLocale();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const roomCode = params.roomCode as string;
+  const pinFromUrl = searchParams.get('pin') || '';
 
   const { setRoom } = useRoomStore();
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState('');
+  const hasAutoJoined = useRef(false);
 
-  const handlePinComplete = async (pin: string) => {
+  const handlePinComplete = useCallback(async (pin: string) => {
     setIsJoining(true);
     setError('');
 
@@ -54,7 +57,16 @@ export default function JoinRoomPage() {
       setError(t('errors.somethingWentWrong'));
       setIsJoining(false);
     }
-  };
+  }, [roomCode, locale, router, setRoom, t]);
+
+  // Auto-join if PIN is provided in URL (from QR code)
+  useEffect(() => {
+    if (hasAutoJoined.current) return;
+    if (pinFromUrl && pinFromUrl.length === 6 && /^\d+$/.test(pinFromUrl)) {
+      hasAutoJoined.current = true;
+      handlePinComplete(pinFromUrl);
+    }
+  }, [pinFromUrl, handlePinComplete]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
