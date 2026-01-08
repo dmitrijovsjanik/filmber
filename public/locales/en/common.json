@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "Filmber",
+    "tagline": "Find movies you both love"
+  },
+  "home": {
+    "title": "Movie Night Made Easy",
+    "description": "Swipe through movies together and find the perfect film for your evening.",
+    "createRoom": "Create Room",
+    "joinRoom": "Join Room",
+    "enterCode": "Enter room code"
+  },
+  "room": {
+    "shareTitle": "Share this room",
+    "shareLink": "Send this link to your partner:",
+    "orPin": "Or share this PIN:",
+    "waiting": "Waiting for partner...",
+    "connected": "Partner connected!",
+    "startingSoon": "Starting soon...",
+    "you": "You",
+    "partner": "Partner",
+    "copyAll": "Copy All"
+  },
+  "swipe": {
+    "like": "Like",
+    "skip": "Skip",
+    "noMoreMovies": "No more movies!",
+    "waitForPartner": "Wait for your partner to finish swiping"
+  },
+  "match": {
+    "found": "It's a Match!",
+    "enjoy": "Enjoy watching together!",
+    "expires": "This room expires in {minutes} minutes"
+  },
+  "movie": {
+    "rating": "Rating",
+    "runtime": "{minutes} min",
+    "released": "Released"
+  },
+  "join": {
+    "title": "Join Room",
+    "enterPin": "Enter 6-digit PIN",
+    "joining": "Joining...",
+    "invalidPin": "Invalid PIN",
+    "roomNotFound": "Room not found",
+    "roomFull": "Room is full",
+    "roomExpired": "Room has expired"
+  },
+  "errors": {
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again"
+  }
+}
