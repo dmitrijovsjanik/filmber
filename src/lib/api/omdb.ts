@@ -1,4 +1,4 @@
-import type { OMDBMovie, OMDBRating } from '@/types/movie';
+import type { OMDBMovie, OMDBRating, OMDBSearchResult, OMDBSearchResponse } from '@/types/movie';
 
 const OMDB_BASE_URL = 'https://www.omdbapi.com/';
 
@@ -46,6 +46,37 @@ class OMDBClient {
   static getMetacriticRating(ratings: OMDBRating[]): string | null {
     const mc = ratings?.find((r) => r.Source === 'Metacritic');
     return mc?.Value || null;
+  }
+
+  // Search movies by title
+  async searchMovies(query: string): Promise<{ results: OMDBSearchResult[]; totalResults: number }> {
+    if (!this.apiKey) {
+      return { results: [], totalResults: 0 };
+    }
+
+    const url = new URL(OMDB_BASE_URL);
+    url.searchParams.set('apikey', this.apiKey);
+    url.searchParams.set('s', query);
+    url.searchParams.set('type', 'movie');
+
+    try {
+      const response = await fetch(url.toString(), {
+        next: { revalidate: 3600 },
+      });
+
+      if (!response.ok) return { results: [], totalResults: 0 };
+
+      const data: OMDBSearchResponse = await response.json();
+      if (data.Response === 'False') return { results: [], totalResults: 0 };
+
+      return {
+        results: data.Search || [],
+        totalResults: parseInt(data.totalResults || '0', 10),
+      };
+    } catch (error) {
+      console.error('OMDB search error:', error);
+      return { results: [], totalResults: 0 };
+    }
   }
 }
 

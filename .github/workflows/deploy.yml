@@ -52,8 +52,9 @@ jobs:
 
             echo "Starting deployment ${RELEASE_TIMESTAMP}..."
 
-            # Создаем директорию релиза
+            # Создаем директории релиза и логов
             mkdir -p "${RELEASE_DIR}"
+            mkdir -p "${APP_DIR}/logs"
 
             # Обновляем репозиторий
             if [ -d "${APP_DIR}/repo" ]; then
@@ -83,7 +84,10 @@ jobs:
             npm ci --production=false
             npm run build
 
-            # Миграции
+            # Миграции (загружаем переменные из .env)
+            set -a
+            source "${APP_DIR}/shared/.env"
+            set +a
             npm run db:push || true
 
             # Переключаем релиз
@@ -93,6 +97,7 @@ jobs:
             cd "${APP_DIR}/current"
             pm2 delete filmber 2>/dev/null || true
             pm2 start ecosystem.config.js --env production
+            pm2 save
 
             # Очистка старых релизов (оставляем 5)
             cd "${APP_DIR}/releases"

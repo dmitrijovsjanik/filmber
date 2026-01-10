@@ -1,5 +1,7 @@
 import { config } from 'dotenv';
-config({ path: '.env.local' });
+// Load .env.local in development, .env in production (symlinked from shared/.env)
+const envFile = process.env.NODE_ENV === 'production' ? '.env' : '.env.local';
+config({ path: envFile });
 
 import { createServer } from 'http';
 import { parse } from 'url';
@@ -35,6 +37,26 @@ app.prepare().then(async () => {
   );
 
   setupSocketHandlers(io);
+
+  // Initialize Telegram bot
+  if (process.env.TELEGRAM_BOT_TOKEN) {
+    try {
+      const { startPolling, setWebhook } = await import('./bot');
+
+      if (dev) {
+        // Development: use long polling (don't await - it blocks)
+        startPolling();
+      } else {
+        // Production: set webhook (handled by API route)
+        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`;
+        await setWebhook(webhookUrl);
+      }
+    } catch (error) {
+      console.error('Failed to initialize Telegram bot:', error);
+    }
+  } else {
+    console.log('> Telegram bot disabled (no TELEGRAM_BOT_TOKEN)');
+  }
 
   httpServer.listen(port, () => {
     console.log(`> Ready on http://${hostname}:${port}`);

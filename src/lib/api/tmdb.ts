@@ -87,6 +87,24 @@ class TMDBClient {
     return this.fetch<TMDBMovieDetails>(`/movie/${movieId}`, { language });
   }
 
+  // Search movies by title
+  async searchMovies(
+    query: string,
+    language: 'en-US' | 'ru-RU' = 'en-US',
+    page = 1
+  ): Promise<{ results: TMDBMovie[]; totalResults: number }> {
+    const data = await this.fetch<TMDBResponse<TMDBMovie>>('/search/movie', {
+      query,
+      language,
+      page: page.toString(),
+      include_adult: 'false',
+    });
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+    };
+  }
+
   // Build poster URL
   static getPosterUrl(
     path: string | null,

@@ -1,39 +1,85 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface AnonymousSwipe {
+  movieId: number;
+  action: 'like' | 'skip';
+  timestamp: number;
+}
 
 interface SwipeState {
   currentIndex: number;
   swipedMovieIds: number[];
   likedMovieIds: number[];
 
+  // Anonymous swipes for import after login
+  anonymousSwipes: AnonymousSwipe[];
+
   incrementIndex: () => void;
   addSwipe: (movieId: number, liked: boolean) => void;
   reset: () => void;
+
+  // Anonymous swipe management
+  getAnonymousSwipes: () => AnonymousSwipe[];
+  clearAnonymousSwipes: () => void;
 }
 
-export const useSwipeStore = create<SwipeState>((set) => ({
-  currentIndex: 0,
-  swipedMovieIds: [],
-  likedMovieIds: [],
-
-  incrementIndex: () =>
-    set((state) => ({
-      currentIndex: state.currentIndex + 1,
-    })),
-
-  addSwipe: (movieId, liked) =>
-    set((state) => ({
-      swipedMovieIds: [...state.swipedMovieIds, movieId],
-      likedMovieIds: liked
-        ? [...state.likedMovieIds, movieId]
-        : state.likedMovieIds,
-    })),
-
-  reset: () =>
-    set({
+export const useSwipeStore = create<SwipeState>()(
+  persist(
+    (set, get) => ({
       currentIndex: 0,
       swipedMovieIds: [],
       likedMovieIds: [],
+      anonymousSwipes: [],
+
+      incrementIndex: () =>
+        set((state) => ({
+          currentIndex: state.currentIndex + 1,
+        })),
+
+      addSwipe: (movieId, liked) =>
+        set((state) => ({
+          swipedMovieIds: [...state.swipedMovieIds, movieId],
+          likedMovieIds: liked ? [...state.likedMovieIds, movieId] : state.likedMovieIds,
+          // Also track for anonymous import
+          anonymousSwipes: [
+            ...state.anonymousSwipes,
+            {
+              movieId,
+              action: liked ? 'like' : 'skip',
+              timestamp: Date.now(),
+            },
+          ],
+        })),
+
+      reset: () =>
+        set({
+          currentIndex: 0,
+          swipedMovieIds: [],
+          likedMovieIds: [],
+          // Keep anonymousSwipes for potential import
+        }),
+
+      getAnonymousSwipes: () => get().anonymousSwipes,
+
+      clearAnonymousSwipes: () =>
+        set({
+          anonymousSwipes: [],
+        }),
     }),
-}));
+    {
+      name: 'filmber-swipes',
+      // Only persist anonymous swipes and liked movies
+      partialize: (state) => ({
+        anonymousSwipes: state.anonymousSwipes,
+        likedMovieIds: state.likedMovieIds,
+      }),
+    }
+  )
+);
+
+// Selector for anonymous swipe count
+export const useAnonymousSwipeCount = () => useSwipeStore((state) => state.anonymousSwipes.length);
+export const useLikedMovieCount = () => useSwipeStore((state) => state.likedMovieIds.length);

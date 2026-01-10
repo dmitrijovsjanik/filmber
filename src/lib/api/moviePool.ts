@@ -7,7 +7,7 @@ import { shuffle } from '../utils/shuffle';
 import type { Movie } from '@/types/movie';
 import type { MovieCacheEntry } from '../db/schema';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function generateMoviePool(seed: number): Promise<Movie[]> {
   // Fetch Top 100 (5 pages of 20 movies each)
@@ -46,7 +46,7 @@ export async function generateMoviePool(seed: number): Promise<Movie[]> {
   return enhanced.filter((m): m is Movie => m !== null);
 }
 
-async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
+export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
   // Check cache first
   try {
     const [cached] = await db
@@ -117,7 +117,7 @@ async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
 }
 
 function isRecentCache(cachedAt: Date): boolean {
-  return Date.now() - cachedAt.getTime() < ONE_DAY_MS;
+  return Date.now() - cachedAt.getTime() < THIRTY_DAYS_MS;
 }
 
 function formatCachedMovie(cached: MovieCacheEntry): Movie {

@@ -70,5 +70,75 @@
     "description": "Мы используем аналитические cookies для улучшения работы сайта и вашего опыта.",
     "accept": "Принять",
     "decline": "Отклонить"
+  },
+  "auth": {
+    "loginPromptTitle": "Сохраните ваш выбор!",
+    "loginPromptDescription": "Вам понравилось {count} фильмов! Откройте Filmber в Telegram, чтобы сохранить выбор и создать личный список.",
+    "featureWatchlist": "Сохраняйте фильмы в список",
+    "featureRating": "Оценивайте просмотренные фильмы",
+    "featureReminders": "Получайте напоминания",
+    "featureSync": "Синхронизация между устройствами",
+    "openInTelegram": "Открыть в Telegram",
+    "maybeLater": "Позже",
+    "loginTitle": "Добро пожаловать в Filmber",
+    "loginDescription": "Найдите фильм, который понравится обоим. Войдите через Telegram, чтобы сохранять выбор и синхронизировать между устройствами.",
+    "loginButton": "Войти через Telegram"
+  },
+  "lists": {
+    "myLists": "Мои списки фильмов",
+    "listsDescription": "Отслеживайте фильмы к просмотру и оценивайте просмотренные",
+    "all": "Все",
+    "watching": "Смотрю",
+    "wantToWatch": "Хочу посмотреть",
+    "watched": "Просмотрено",
+    "anyRating": "Любая",
+    "searchPlaceholder": "Поиск фильмов...",
+    "noSearchResults": "Фильмы не найдены",
+    "emptyList": "Ваш список пуст",
+    "emptyListHint": "Свайпните вправо на понравившихся фильмах, чтобы добавить их сюда!",
+    "tryAgain": "Попробовать снова",
+    "status": "Статус",
+    "yourRating": "Ваша оценка",
+    "removeFromList": "Удалить из списка",
+    "searchTmdb": "TMDB",
+    "searchOmdb": "OMDB",
+    "noDescription": "Описание отсутствует",
+    "omdbOnlyHint": "IMDB ID: "
+  },
+  "prompts": {
+    "didYouWatch": "Вы посмотрели",
+    "howWasIt": "Как вам фильм?",
+    "save": "Сохранить",
+    "back": "Назад",
+    "yesWatched": "Да, посмотрел!",
+    "notYet": "Ещё нет"
+  },
+  "profile": {
+    "wantToWatch": "Хочу посмотреть",
+    "watched": "Просмотрено",
+    "myLists": "Мои списки фильмов",
+    "language": "Язык",
+    "notifications": "Уведомления",
+    "logout": "Выйти"
+  },
+  "referral": {
+    "title": "Пригласить друзей",
+    "friendsInvited": "друзей приглашено",
+    "copy": "Копировать",
+    "copied": "Скопировано!",
+    "shareButton": "Поделиться с друзьями",
+    "shareText": "Присоединяйся к Filmber! Находи фильмы, которые понравятся обоим.",
+    "yourReferrals": "Ваши приглашения",
+    "showAll": "Показать все ({count})"
+  },
+  "timer": {
+    "remaining": "осталось {time}"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "botMessages": "Сообщения от бота",
+    "watchReminders": "Напоминания о просмотре",
+    "watchRemindersDesc": "Напоминать оценить фильм после просмотра",
+    "info": "Уведомления отправляются через Telegram-бота. Убедитесь, что вы запустили бота."
   }
 }

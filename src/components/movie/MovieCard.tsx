@@ -1,6 +1,6 @@
 'use client';
 
-import { useImperativeHandle, forwardRef, useCallback, useEffect, useState } from 'react';
+import { useImperativeHandle, forwardRef, useEffect, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
@@ -11,7 +11,7 @@ import 'overlayscrollbars/overlayscrollbars.css';
 
 interface MovieCardProps {
   movie: Movie;
-  onSwipe: (direction: 'left' | 'right') => void;
+  onSwipe: (direction: 'left' | 'right', movieId: number) => void;
   isTop?: boolean;
   locale?: string;
 }
@@ -24,9 +24,6 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   { movie, onSwipe, isTop = false, locale = 'en' },
   ref
 ) {
-  useEffect(() => {
-    console.log('[MovieCard] mounted/updated', { movieId: movie.tmdbId, isTop, hasRef: !!ref });
-  }, [movie.tmdbId, isTop, ref]);
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
@@ -41,32 +38,19 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const overview =
     locale === 'ru' && movie.overviewRu ? movie.overviewRu : movie.overview;
 
-  // Animate card flying off screen then trigger callback
-  const animateSwipe = useCallback(
-    async (direction: 'left' | 'right') => {
-      console.log('[MovieCard] animateSwipe called', { direction, movieId: movie.tmdbId, isTop });
-      const targetX = direction === 'right' ? 400 : -400;
+  // Use ref to always have latest onSwipe callback - update synchronously on every render
+  const onSwipeRef = useRef(onSwipe);
+  onSwipeRef.current = onSwipe; // Always sync to latest
 
-      try {
-        console.log('[MovieCard] Starting animation, x current value:', x.get());
-        await animate(x, targetX, {
-          duration: 0.3,
-          ease: [0.4, 0, 0.2, 1]
-        });
-        console.log('[MovieCard] Animation complete, x final value:', x.get());
-        onSwipe(direction);
-      } catch (error) {
-        console.error('[MovieCard] Animation error:', error);
-      }
-    },
-    [x, onSwipe, movie.tmdbId, isTop]
-  );
+  // Animate card flying off screen then trigger callback
+  const animateSwipe = async (direction: 'left' | 'right') => {
+    const targetX = direction === 'right' ? 400 : -400;
+    await animate(x, targetX, { duration: 0.3, ease: [0.4, 0, 0.2, 1] });
+    onSwipeRef.current(direction, movie.tmdbId);
+  };
 
   // Expose swipe method via ref for button clicks
-  useImperativeHandle(ref, () => {
-    console.log('[MovieCard] useImperativeHandle called, exposing swipe for movie:', movie.tmdbId);
-    return { swipe: animateSwipe };
-  }, [animateSwipe, movie.tmdbId]);
+  useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId]);
 
   const handleDragEnd = async (_: unknown, info: PanInfo) => {
     const threshold = 100;

@@ -46,3 +46,31 @@ export interface OMDBMovie {
   Ratings: OMDBRating[];
   Response: string;
 }
+
+export interface OMDBSearchResult {
+  Title: string;
+  Year: string;
+  imdbID: string;
+  Type: string;
+  Poster: string;
+}
+
+export interface OMDBSearchResponse {
+  Search?: OMDBSearchResult[];
+  totalResults?: string;
+  Response: string;
+  Error?: string;
+}
+
+export interface SearchResult {
+  tmdbId: number | null;
+  imdbId: string | null;
+  title: string;
+  titleRu: string | null;
+  posterPath: string | null;
+  releaseDate: string | null;
+  voteAverage: string | null;
+  overview: string | null;
+  overviewRu: string | null;
+  source: 'tmdb' | 'omdb';
+}

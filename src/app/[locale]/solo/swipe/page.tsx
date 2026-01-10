@@ -9,6 +9,7 @@ import { MatchFound } from '@/components/room/MatchFound';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
 import { useSwipeStore } from '@/stores/swipeStore';
+import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
 import type { Movie } from '@/types/movie';
 
 export default function SoloSwipePage() {
@@ -28,10 +29,20 @@ export default function SoloSwipePage() {
 
   const { currentIndex, addSwipe, incrementIndex, reset: resetSwipe } = useSwipeStore();
 
+  // Auth state for saving liked movies
+  const isAuthenticated = useIsAuthenticated();
+  const token = useAuthToken();
+
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const topCardRef = useRef<MovieCardRef | null>(null);
+
+  // Refs to hold latest auth values for stable callback
+  const authRef = useRef({ isAuthenticated, token });
+  useEffect(() => {
+    authRef.current = { isAuthenticated, token };
+  });
 
   // Redirect if not in solo mode
   useEffect(() => {
@@ -76,8 +87,25 @@ export default function SoloSwipePage() {
       addSwipe(movieId, isLike);
       incrementIndex();
 
-      // In solo mode, first like is the match
+      // If authenticated and liked, save to list with watch timer
       if (isLike) {
+        const { isAuthenticated, token } = authRef.current;
+        if (isAuthenticated && token) {
+          fetch('/api/lists', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              tmdbId: movieId,
+              status: 'watching',
+              source: 'swipe',
+            }),
+          }).catch(console.error);
+        }
+
+        // In solo mode, first like is the match
         setMatchFound(true);
         setMatchedMovieId(movieId);
       }
@@ -201,7 +229,7 @@ export default function SoloSwipePage() {
                   key={`${movie.tmdbId}-${currentIndex}`}
                   ref={isTop ? setTopCardRef : null}
                   movie={movie}
-                  onSwipe={(dir) => handleSwipe(dir, movie.tmdbId)}
+                  onSwipe={handleSwipe}
                   isTop={isTop}
                   locale={locale}
                 />

@@ -33,9 +33,9 @@ echo "PostgreSQL is ready."
 # Check if migrations need to be run
 echo "Checking database schema..."
 TABLE_COUNT=$(docker exec filmber-postgres psql -U user -d filmber -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ')
-if [ "$TABLE_COUNT" -lt 3 ]; then
+if [ "$TABLE_COUNT" -lt 8 ]; then
     echo "Running database migrations..."
-    npm run db:push
+    DATABASE_URL="postgresql://user:password@localhost:5432/filmber" npm run db:push
 fi
 
 # Start the dev server

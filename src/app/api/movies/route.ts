@@ -16,7 +16,14 @@ export async function GET(request: NextRequest) {
 
     const movies = await generateMoviePool(seed);
 
-    return NextResponse.json({ movies });
+    return NextResponse.json(
+      { movies },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        },
+      }
+    );
   } catch (error) {
     console.error('Failed to get movies:', error);
     return NextResponse.json(

@@ -8,6 +8,27 @@
       "when": 1767832465384,
       "tag": "0000_square_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768075284255,
+      "tag": "0001_broad_tomas",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1736502000000,
+      "tag": "0002_referral_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1736600000000,
+      "tag": "0003_watch_timer",
+      "breakpoints": true
     }
   ]
 }

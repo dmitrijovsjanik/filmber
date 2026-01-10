@@ -1,0 +1,1 @@
+export { WatchPromptBanner } from './WatchPromptBanner';
