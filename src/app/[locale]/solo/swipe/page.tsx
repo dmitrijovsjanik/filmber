@@ -247,10 +247,6 @@ export default function SoloSwipePage() {
           </button>
         </div>
 
-        {/* Progress indicator */}
-        <div className="text-sm text-gray-500">
-          {currentIndex + 1} / {movies.length}
-        </div>
       </div>
     </div>
   );

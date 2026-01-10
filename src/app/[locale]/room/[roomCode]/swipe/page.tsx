@@ -177,22 +177,6 @@ export default function SwipePage() {
           </svg>
         </button>
 
-        {/* Room code */}
-        <div className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">
-          {roomCode}
-        </div>
-
-        {/* Partner status */}
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-2.5 h-2.5 rounded-full ${
-              isPartnerConnected ? 'bg-green-500' : 'bg-gray-400'
-            }`}
-          />
-          <span className="text-sm text-gray-500">
-            {t('room.partner')}
-          </span>
-        </div>
       </div>
 
       {/* Movie stack */}

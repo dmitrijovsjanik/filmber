@@ -1,10 +1,13 @@
 'use client';
 
-import { useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
+import { useImperativeHandle, forwardRef, useCallback, useEffect, useState } from 'react';
+import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { RatingBadge } from './RatingBadge';
 import type { Movie } from '@/types/movie';
+
+import 'overlayscrollbars/overlayscrollbars.css';
 
 interface MovieCardProps {
   movie: Movie;
@@ -31,6 +34,8 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   // Overlay opacity for like/skip indicators
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const skipOpacity = useTransform(x, [-100, 0], [1, 0]);
+
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const title = locale === 'ru' && movie.titleRu ? movie.titleRu : movie.title;
   const overview =
@@ -114,9 +119,79 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
         </motion.div>
 
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+
+        {/* Expanded description overlay */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 bg-black/80 flex flex-col p-4 z-10 rounded-2xl"
+            >
+              <h2 className="text-xl font-bold text-white mb-2 line-clamp-2 flex-shrink-0">
+                {title}
+              </h2>
+
+              {/* Ratings row */}
+              <div className="flex gap-2 mb-2 flex-wrap flex-shrink-0">
+                <RatingBadge source="TMDB" value={movie.ratings.tmdb} />
+                {movie.ratings.imdb && (
+                  <RatingBadge source="IMDb" value={movie.ratings.imdb} />
+                )}
+                {movie.ratings.rottenTomatoes && (
+                  <RatingBadge source="RT" value={movie.ratings.rottenTomatoes} />
+                )}
+              </div>
+
+              {/* Genres + year + runtime */}
+              <div className="flex flex-wrap gap-1 mb-3 flex-shrink-0 items-center">
+                {movie.genres.slice(0, 3).map((genre) => (
+                  <span
+                    key={genre}
+                    className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white"
+                  >
+                    {genre}
+                  </span>
+                ))}
+                {movie.releaseDate && (
+                  <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                    {new Date(movie.releaseDate).getFullYear()}
+                  </span>
+                )}
+                {movie.runtime && (
+                  <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                    {movie.runtime} min
+                  </span>
+                )}
+              </div>
+
+              <OverlayScrollbarsComponent
+                className="flex-1 text-sm text-gray-200"
+                options={{
+                  scrollbars: {
+                    visibility: 'visible',
+                    autoHide: 'never',
+                    theme: 'os-theme-light'
+                  }
+                }}
+              >
+                <div className="pr-3">{overview}</div>
+              </OverlayScrollbarsComponent>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="text-sm text-blue-400 mt-3 hover:text-blue-300 transition-colors flex-shrink-0 text-left"
+              >
+                Скрыть
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Content */}
+        {!isExpanded && (
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h2 className="text-2xl font-bold text-white mb-2 line-clamp-2">
             {title}
@@ -133,31 +208,40 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
             )}
           </div>
 
-          {/* Genres */}
-          {movie.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {movie.genres.slice(0, 3).map((genre) => (
-                <span
-                  key={genre}
-                  className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Genres + year + runtime */}
+          <div className="flex flex-wrap gap-1 mb-3 items-center">
+            {movie.genres.slice(0, 3).map((genre) => (
+              <span
+                key={genre}
+                className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white"
+              >
+                {genre}
+              </span>
+            ))}
+            {movie.releaseDate && (
+              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                {new Date(movie.releaseDate).getFullYear()}
+              </span>
+            )}
+            {movie.runtime && (
+              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                {movie.runtime} min
+              </span>
+            )}
+          </div>
 
           {/* Overview (truncated) */}
           <p className="text-sm text-gray-200 line-clamp-3">{overview}</p>
 
-          {/* Runtime and year */}
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-            {movie.runtime && <span>{movie.runtime} min</span>}
-            {movie.releaseDate && (
-              <span>{new Date(movie.releaseDate).getFullYear()}</span>
-            )}
-          </div>
+          {/* Show more button */}
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="text-sm text-blue-400 mt-1 hover:text-blue-300 transition-colors"
+          >
+            Показать больше
+          </button>
         </div>
+        )}
       </div>
     </motion.div>
   );
