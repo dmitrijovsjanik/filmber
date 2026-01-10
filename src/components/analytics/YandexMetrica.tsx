@@ -1,20 +1,30 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import Script from 'next/script';
 import { useConsentStore } from '@/stores/consentStore';
 import { YM_COUNTER_ID } from '@/lib/analytics/yandexMetrica';
 
-const subscribe = () => () => {};
-const getSnapshot = () => true;
-const getServerSnapshot = () => false;
-
 export function YandexMetrica() {
   const { analyticsConsent } = useConsentStore();
-  const isMounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Don't render until mounted (prevents hydration mismatch)
-  if (!isMounted) return null;
+  // Wait for Zustand store to hydrate from localStorage
+  useEffect(() => {
+    const unsubscribe = useConsentStore.persist.onFinishHydration(() => {
+      setIsHydrated(true);
+    });
+
+    // Check if already hydrated
+    if (useConsentStore.persist.hasHydrated()) {
+      setIsHydrated(true);
+    }
+
+    return unsubscribe;
+  }, []);
+
+  // Don't render until store is hydrated
+  if (!isHydrated) return null;
 
   // Only load if consent is given and counter ID is configured
   if (!analyticsConsent || !YM_COUNTER_ID) {
