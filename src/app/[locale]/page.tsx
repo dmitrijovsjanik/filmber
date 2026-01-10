@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useRoomStore } from '@/stores/roomStore';

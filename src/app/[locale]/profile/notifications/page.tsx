@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useAuthToken } from '@/stores/authStore';
-import { Switch } from '@/components/ui/Switch';
+import { Switch } from '@/components/ui/switch';
 
 interface NotificationSettings {
   watchReminders: boolean;
@@ -148,9 +148,8 @@ function ToggleItem({
       </div>
       <Switch
         checked={enabled}
-        onChange={onChange}
+        onCheckedChange={onChange}
         disabled={disabled}
-        size="md"
       />
     </div>
   );

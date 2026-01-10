@@ -1,29 +1,6 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Custom thin scrollbar - always visible */
 .scrollbar-thin {
@@ -58,4 +35,72 @@ body {
   --os-handle-bg-active: rgba(255, 255, 255, 0.5);
   --os-size: 4px;
   --os-handle-border-radius: 2px;
+}
+
+@layer base {
+  /* Light theme (optional, for future use) */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 9% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 9% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 9% 8%;
+    --primary: 160 84% 39%; /* emerald-500 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 9% 96%;
+    --secondary-foreground: 220 9% 8%;
+    --muted: 220 9% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 9% 96%;
+    --accent-foreground: 220 9% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 9% 90%;
+    --input: 220 9% 90%;
+    --ring: 160 84% 39%; /* emerald-500 */
+    --radius: 0.75rem;
+    --chart-1: 160 84% 39%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 47 96% 53%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 339 90% 51%;
+  }
+
+  /* Dark theme - Filmber default */
+  .dark {
+    --background: 220 9% 7%; /* gray-900 */
+    --foreground: 220 9% 93%;
+    --card: 220 9% 11%; /* gray-800 */
+    --card-foreground: 220 9% 93%;
+    --popover: 220 9% 11%;
+    --popover-foreground: 220 9% 93%;
+    --primary: 160 84% 39%; /* emerald-500 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 9% 15%; /* gray-700 */
+    --secondary-foreground: 220 9% 93%;
+    --muted: 220 9% 15%;
+    --muted-foreground: 220 9% 60%; /* gray-400 */
+    --accent: 220 9% 15%;
+    --accent-foreground: 220 9% 93%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 9% 20%; /* gray-700 */
+    --input: 220 9% 20%;
+    --ring: 160 84% 39%; /* emerald-500 */
+    --chart-1: 160 84% 39%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 47 96% 53%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 339 90% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

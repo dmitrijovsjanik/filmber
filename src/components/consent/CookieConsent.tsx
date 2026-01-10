@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useConsentStore } from '@/stores/consentStore';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 const subscribe = () => () => {};
 const getSnapshot = () => true;

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import type { Movie } from '@/types/movie';
 
 interface LikeDialogProps {

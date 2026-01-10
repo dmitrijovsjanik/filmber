@@ -42,14 +42,14 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className="dark">
       <head>
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
       </head>
-      <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white antialiased">
+      <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
           <TelegramAuthProvider>
             <YandexMetrica />

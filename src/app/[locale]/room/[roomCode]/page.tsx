@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { PinInput } from '@/components/room/PinInput';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
 

@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface LoginPromptProps {
   isOpen: boolean;
