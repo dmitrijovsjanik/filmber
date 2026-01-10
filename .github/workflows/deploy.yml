@@ -1,0 +1,135 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'main'
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build project
+        run: npm run build
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+
+            APP_DIR="/var/www/filmber"
+            RELEASE_TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            RELEASE_DIR="${APP_DIR}/releases/${RELEASE_TIMESTAMP}"
+
+            echo "Starting deployment ${RELEASE_TIMESTAMP}..."
+
+            # Создаем директорию релиза
+            mkdir -p "${RELEASE_DIR}"
+
+            # Обновляем репозиторий
+            if [ -d "${APP_DIR}/repo" ]; then
+              cd "${APP_DIR}/repo"
+              git fetch origin
+              git checkout ${{ github.event.inputs.branch || 'main' }}
+              git pull origin ${{ github.event.inputs.branch || 'main' }}
+            else
+              git clone --branch ${{ github.event.inputs.branch || 'main' }} https://github.com/${{ github.repository }}.git "${APP_DIR}/repo"
+              cd "${APP_DIR}/repo"
+            fi
+
+            # Копируем файлы
+            rsync -a --exclude='.git' --exclude='node_modules' ./ "${RELEASE_DIR}/"
+
+            # Копируем node_modules если есть
+            if [ -d "${APP_DIR}/current/node_modules" ]; then
+              cp -r "${APP_DIR}/current/node_modules" "${RELEASE_DIR}/"
+            fi
+
+            cd "${RELEASE_DIR}"
+
+            # Линкуем .env
+            ln -sf "${APP_DIR}/shared/.env" "${RELEASE_DIR}/.env"
+
+            # Устанавливаем зависимости и собираем
+            npm ci --production=false
+            npm run build
+
+            # Миграции
+            npm run db:push || true
+
+            # Переключаем релиз
+            ln -sfn "${RELEASE_DIR}" "${APP_DIR}/current"
+
+            # Перезапуск PM2
+            cd "${APP_DIR}"
+            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+
+            # Очистка старых релизов (оставляем 5)
+            cd "${APP_DIR}/releases"
+            ls -1t | tail -n +6 | xargs -r rm -rf
+
+            echo "Deployment completed: ${RELEASE_TIMESTAMP}"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            sleep 5
+            if pm2 show filmber | grep -q "online"; then
+              echo "Health check passed!"
+            else
+              echo "Health check failed!"
+              exit 1
+            fi
+
+      - name: Notify on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            echo "Deployment failed, attempting rollback..."
+            APP_DIR="/var/www/filmber"
+            PREV_RELEASE=$(ls -1t "${APP_DIR}/releases" | sed -n '2p')
+            if [ -n "$PREV_RELEASE" ]; then
+              ln -sfn "${APP_DIR}/releases/${PREV_RELEASE}" "${APP_DIR}/current"
+              cd "${APP_DIR}"
+              pm2 reload ecosystem.config.js --env production
+              echo "Rolled back to ${PREV_RELEASE}"
+            fi
