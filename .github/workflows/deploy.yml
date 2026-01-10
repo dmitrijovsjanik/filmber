@@ -90,12 +90,13 @@ jobs:
             ln -sfn "${RELEASE_DIR}" "${APP_DIR}/current"
 
             # Перезапуск PM2
-            cd "${APP_DIR}"
-            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+            cd "${APP_DIR}/current"
+            pm2 delete filmber 2>/dev/null || true
+            pm2 start ecosystem.config.js --env production
 
             # Очистка старых релизов (оставляем 5)
             cd "${APP_DIR}/releases"
-            ls -1t | tail -n +6 | xargs -r rm -rf
+            ls -1t | tail -n +6 | xargs -r rm -rf || true
 
             echo "Deployment completed: ${RELEASE_TIMESTAMP}"
 
@@ -129,7 +130,8 @@ jobs:
             PREV_RELEASE=$(ls -1t "${APP_DIR}/releases" | sed -n '2p')
             if [ -n "$PREV_RELEASE" ]; then
               ln -sfn "${APP_DIR}/releases/${PREV_RELEASE}" "${APP_DIR}/current"
-              cd "${APP_DIR}"
-              pm2 reload ecosystem.config.js --env production
+              cd "${APP_DIR}/current"
+              pm2 delete filmber 2>/dev/null || true
+              pm2 start ecosystem.config.js --env production
               echo "Rolled back to ${PREV_RELEASE}"
             fi
