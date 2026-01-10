@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useRoomStore } from '@/stores/roomStore';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { localeNames, type Locale } from '@/i18n/config';
 
 type Mode = 'solo' | 'pair';
@@ -16,6 +17,7 @@ export default function HomePage() {
   const locale = useLocale();
   const router = useRouter();
   const { setRoom, setSoloMode } = useRoomStore();
+  const { trackRoomCreated } = useAnalytics();
 
   const [mode, setMode] = useState<Mode>('pair');
   const [isCreating, setIsCreating] = useState(false);
@@ -26,6 +28,7 @@ export default function HomePage() {
       // Solo mode: generate seed and go directly to swipe
       const seed = Math.floor(Math.random() * 1000000);
       setSoloMode(seed);
+      trackRoomCreated('solo');
       router.push(`/${locale}/solo/swipe`);
       return;
     }
@@ -60,6 +63,7 @@ export default function HomePage() {
         joinData.userSlot,
         joinData.moviePoolSeed
       );
+      trackRoomCreated('pair');
       router.push(`/${locale}/room/${data.roomCode}/swipe`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

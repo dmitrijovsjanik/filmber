@@ -64,5 +64,11 @@
     "backToHome": "Back to Home",
     "loading": "Loading movies...",
     "cancel": "Cancel"
+  },
+  "consent": {
+    "title": "We use cookies",
+    "description": "We use analytics cookies to understand how you use our website and improve your experience.",
+    "accept": "Accept",
+    "decline": "Decline"
   }
 }

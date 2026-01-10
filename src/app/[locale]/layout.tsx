@@ -2,7 +2,11 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { routing } from '@/i18n/routing';
+import { YandexMetrica } from '@/components/analytics/YandexMetrica';
+import { RouteTracker } from '@/components/analytics/RouteTracker';
+import { CookieConsent } from '@/components/consent/CookieConsent';
 import '../globals.css';
 
 interface LayoutProps {
@@ -38,7 +42,12 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
     <html lang={locale}>
       <body className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white antialiased">
         <NextIntlClientProvider messages={messages}>
+          <YandexMetrica />
+          <Suspense fallback={null}>
+            <RouteTracker />
+          </Suspense>
           <main className="min-h-screen flex flex-col">{children}</main>
+          <CookieConsent />
         </NextIntlClientProvider>
       </body>
     </html>

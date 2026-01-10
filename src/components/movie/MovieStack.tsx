@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { MovieCard, MovieCardRef } from './MovieCard';
 import { useSwipeStore } from '@/stores/swipeStore';
 import { useSocket } from '@/hooks/useSocket';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import type { Movie } from '@/types/movie';
 import type { UserSlot } from '@/types/room';
 
@@ -24,6 +25,7 @@ export function MovieStack({
   const locale = useLocale();
   const { currentIndex, addSwipe, incrementIndex } = useSwipeStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
+  const { trackSwipe } = useAnalytics();
   const topCardRef = useRef<MovieCardRef | null>(null);
 
   // Callback ref to ensure proper assignment
@@ -40,9 +42,10 @@ export function MovieStack({
       const action = direction === 'right' ? 'like' : 'skip';
       addSwipe(movieId, action === 'like');
       emitSwipe(movieId, action);
+      trackSwipe(direction, movieId);
       incrementIndex();
     },
-    [addSwipe, emitSwipe, incrementIndex]
+    [addSwipe, emitSwipe, trackSwipe, incrementIndex]
   );
 
   // Get visible cards (current + next 2)
