@@ -3,14 +3,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface ShareLinkProps {
   roomCode: string;
   pin: string;
-  locale?: string;
 }
 
-export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
+export function ShareLink({ roomCode, pin }: ShareLinkProps) {
+  const t = useTranslations('room');
+  const locale = useLocale();
+
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedBoth, setCopiedBoth] = useState(false);
@@ -24,19 +27,6 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
 
   const qrUrl = `${shareUrl}?pin=${pin}`;
 
-  const t = {
-    shareTitle: locale === 'ru' ? 'Поделитесь комнатой' : 'Share this room',
-    description: locale === 'ru'
-      ? 'Отправьте ссылку и пароль партнёру'
-      : 'Send the link and password to your partner',
-    link: locale === 'ru' ? 'Ссылка' : 'Link',
-    password: locale === 'ru' ? 'Пароль' : 'Password',
-    copied: locale === 'ru' ? 'Скопировано!' : 'Copied!',
-    share: locale === 'ru' ? 'Поделиться' : 'Share',
-    autoCopied: locale === 'ru' ? 'Ссылка и пароль скопированы' : 'Link and password copied',
-    scanQr: locale === 'ru' ? 'Или отсканируйте QR-код' : 'Or scan QR code',
-  };
-
   // Check if Web Share API is available
   useEffect(() => {
     setCanShare(typeof navigator !== 'undefined' && !!navigator.share);
@@ -48,9 +38,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
     hasAutoCopied.current = true;
 
     const autoCopy = async () => {
-      const text = locale === 'ru'
-        ? `${shareUrl}\n\nПароль: ${pin}`
-        : `${shareUrl}\n\nPassword: ${pin}`;
+      const text = `${shareUrl}\n\n${t('password')}: ${pin}`;
 
       try {
         await navigator.clipboard.writeText(text);
@@ -62,7 +50,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
     };
 
     autoCopy();
-  }, [shareUrl, pin, locale]);
+  }, [shareUrl, pin, t]);
 
   const copyUrl = async () => {
     try {
@@ -90,9 +78,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
     try {
       await navigator.share({
         title: 'Filmber',
-        text: locale === 'ru'
-          ? `Присоединяйся к выбору фильма!\nПароль: ${pin}`
-          : `Join movie selection!\nPassword: ${pin}`,
+        text: `${t('shareLink')}\n${t('password')}: ${pin}`,
         url: shareUrl,
       });
     } catch (err) {
@@ -117,23 +103,23 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
             <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            {t.autoCopied}
+            {t('autoCopied')}
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          {t.shareTitle}
+          {t('shareTitle')}
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {t.description}
+          {t('shareLink')}
         </p>
 
         {/* Link field */}
       <div className="mb-3">
         <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-          {t.link}
+          {t('link')}
         </label>
         <button
           onClick={copyUrl}
@@ -157,7 +143,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
       {/* PIN field */}
       <div className="mb-6">
         <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-          {t.password}
+          {t('password')}
         </label>
         <button
           onClick={copyPin}
@@ -181,7 +167,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
       {/* QR Code */}
       <div className="mb-6">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">
-          {t.scanQr}
+          {t('scanQr')}
         </p>
         <div className="flex justify-center">
           <div className="bg-white p-4 rounded-xl shadow-sm">
@@ -205,7 +191,7 @@ export function ShareLink({ roomCode, pin, locale = 'en' }: ShareLinkProps) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            {t.share}
+            {t('share')}
           </button>
         )}
       </div>

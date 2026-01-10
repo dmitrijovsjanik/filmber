@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { useTranslations, useLocale } from 'next-intl';
 import { MovieCard, MovieCardRef } from './MovieCard';
 import { useSwipeStore } from '@/stores/swipeStore';
 import { useSocket } from '@/hooks/useSocket';
@@ -12,15 +13,15 @@ interface MovieStackProps {
   movies: Movie[];
   roomCode: string;
   userSlot: UserSlot;
-  locale?: string;
 }
 
 export function MovieStack({
   movies,
   roomCode,
   userSlot,
-  locale = 'en',
 }: MovieStackProps) {
+  const t = useTranslations('swipe');
+  const locale = useLocale();
   const { currentIndex, addSwipe, incrementIndex } = useSwipeStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
   const topCardRef = useRef<MovieCardRef | null>(null);
@@ -68,12 +69,10 @@ export function MovieStack({
       <div className="flex flex-col items-center justify-center h-[520px] text-center px-4">
         <div className="text-6xl mb-4">🎬</div>
         <p className="text-xl text-gray-500 dark:text-gray-400">
-          {locale === 'ru' ? 'Фильмы закончились!' : 'No more movies!'}
+          {t('noMoreMovies')}
         </p>
         <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-          {locale === 'ru'
-            ? 'Подождите, пока партнёр тоже досвайпает'
-            : "Wait for your partner to finish swiping"}
+          {t('waitForPartner')}
         </p>
       </div>
     );

@@ -2,20 +2,17 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useTranslations, useLocale } from 'next-intl';
 import type { Movie } from '@/types/movie';
 
 interface MatchFoundProps {
   movie: Movie;
-  locale?: string;
 }
 
-export function MatchFound({ movie, locale = 'en' }: MatchFoundProps) {
+export function MatchFound({ movie }: MatchFoundProps) {
+  const t = useTranslations('match');
+  const locale = useLocale();
   const title = locale === 'ru' && movie.titleRu ? movie.titleRu : movie.title;
-
-  const t = {
-    match: locale === 'ru' ? 'Совпадение!' : "It's a Match!",
-    enjoy: locale === 'ru' ? 'Приятного просмотра!' : 'Enjoy watching together!',
-  };
 
   return (
     <motion.div
@@ -40,7 +37,7 @@ export function MatchFound({ movie, locale = 'en' }: MatchFoundProps) {
         transition={{ delay: 0.2 }}
         className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent"
       >
-        {t.match}
+        {t('found')}
       </motion.h1>
 
       {/* Movie card */}
@@ -73,7 +70,7 @@ export function MatchFound({ movie, locale = 'en' }: MatchFoundProps) {
         transition={{ delay: 0.6 }}
         className="text-lg text-gray-600 dark:text-gray-300"
       >
-        {t.enjoy}
+        {t('enjoy')}
       </motion.p>
 
       {/* Hearts decoration */}

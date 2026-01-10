@@ -5,19 +5,32 @@ import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useRoomStore } from '@/stores/roomStore';
 import { localeNames, type Locale } from '@/i18n/config';
+
+type Mode = 'solo' | 'pair';
 
 export default function HomePage() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
-  const { setRoom } = useRoomStore();
+  const { setRoom, setSoloMode } = useRoomStore();
 
+  const [mode, setMode] = useState<Mode>('pair');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreateRoom = async () => {
+  const handlePickMovie = async () => {
+    if (mode === 'solo') {
+      // Solo mode: generate seed and go directly to swipe
+      const seed = Math.floor(Math.random() * 1000000);
+      setSoloMode(seed);
+      router.push(`/${locale}/solo/swipe`);
+      return;
+    }
+
+    // Pair mode: create room as before
     setIsCreating(true);
     setError('');
 
@@ -54,6 +67,11 @@ export default function HomePage() {
       setIsCreating(false);
     }
   };
+
+  const modeOptions = [
+    { value: 'pair' as const, label: t('home.modePair') },
+    { value: 'solo' as const, label: t('home.modeSolo') },
+  ];
 
   const switchLocale = (newLocale: Locale) => {
     router.push(`/${newLocale}`);
@@ -98,21 +116,28 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Action buttons */}
+      {/* Mode selector and action button */}
       <div className="w-full max-w-sm space-y-6">
-        {/* Create room */}
+        {/* Mode selector */}
+        <div className="flex justify-center">
+          <SegmentedControl
+            options={modeOptions}
+            value={mode}
+            onChange={setMode}
+          />
+        </div>
+
+        {/* Pick movie button */}
         <Button
-          onClick={handleCreateRoom}
+          onClick={handlePickMovie}
           disabled={isCreating}
           className="w-full"
           size="lg"
         >
           {isCreating ? (
             <Loader size="sm" className="mr-2" />
-          ) : (
-            <span className="mr-2 text-xl">+</span>
-          )}
-          {t('home.createRoom')}
+          ) : null}
+          {t('home.pickMovie')}
         </Button>
 
         {/* Error message */}

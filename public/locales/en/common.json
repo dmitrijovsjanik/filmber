@@ -6,6 +6,9 @@
   "home": {
     "title": "Movie Night Made Easy",
     "description": "Swipe through movies together and find the perfect film for your evening.",
+    "modeSolo": "Solo",
+    "modePair": "Together",
+    "pickMovie": "Pick a Movie",
     "createRoom": "Create Room",
     "joinRoom": "Join Room",
     "enterCode": "Enter room code"
@@ -17,9 +20,16 @@
     "waiting": "Waiting for partner...",
     "connected": "Partner connected!",
     "startingSoon": "Starting soon...",
+    "connecting": "Connecting to room...",
     "you": "You",
     "partner": "Partner",
-    "copyAll": "Copy All"
+    "copyAll": "Copy All",
+    "link": "Link",
+    "password": "Password",
+    "copied": "Copied!",
+    "share": "Share",
+    "autoCopied": "Link and password copied",
+    "scanQr": "Or scan QR code"
   },
   "swipe": {
     "like": "Like",
@@ -28,7 +38,7 @@
     "waitForPartner": "Wait for your partner to finish swiping"
   },
   "match": {
-    "found": "It's a Match!",
+    "found": "Movie Found!",
     "enjoy": "Enjoy watching together!",
     "expires": "This room expires in {minutes} minutes"
   },
@@ -49,5 +59,10 @@
   "errors": {
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again"
+  },
+  "common": {
+    "backToHome": "Back to Home",
+    "loading": "Loading movies...",
+    "cancel": "Cancel"
   }
 }

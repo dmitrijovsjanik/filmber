@@ -10,6 +10,9 @@ interface RoomState {
   userSlot: UserSlot | null;
   moviePoolSeed: number | null;
 
+  // Solo mode
+  isSoloMode: boolean;
+
   // Connection state
   isConnected: boolean;
   isPartnerConnected: boolean;
@@ -24,6 +27,7 @@ interface RoomState {
 
   // Actions
   setRoom: (code: string, pin: string, slot: UserSlot, seed: number) => void;
+  setSoloMode: (seed: number) => void;
   setConnected: (connected: boolean) => void;
   setPartnerConnected: (connected: boolean) => void;
   setRoomReady: (ready: boolean) => void;
@@ -38,6 +42,7 @@ const initialState = {
   pin: null,
   userSlot: null,
   moviePoolSeed: null,
+  isSoloMode: false,
   isConnected: false,
   isPartnerConnected: false,
   isRoomReady: false,
@@ -55,6 +60,16 @@ export const useRoomStore = create<RoomState>()((set) => ({
       pin,
       userSlot: slot,
       moviePoolSeed: seed,
+      isSoloMode: false,
+    }),
+
+  setSoloMode: (seed) =>
+    set({
+      moviePoolSeed: seed,
+      isSoloMode: true,
+      roomCode: null,
+      pin: null,
+      userSlot: null,
     }),
 
   setConnected: (connected) => set({ isConnected: connected }),

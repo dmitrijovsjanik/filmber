@@ -81,12 +81,12 @@ export default function SwipePage() {
   if (isMatchFound && matchedMovie) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <MatchFound movie={matchedMovie} locale={locale} />
+        <MatchFound movie={matchedMovie} />
         <button
           onClick={handleLeaveRoom}
           className="mt-8 px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
         >
-          {locale === 'ru' ? 'Вернуться на главную' : 'Back to Home'}
+          {t('common.backToHome')}
         </button>
       </div>
     );
@@ -98,7 +98,7 @@ export default function SwipePage() {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
         <p className="mt-4 text-gray-500">
-          {locale === 'ru' ? 'Загружаем фильмы...' : 'Loading movies...'}
+          {t('common.loading')}
         </p>
       </div>
     );
@@ -130,13 +130,12 @@ export default function SwipePage() {
           roomCode={roomCode}
           pin={pin || ''}
           isPartnerConnected={isPartnerConnected}
-          locale={locale}
         />
         <button
           onClick={handleLeaveRoom}
           className="mt-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
         >
-          {locale === 'ru' ? 'Отменить' : 'Cancel'}
+          {t('common.cancel')}
         </button>
       </div>
     );
@@ -148,7 +147,7 @@ export default function SwipePage() {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
         <p className="mt-4 text-gray-500">
-          {locale === 'ru' ? 'Подключаемся к комнате...' : 'Connecting to room...'}
+          {t('room.connecting')}
         </p>
       </div>
     );
@@ -191,7 +190,7 @@ export default function SwipePage() {
             }`}
           />
           <span className="text-sm text-gray-500">
-            {locale === 'ru' ? 'Партнёр' : 'Partner'}
+            {t('room.partner')}
           </span>
         </div>
       </div>
@@ -202,7 +201,6 @@ export default function SwipePage() {
           movies={movies}
           roomCode={roomCode}
           userSlot={userSlot}
-          locale={locale}
         />
       )}
     </div>

@@ -31,9 +31,10 @@ filmber/
 
 | Route | File | Purpose |
 |-------|------|---------|
-| `/[locale]` | `src/app/[locale]/page.tsx` | Home - create/join room |
-| `/[locale]/room/[roomCode]` | `src/app/[locale]/room/[roomCode]/page.tsx` | Room info |
-| `/[locale]/room/[roomCode]/swipe` | `src/app/[locale]/room/[roomCode]/swipe/page.tsx` | Main swiping UI |
+| `/[locale]` | `src/app/[locale]/page.tsx` | Home - mode selector (solo/pair) |
+| `/[locale]/room/[roomCode]` | `src/app/[locale]/room/[roomCode]/page.tsx` | Room PIN entry |
+| `/[locale]/room/[roomCode]/swipe` | `src/app/[locale]/room/[roomCode]/swipe/page.tsx` | Pair swiping UI |
+| `/[locale]/solo/swipe` | `src/app/[locale]/solo/swipe/page.tsx` | Solo swiping UI |
 
 ---
 
@@ -65,6 +66,7 @@ filmber/
 - **Button.tsx** - Reusable button
 - **Input.tsx** - Reusable input
 - **Loader.tsx** - Loading spinner
+- **SegmentedControl.tsx** - Mode toggle (solo/pair)
 
 ---
 
@@ -74,6 +76,7 @@ filmber/
 ```ts
 // Room session state
 roomCode, pin, userSlot, moviePoolSeed
+isSoloMode                              // Solo mode flag
 isConnected, isPartnerConnected, isRoomReady
 isMatchFound, matchedMovieId, partnerSwipeCount
 ```

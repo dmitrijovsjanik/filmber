@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ShareLink } from './ShareLink';
 import { Loader } from '../ui/Loader';
 
@@ -7,26 +8,18 @@ interface WaitingRoomProps {
   roomCode: string;
   pin: string;
   isPartnerConnected: boolean;
-  locale?: string;
 }
 
 export function WaitingRoom({
   roomCode,
   pin,
   isPartnerConnected,
-  locale = 'en',
 }: WaitingRoomProps) {
-  const t = {
-    waiting: locale === 'ru' ? 'Ожидаем партнёра...' : 'Waiting for partner...',
-    connected:
-      locale === 'ru' ? 'Партнёр подключился!' : 'Partner connected!',
-    startingSoon:
-      locale === 'ru' ? 'Начинаем через секунду...' : 'Starting soon...',
-  };
+  const t = useTranslations('room');
 
   return (
     <div className="flex flex-col items-center gap-8 p-4">
-      <ShareLink roomCode={roomCode} pin={pin} locale={locale} />
+      <ShareLink roomCode={roomCode} pin={pin} />
 
       <div className="flex flex-col items-center gap-4">
         {isPartnerConnected ? (
@@ -47,15 +40,15 @@ export function WaitingRoom({
               </svg>
             </div>
             <p className="text-lg font-medium text-green-600 dark:text-green-400">
-              {t.connected}
+              {t('connected')}
             </p>
-            <p className="text-sm text-gray-500">{t.startingSoon}</p>
+            <p className="text-sm text-gray-500">{t('startingSoon')}</p>
           </>
         ) : (
           <>
             <Loader size="lg" />
             <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-              {t.waiting}
+              {t('waiting')}
             </p>
           </>
         )}
