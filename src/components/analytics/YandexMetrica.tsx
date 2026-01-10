@@ -2,32 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import Script from 'next/script';
-import { useConsentStore } from '@/stores/consentStore';
 import { YM_COUNTER_ID } from '@/lib/analytics/yandexMetrica';
 
 export function YandexMetrica() {
-  const { analyticsConsent } = useConsentStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(false);
 
-  // Wait for Zustand store to hydrate from localStorage
   useEffect(() => {
-    const unsubscribe = useConsentStore.persist.onFinishHydration(() => {
-      setIsHydrated(true);
-    });
-
-    // Check if already hydrated
-    if (useConsentStore.persist.hasHydrated()) {
-      setIsHydrated(true);
+    // Check consent from localStorage directly after mount
+    try {
+      const stored = localStorage.getItem('filmber-consent');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.state?.analyticsConsent === true) {
+          setShouldLoad(true);
+        }
+      }
+    } catch {
+      // Ignore parse errors
     }
-
-    return unsubscribe;
   }, []);
 
-  // Don't render until store is hydrated
-  if (!isHydrated) return null;
-
-  // Only load if consent is given and counter ID is configured
-  if (!analyticsConsent || !YM_COUNTER_ID) {
+  if (!shouldLoad || !YM_COUNTER_ID) {
     return null;
   }
 
