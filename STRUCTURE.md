@@ -208,3 +208,84 @@ npm run services:start # Start Docker (PostgreSQL)
 - **Real-time:** Socket.io
 - **Animation:** Framer Motion
 - **i18n:** next-intl
+
+---
+
+## Deployment (GitHub Actions → VPS)
+
+### Триггеры
+
+- **Автоматический:** Push в ветку `main`
+- **Ручной:** Workflow dispatch с выбором ветки
+
+### Пайплайн `.github/workflows/deploy.yml`
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    GitHub Actions Runner                     │
+├─────────────────────────────────────────────────────────────┤
+│  1. Checkout code                                           │
+│  2. Setup Node.js 20                                        │
+│  3. npm ci                                                  │
+│  4. npm run lint (continue-on-error)                        │
+│  5. npm run build                                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ SSH
+┌─────────────────────────────────────────────────────────────┐
+│                         VPS Server                           │
+├─────────────────────────────────────────────────────────────┤
+│  /var/www/filmber/                                          │
+│  ├── repo/              # Git репозиторий                   │
+│  ├── releases/          # Версионированные релизы           │
+│  │   ├── 20240115120000/                                    │
+│  │   ├── 20240116090000/                                    │
+│  │   └── ...            # Хранится 5 последних              │
+│  ├── current/           # Symlink → активный релиз          │
+│  └── shared/                                                │
+│      └── .env           # Shared environment variables      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Шаги деплоя на VPS
+
+1. **Git pull** — обновление репозитория в `/var/www/filmber/repo`
+2. **Rsync** — копирование в новую директорию релиза (без `.git`, `node_modules`)
+3. **Symlink .env** — линковка shared конфигурации
+4. **npm ci + build** — установка зависимостей и сборка на сервере
+5. **db:push** — применение миграций базы данных
+6. **Symlink switch** — переключение `current` на новый релиз
+7. **PM2 reload** — перезапуск приложения без downtime
+
+### Health Check
+
+После деплоя проверяется статус PM2:
+```bash
+pm2 show filmber | grep -q "online"
+```
+
+### Rollback
+
+При ошибке автоматически откатывается на предыдущий релиз:
+```bash
+PREV_RELEASE=$(ls -1t releases | sed -n '2p')
+ln -sfn releases/${PREV_RELEASE} current
+pm2 reload ecosystem.config.js
+```
+
+### Secrets (GitHub)
+
+| Secret | Описание |
+|--------|----------|
+| `VPS_HOST` | IP или домен сервера |
+| `VPS_USER` | SSH пользователь |
+| `VPS_SSH_KEY` | Приватный SSH ключ |
+| `VPS_PORT` | SSH порт |
+
+### PM2 конфигурация
+
+На сервере используется `ecosystem.config.js` для управления процессом:
+```bash
+pm2 start ecosystem.config.js --env production
+pm2 reload ecosystem.config.js  # Zero-downtime restart
+```

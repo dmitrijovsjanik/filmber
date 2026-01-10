@@ -117,8 +117,9 @@ echo -e "${BLUE}[7/7] Активация нового релиза...${NC}"
 ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
 
 # Перезапуск PM2
-cd "${APP_DIR}"
-pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+cd "${CURRENT_LINK}"
+pm2 delete ${APP_NAME} 2>/dev/null || true
+pm2 start ecosystem.config.js --env production
 
 # Ждем запуска
 sleep 3
@@ -134,7 +135,9 @@ else
     PREV_RELEASE=$(ls -1t "${RELEASES_DIR}" | sed -n '2p')
     if [ -n "$PREV_RELEASE" ]; then
         ln -sfn "${RELEASES_DIR}/${PREV_RELEASE}" "${CURRENT_LINK}"
-        pm2 reload ecosystem.config.js --env production
+        cd "${CURRENT_LINK}"
+        pm2 delete ${APP_NAME} 2>/dev/null || true
+        pm2 start ecosystem.config.js --env production
         echo -e "${YELLOW}Откат выполнен на ${PREV_RELEASE}${NC}"
     fi
     exit 1
