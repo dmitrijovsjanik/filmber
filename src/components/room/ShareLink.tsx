@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Check, Copy, Share2 } from 'lucide-react';
 
 interface ShareLinkProps {
   roomCode: string;
@@ -95,103 +99,92 @@ export function ShareLink({ roomCode, pin }: ShareLinkProps) {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 py-3 px-6 bg-gray-900 dark:bg-gray-700 text-white rounded-full shadow-lg flex items-center gap-2"
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
           >
-            <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            {t('autoCopied')}
+            <Badge className="flex items-center gap-2 bg-card px-4 py-2 text-sm shadow-lg">
+              <Check className="h-4 w-4 text-emerald-500" />
+              {t('autoCopied')}
+            </Badge>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          {t('shareTitle')}
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {t('shareLink')}
-        </p>
-
-        {/* Link field */}
-      <div className="mb-3">
-        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-          {t('link')}
-        </label>
-        <button
-          onClick={copyUrl}
-          className="w-full flex items-center justify-between gap-2 p-3 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-pink-300 dark:hover:border-pink-500 transition-colors cursor-pointer text-left"
-        >
-          <span className="text-sm text-gray-900 dark:text-white truncate flex-1">
-            {shareUrl}
-          </span>
-          {copiedUrl ? (
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* PIN field */}
-      <div className="mb-6">
-        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-          {t('password')}
-        </label>
-        <button
-          onClick={copyPin}
-          className="w-full flex items-center justify-between gap-2 p-3 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-pink-300 dark:hover:border-pink-500 transition-colors cursor-pointer text-left"
-        >
-          <span className="text-lg font-mono font-bold text-gray-900 dark:text-white tracking-wider">
-            {pin}
-          </span>
-          {copiedPin ? (
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* QR Code */}
-      <div className="mb-6">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">
-          {t('scanQr')}
-        </p>
-        <div className="flex justify-center">
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <QRCodeSVG
-              value={qrUrl}
-              size={160}
-              level="M"
-              fgColor="#ec4899"
-              bgColor="#ffffff"
-            />
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>{t('shareTitle')}</CardTitle>
+          <CardDescription>{t('shareLink')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Link field */}
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              {t('link')}
+            </label>
+            <button
+              onClick={copyUrl}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-input bg-background p-3 text-left transition-colors hover:border-pink-500/50"
+            >
+              <span className="flex-1 truncate text-sm">{shareUrl}</span>
+              {copiedUrl ? (
+                <Check className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+              ) : (
+                <Copy className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+              )}
+            </button>
           </div>
-        </div>
-      </div>
 
-        {/* Share button */}
-        {canShare && (
-          <button
-            onClick={handleShare}
-            className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl font-medium transition-all shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            {t('share')}
-          </button>
-        )}
-      </div>
+          {/* PIN field */}
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              {t('password')}
+            </label>
+            <button
+              onClick={copyPin}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-input bg-background p-3 text-left transition-colors hover:border-pink-500/50"
+            >
+              <span className="font-mono text-lg font-bold tracking-wider">
+                {pin}
+              </span>
+              {copiedPin ? (
+                <Check className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+              ) : (
+                <Copy className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+              )}
+            </button>
+          </div>
+
+          {/* QR Code */}
+          <div className="pt-2">
+            <p className="mb-3 text-center text-xs text-muted-foreground">
+              {t('scanQr')}
+            </p>
+            <div className="flex justify-center">
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <QRCodeSVG
+                  value={qrUrl}
+                  size={160}
+                  level="M"
+                  fgColor="#ec4899"
+                  bgColor="#ffffff"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Share button */}
+          {canShare && (
+            <Button
+              onClick={handleShare}
+              variant="gradient"
+              className="w-full"
+              size="lg"
+            >
+              <Share2 className="h-5 w-5" />
+              {t('share')}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
