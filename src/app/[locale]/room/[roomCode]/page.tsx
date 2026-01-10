@@ -64,7 +64,11 @@ export default function JoinRoomPage() {
     if (hasAutoJoined.current) return;
     if (pinFromUrl && pinFromUrl.length === 6 && /^\d+$/.test(pinFromUrl)) {
       hasAutoJoined.current = true;
-      handlePinComplete(pinFromUrl);
+      // Defer to avoid setState during render
+      const timer = setTimeout(() => {
+        handlePinComplete(pinFromUrl);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [pinFromUrl, handlePinComplete]);
 

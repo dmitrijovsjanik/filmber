@@ -17,7 +17,6 @@ export function ShareLink({ roomCode, pin }: ShareLinkProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedBoth, setCopiedBoth] = useState(false);
-  const [canShare, setCanShare] = useState(false);
   const hasAutoCopied = useRef(false);
 
   const shareUrl =
@@ -27,10 +26,8 @@ export function ShareLink({ roomCode, pin }: ShareLinkProps) {
 
   const qrUrl = `${shareUrl}?pin=${pin}`;
 
-  // Check if Web Share API is available
-  useEffect(() => {
-    setCanShare(typeof navigator !== 'undefined' && !!navigator.share);
-  }, []);
+  // Check Web Share API availability (computed, not state)
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
 
   // Auto-copy link and PIN on mount
   useEffect(() => {
