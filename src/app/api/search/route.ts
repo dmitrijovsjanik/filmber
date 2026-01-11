@@ -389,19 +389,29 @@ export async function GET(request: NextRequest) {
       if (containsA && !containsB) return -1;
       if (containsB && !containsA) return 1;
 
-      // 4. Combined relevance score (vote count + popularity + rating + title match)
+      // 4. Episode number within same franchise (sort episodes 1,2,3... before score)
+      // Only if both movies start with the same prefix (same franchise)
+      const episodeA = extractEpisodeNumber(a.titleRu || a.title || '');
+      const episodeB = extractEpisodeNumber(b.titleRu || b.title || '');
+      if (episodeA !== null && episodeB !== null) {
+        // Check if same franchise by comparing title prefix before episode number
+        const prefixA = titleA.split(/эпизод|episode|part|часть|\d/i)[0].trim();
+        const prefixB = titleB.split(/эпизод|episode|part|часть|\d/i)[0].trim();
+        if (prefixA === prefixB && prefixA.length > 0) {
+          return episodeA - episodeB;
+        }
+      }
+
+      // 5. Combined relevance score (vote count + popularity + rating + title match)
       const scoreA = calculateRelevanceScore(a, query);
       const scoreB = calculateRelevanceScore(b, query);
       if (Math.abs(scoreA - scoreB) > 0.1) return scoreB - scoreA;
 
-      // 5. Episode number (for franchises: Avatar 1, Avatar 2, etc.)
-      const episodeA = extractEpisodeNumber(a.titleRu || a.title || '');
-      const episodeB = extractEpisodeNumber(b.titleRu || b.title || '');
-      if (episodeA !== null && episodeB !== null) return episodeA - episodeB;
+      // 6. For movies without episode numbers, prefer those with episodes first
       if (episodeA !== null && episodeB === null) return -1;
       if (episodeB !== null && episodeA === null) return 1;
 
-      // 6. Release date (older = original, show first in franchise)
+      // 7. Release date (older = original, show first)
       return getYear(a) - getYear(b);
     };
 
