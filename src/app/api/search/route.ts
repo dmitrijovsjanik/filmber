@@ -393,11 +393,19 @@ export async function GET(request: NextRequest) {
       // Only if both movies start with the same prefix (same franchise)
       const episodeA = extractEpisodeNumber(a.titleRu || a.title || '');
       const episodeB = extractEpisodeNumber(b.titleRu || b.title || '');
-      if (episodeA !== null && episodeB !== null) {
-        // Check if same franchise by comparing title prefix before episode number
-        const prefixA = titleA.split(/эпизод|episode|part|часть|\d/i)[0].trim();
-        const prefixB = titleB.split(/эпизод|episode|part|часть|\d/i)[0].trim();
-        if (prefixA === prefixB && prefixA.length > 0) {
+
+      // Check if two movies belong to the same franchise
+      // Uses query as the franchise identifier - if both titles start with query, they're same franchise
+      const startsWithQueryA = startsWithWord(titleA, queryNorm) || startsWithWord(titleEnA, queryNorm);
+      const startsWithQueryB = startsWithWord(titleB, queryNorm) || startsWithWord(titleEnB, queryNorm);
+      const sameFranchise = startsWithQueryA && startsWithQueryB && queryNorm.length >= 3;
+
+      if (sameFranchise) {
+        // For same franchise, sort chronologically first
+        const yearDiff = getYear(a) - getYear(b);
+        if (yearDiff !== 0) return yearDiff;
+        // Same year - use episode number if both have it (e.g., "Часть I" vs "Часть II")
+        if (episodeA !== null && episodeB !== null) {
           return episodeA - episodeB;
         }
       }
