@@ -329,9 +329,10 @@ export async function GET(request: NextRequest) {
     // TMDB sometimes returns loosely related results
     const queryNormForFilter = normalizeRu(query);
     allTmdbResults = allTmdbResults.filter((m) => {
+      // Normalize both titles (ё → е) since RU API may return Russian text in 'title' field
       const titleRu = normalizeRu(m.titleRu || '');
-      const titleEn = (m.title || '').toLowerCase();
-      // Keep if title contains query (partial match is ok for filtering)
+      const titleEn = normalizeRu(m.title || '');
+      // Keep if either title contains query
       return titleRu.includes(queryNormForFilter) || titleEn.includes(queryNormForFilter);
     });
 
