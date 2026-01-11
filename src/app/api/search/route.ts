@@ -23,6 +23,41 @@ const normalizeRu = (str: string) => str.toLowerCase().replace(/ё/g, 'е');
 const getYear = (movie: SearchResult) =>
   parseInt(movie.releaseDate?.substring(0, 4) || '0');
 
+// Calculate relevance score combining multiple factors
+function calculateRelevanceScore(movie: SearchResult, query: string): number {
+  const voteCount = movie.voteCount || 0;
+  const popularity = movie.popularity || 0;
+  const rating = parseFloat(movie.voteAverage || '0');
+
+  // Normalized vote count using log scale (handles large numbers like 33000)
+  // log(33001) ≈ 10.4, so max score ~10-11
+  const normalizedVotes = voteCount > 0 ? Math.log(voteCount + 1) : 0;
+
+  // Normalized popularity (cap at 500 for reasonable scaling)
+  // Most movies have popularity < 100, blockbusters can reach 300-500
+  const normalizedPopularity = Math.min(popularity, 500) / 50;
+
+  // Title match quality - shorter titles that match query = better match
+  const title = normalizeRu(movie.titleRu || movie.title || '');
+  const queryNorm = normalizeRu(query);
+  const titleLengthPenalty =
+    title.length > queryNorm.length
+      ? Math.max(0, 1 - (title.length - queryNorm.length) / 30)
+      : 1;
+
+  // Combined score with weights:
+  // - 60% on vote count (historical popularity/quality indicator)
+  // - 20% on current popularity (trending but can be misleading)
+  // - 10% on rating (quality indicator)
+  // - 10% on title match quality (shorter = more likely exact match)
+  return (
+    normalizedVotes * 6 +
+    normalizedPopularity * 2 +
+    rating +
+    titleLengthPenalty * 10
+  );
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query') || '';
@@ -175,6 +210,8 @@ export async function GET(request: NextRequest) {
       posterPath: m.posterPath,
       releaseDate: m.releaseDate,
       voteAverage: m.voteAverage,
+      voteCount: m.voteCount,
+      popularity: m.popularity ? parseFloat(m.popularity) : null,
       overview: m.overview,
       overviewRu: m.overviewRu,
       source: 'tmdb' as const,
@@ -288,36 +325,32 @@ export async function GET(request: NextRequest) {
       const titleEnA = (a.title || '').toLowerCase();
       const titleEnB = (b.title || '').toLowerCase();
 
-      // 1. Exact match
+      // 1. Exact match (highest priority)
       const exactMatchA = titleA === queryNorm || titleEnA === queryNorm;
       const exactMatchB = titleB === queryNorm || titleEnB === queryNorm;
       if (exactMatchA && !exactMatchB) return -1;
       if (exactMatchB && !exactMatchA) return 1;
 
-      // 2. Starts with
+      // 2. Starts with query (franchise titles like "Аватар: Путь воды")
       const startsWithA = titleA.startsWith(queryNorm) || titleEnA.startsWith(queryNorm);
       const startsWithB = titleB.startsWith(queryNorm) || titleEnB.startsWith(queryNorm);
       if (startsWithA && !startsWithB) return -1;
       if (startsWithB && !startsWithA) return 1;
 
-      // 3. Vote count
-      const voteCountA = a.voteCount || 0;
-      const voteCountB = b.voteCount || 0;
-      if (voteCountA !== voteCountB) return voteCountB - voteCountA;
+      // 3. Combined relevance score (vote count + popularity + rating + title match)
+      // This gives more weight to vote count (historical) over popularity (trending)
+      const scoreA = calculateRelevanceScore(a, query);
+      const scoreB = calculateRelevanceScore(b, query);
+      if (Math.abs(scoreA - scoreB) > 0.1) return scoreB - scoreA;
 
-      // 4. Popularity
-      const popA = a.popularity || 0;
-      const popB = b.popularity || 0;
-      if (popA !== popB) return popB - popA;
-
-      // 5. Episode number
+      // 4. Episode number (for franchises: Avatar 1, Avatar 2, etc.)
       const episodeA = extractEpisodeNumber(a.titleRu || a.title || '');
       const episodeB = extractEpisodeNumber(b.titleRu || b.title || '');
       if (episodeA !== null && episodeB !== null) return episodeA - episodeB;
       if (episodeA !== null && episodeB === null) return -1;
       if (episodeB !== null && episodeA === null) return 1;
 
-      // 6. Release date
+      // 5. Release date (older = original, show first in franchise)
       return getYear(a) - getYear(b);
     };
 

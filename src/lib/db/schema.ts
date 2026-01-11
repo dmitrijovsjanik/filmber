@@ -59,6 +59,8 @@ export const movieCache = pgTable('movie_cache', {
   backdropPath: varchar('backdrop_path', { length: 500 }),
   releaseDate: varchar('release_date', { length: 20 }),
   voteAverage: varchar('vote_average', { length: 10 }),
+  voteCount: integer('vote_count'),
+  popularity: varchar('popularity', { length: 20 }),
   imdbId: varchar('imdb_id', { length: 20 }),
   imdbRating: varchar('imdb_rating', { length: 10 }),
   rottenTomatoesRating: varchar('rt_rating', { length: 10 }),

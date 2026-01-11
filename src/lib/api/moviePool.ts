@@ -85,6 +85,8 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
       backdropPath: detailsEn.backdrop_path,
       releaseDate: detailsEn.release_date,
       voteAverage: detailsEn.vote_average.toString(),
+      voteCount: detailsEn.vote_count,
+      popularity: detailsEn.popularity.toString(),
       imdbId: detailsEn.imdb_id,
       imdbRating: omdbData?.imdbRating || null,
       rottenTomatoesRating: omdbData
