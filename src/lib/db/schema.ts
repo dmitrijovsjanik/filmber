@@ -21,6 +21,9 @@ export const rooms = pgTable('rooms', {
   // Status: 'waiting' | 'active' | 'matched' | 'expired'
   userAConnected: boolean('user_a_connected').default(false),
   userBConnected: boolean('user_b_connected').default(false),
+  // Associate authenticated users with slots (for personalized queue)
+  userAId: uuid('user_a_id').references(() => users.id, { onDelete: 'set null' }),
+  userBId: uuid('user_b_id').references(() => users.id, { onDelete: 'set null' }),
   matchedMovieId: integer('matched_movie_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at'),
@@ -66,8 +69,19 @@ export const movieCache = pgTable('movie_cache', {
 });
 
 // Relations
-export const roomsRelations = relations(rooms, ({ many }) => ({
+export const roomsRelations = relations(rooms, ({ many, one }) => ({
   swipes: many(swipes),
+  queues: many(roomQueues),
+  userA: one(users, {
+    fields: [rooms.userAId],
+    references: [users.id],
+    relationName: 'roomUserA',
+  }),
+  userB: one(users, {
+    fields: [rooms.userBId],
+    references: [users.id],
+    relationName: 'roomUserB',
+  }),
 }));
 
 export const swipesRelations = relations(swipes, ({ one }) => ({
@@ -273,6 +287,52 @@ export const notificationSettings = pgTable('notification_settings', {
 });
 
 // ============================================
+// ROOM_QUEUES - Per-user queue state for rooms
+// ============================================
+export const roomQueues = pgTable(
+  'room_queues',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    roomId: uuid('room_id')
+      .references(() => rooms.id, { onDelete: 'cascade' })
+      .notNull(),
+    userSlot: varchar('user_slot', { length: 1 }).notNull(), // 'A' | 'B'
+
+    // Base pool traversal direction
+    basePoolDirection: varchar('base_pool_direction', { length: 4 }).notNull(), // 'asc' | 'desc'
+    currentBaseIndex: integer('current_base_index').notNull(),
+
+    // Priority queue (JSON array of tmdbIds)
+    priorityQueue: text('priority_queue').notNull().default('[]'),
+    priorityQueueIndex: integer('priority_queue_index').notNull().default(0),
+
+    // Excluded movie IDs (JSON array)
+    excludedIds: text('excluded_ids').notNull().default('[]'),
+
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('unique_room_queue_idx').on(table.roomId, table.userSlot)]
+);
+
+// ============================================
+// DECK_SETTINGS - User deck configuration
+// ============================================
+export const deckSettings = pgTable('deck_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull()
+    .unique(),
+
+  // Settings
+  showWatchedMovies: boolean('show_watched_movies').default(false),
+  minRatingFilter: integer('min_rating_filter'), // null = no filter, 1-3
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
 // RELATIONS - Users
 // ============================================
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -281,6 +341,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   sessions: many(userSessions),
   watchPrompts: many(watchPrompts),
   notificationSettings: one(notificationSettings),
+  deckSettings: one(deckSettings),
   // Referral relations
   referredBy: one(users, {
     fields: [users.referredById],
@@ -337,6 +398,20 @@ export const referralRewardsRelations = relations(referralRewards, ({ one }) => 
   }),
 }));
 
+export const roomQueuesRelations = relations(roomQueues, ({ one }) => ({
+  room: one(rooms, {
+    fields: [roomQueues.roomId],
+    references: [rooms.id],
+  }),
+}));
+
+export const deckSettingsRelations = relations(deckSettings, ({ one }) => ({
+  user: one(users, {
+    fields: [deckSettings.userId],
+    references: [users.id],
+  }),
+}));
+
 // ============================================
 // ENUMS/CONSTANTS
 // ============================================
@@ -382,3 +457,7 @@ export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type NewNotificationSettings = typeof notificationSettings.$inferInsert;
 export type ReferralReward = typeof referralRewards.$inferSelect;
 export type NewReferralReward = typeof referralRewards.$inferInsert;
+export type RoomQueue = typeof roomQueues.$inferSelect;
+export type NewRoomQueue = typeof roomQueues.$inferInsert;
+export type DeckSettings = typeof deckSettings.$inferSelect;
+export type NewDeckSettings = typeof deckSettings.$inferInsert;

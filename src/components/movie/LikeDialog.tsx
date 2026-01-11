@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Large, Muted } from '@/components/ui/typography';
 import type { Movie } from '@/types/movie';
 
 interface LikeDialogProps {
@@ -77,12 +78,12 @@ export function LikeDialog({ movie, isOpen, onClose, onSave }: LikeDialogProps) 
             <div className="pt-12 pb-6 px-6">
               {step === 'question' ? (
                 <>
-                  <h3 className="text-lg font-semibold text-center text-gray-900 dark:text-white mb-2">
+                  <Large className="text-center text-foreground mb-2">
                     {t('didYouWatch')}
-                  </h3>
-                  <p className="text-center text-gray-600 dark:text-gray-400 mb-6 line-clamp-1">
+                  </Large>
+                  <Muted className="text-center mb-6 line-clamp-1">
                     {movie.title}
-                  </p>
+                  </Muted>
 
                   <div className="flex flex-col gap-3">
                     <Button
@@ -115,9 +116,9 @@ export function LikeDialog({ movie, isOpen, onClose, onSave }: LikeDialogProps) 
                     </svg>
                   </button>
 
-                  <h3 className="text-lg font-semibold text-center text-gray-900 dark:text-white mb-6">
+                  <Large className="text-center text-foreground mb-6">
                     {t('howWasIt')}
-                  </h3>
+                  </Large>
 
                   <div className="flex justify-center gap-4 mb-4">
                     {[1, 2, 3].map((rating) => (

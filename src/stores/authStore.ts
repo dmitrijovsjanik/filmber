@@ -23,6 +23,7 @@ interface AuthState {
   // Loading states
   isLoading: boolean;
   isInitialized: boolean;
+  hasHydrated: boolean;
 
   // Mini App context
   isTelegramMiniApp: boolean;
@@ -34,6 +35,7 @@ interface AuthState {
   setLoading: (isLoading: boolean) => void;
   setInitialized: (isInitialized: boolean) => void;
   setIsTelegramMiniApp: (is: boolean) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -45,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
       expiresAt: null,
       isLoading: false,
       isInitialized: false,
+      hasHydrated: false,
       isTelegramMiniApp: false,
 
       // Actions
@@ -73,6 +76,7 @@ export const useAuthStore = create<AuthState>()(
       setInitialized: (isInitialized) => set({ isInitialized }),
 
       setIsTelegramMiniApp: (isTelegramMiniApp) => set({ isTelegramMiniApp }),
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),
     {
       name: 'filmber-auth',
@@ -81,6 +85,9 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         expiresAt: state.expiresAt,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

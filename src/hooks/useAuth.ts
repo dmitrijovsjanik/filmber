@@ -19,14 +19,17 @@ export function useAuth() {
     token,
     isLoading,
     isInitialized,
+    hasHydrated,
     setAuth,
     logout: storeLogout,
     setLoading,
     setInitialized,
   } = useAuthStore();
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount (after hydration)
   useEffect(() => {
+    // Wait for hydration to complete before initializing
+    if (!hasHydrated) return;
     if (isInitialized) return;
 
     const initAuth = async () => {
@@ -61,7 +64,7 @@ export function useAuth() {
     };
 
     initAuth();
-  }, [token, isInitialized, setLoading, setInitialized, storeLogout]);
+  }, [token, isInitialized, hasHydrated, setLoading, setInitialized, storeLogout]);
 
   // Authenticate with Telegram initData
   const authenticateWithTelegram = useCallback(
@@ -139,7 +142,8 @@ export function useAuth() {
     user,
     token,
     isLoading,
-    isInitialized,
+    // Consider initialized only after hydration AND initialization
+    isInitialized: hasHydrated && isInitialized,
     isAuthenticated: !!user,
     authenticateWithTelegram,
     logout,

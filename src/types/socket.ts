@@ -1,4 +1,5 @@
 import type { UserSlot, SwipeAction } from './room';
+import type { Movie } from './movie';
 
 // Client → Server events
 export interface ClientToServerEvents {
@@ -16,6 +17,10 @@ export interface ServerToClientEvents {
   match_found: (payload: MatchFoundPayload) => void;
   room_expired: () => void;
   error: (payload: ErrorPayload) => void;
+  // Partner liked a movie - inject into queue
+  partner_liked: (payload: PartnerLikedPayload) => void;
+  // Partner's auth status changed
+  partner_auth_changed: (payload: PartnerAuthChangedPayload) => void;
 }
 
 // Payload types
@@ -59,4 +64,14 @@ export interface MatchFoundPayload {
 
 export interface ErrorPayload {
   message: string;
+}
+
+export interface PartnerLikedPayload {
+  movieId: number;
+  movie: Movie;
+}
+
+export interface PartnerAuthChangedPayload {
+  isAuthenticated: boolean;
+  hasWantToWatchList: boolean;
 }

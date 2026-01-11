@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader } from '@/components/ui/Loader';
+import { H4, Muted } from '@/components/ui/typography';
 
 export default function TelegramEntryPage() {
   const router = useRouter();
@@ -63,16 +64,16 @@ export default function TelegramEntryPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
         <div className="mb-4 text-4xl">😕</div>
-        <h1 className="mb-2 text-xl font-semibold text-white">Something went wrong</h1>
-        <p className="mb-6 text-gray-400">{error}</p>
+        <H4 className="mb-2 text-foreground">Something went wrong</H4>
+        <Muted className="mb-6">{error}</Muted>
         <button
           onClick={() => {
             setError(null);
             setAuthAttempted(false);
           }}
-          className="rounded-lg bg-emerald-600 px-6 py-3 font-medium text-white transition-colors hover:bg-emerald-700"
+          className="rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Try Again
         </button>
@@ -81,11 +82,11 @@ export default function TelegramEntryPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
       <Loader size="lg" />
-      <p className="mt-4 text-gray-400">
+      <Muted className="mt-4">
         {isLoading ? 'Signing you in...' : 'Loading...'}
-      </p>
+      </Muted>
     </div>
   );
 }

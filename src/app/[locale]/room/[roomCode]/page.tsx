@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { PinInput } from '@/components/room/PinInput';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
+import { H3, Muted } from '@/components/ui/typography';
 import { useRoomStore } from '@/stores/roomStore';
 
 export default function JoinRoomPage() {
@@ -75,19 +76,19 @@ export default function JoinRoomPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <H3 className="text-foreground mb-2">
           {t('join.title')}
-        </h1>
-        <p className="text-gray-500">
+        </H3>
+        <Muted>
           {t('home.enterCode')}: <span className="font-mono font-bold">{roomCode}</span>
-        </p>
+        </Muted>
       </div>
 
       <div className="w-full max-w-sm space-y-6">
         <div>
-          <label className="block text-center text-gray-600 dark:text-gray-400 mb-4">
+          <Muted className="block text-center mb-4">
             {t('join.enterPin')}
-          </label>
+          </Muted>
           <PinInput
             onComplete={handlePinComplete}
             disabled={isJoining}
@@ -95,14 +96,14 @@ export default function JoinRoomPage() {
         </div>
 
         {isJoining && (
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+          <div className="flex items-center justify-center gap-2">
             <Loader size="sm" />
-            <span>{t('join.joining')}</span>
+            <Muted>{t('join.joining')}</Muted>
           </div>
         )}
 
         {error && (
-          <p className="text-red-500 text-center text-sm">{error}</p>
+          <Muted className="text-destructive text-center">{error}</Muted>
         )}
 
         <Button

@@ -105,6 +105,58 @@ class TMDBClient {
     };
   }
 
+  // Get list of movie genres
+  async getGenres(
+    language: 'en-US' | 'ru-RU' = 'en-US'
+  ): Promise<{ id: number; name: string }[]> {
+    const data = await this.fetch<{ genres: { id: number; name: string }[] }>(
+      '/genre/movie/list',
+      { language }
+    );
+    return data.genres;
+  }
+
+  // Discover movies with filters
+  async discoverMovies(params: {
+    genres?: number[];
+    yearFrom?: number;
+    yearTo?: number;
+    ratingMin?: number;
+    sortBy?: 'popularity.desc' | 'vote_average.desc' | 'release_date.desc' | 'vote_count.desc';
+    page?: number;
+    language?: 'en-US' | 'ru-RU';
+  }): Promise<{ results: TMDBMovie[]; totalResults: number; totalPages: number }> {
+    const queryParams: Record<string, string> = {
+      language: params.language || 'en-US',
+      page: String(params.page || 1),
+      include_adult: 'false',
+    };
+
+    if (params.genres?.length) {
+      queryParams.with_genres = params.genres.join(',');
+    }
+    if (params.yearFrom) {
+      queryParams['primary_release_date.gte'] = `${params.yearFrom}-01-01`;
+    }
+    if (params.yearTo) {
+      queryParams['primary_release_date.lte'] = `${params.yearTo}-12-31`;
+    }
+    if (params.ratingMin) {
+      queryParams['vote_average.gte'] = String(params.ratingMin);
+      queryParams['vote_count.gte'] = '100'; // Filter low-quality entries
+    }
+    if (params.sortBy) {
+      queryParams.sort_by = params.sortBy;
+    }
+
+    const data = await this.fetch<TMDBResponse<TMDBMovie>>('/discover/movie', queryParams);
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+      totalPages: data.total_pages,
+    };
+  }
+
   // Build poster URL
   static getPosterUrl(
     path: string | null,

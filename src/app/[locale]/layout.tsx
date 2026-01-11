@@ -10,6 +10,7 @@ import { RouteTracker } from '@/components/analytics/RouteTracker';
 import { CookieConsent } from '@/components/consent/CookieConsent';
 import { TelegramAuthProvider } from '@/components/auth';
 import { BottomNav } from '@/components/ui/BottomNav';
+import { Toaster } from '@/components/ui/sonner';
 import '../globals.css';
 
 interface LayoutProps {
@@ -42,7 +43,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale}>
       <head>
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
@@ -59,6 +60,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
             <main className="min-h-screen flex flex-col pb-16">{children}</main>
             <BottomNav />
             <CookieConsent />
+            <Toaster />
           </TelegramAuthProvider>
         </NextIntlClientProvider>
       </body>

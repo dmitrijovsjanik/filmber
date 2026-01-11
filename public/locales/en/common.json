@@ -15,7 +15,7 @@
   },
   "room": {
     "shareTitle": "Share this room",
-    "shareLink": "Send this link to your partner:",
+    "shareLink": "Show the QR code",
     "orPin": "Or share this PIN:",
     "waiting": "Waiting for partner...",
     "connected": "Partner connected!",
@@ -29,7 +29,7 @@
     "copied": "Copied!",
     "share": "Share",
     "autoCopied": "Link and password copied",
-    "scanQr": "Or scan QR code"
+    "scanQr": "or send a quick link"
   },
   "swipe": {
     "like": "Like",
@@ -99,11 +99,20 @@
     "tryAgain": "Try again",
     "status": "Status",
     "yourRating": "Your rating",
+    "rateMovie": "How was the movie?",
+    "moveToWantToWatch": "Move back to \"Want to watch\"",
     "removeFromList": "Remove from list",
+    "confirmDelete": "Remove from list?",
+    "confirmDeleteDescription": "This will remove \"{title}\" from your list.",
     "searchTmdb": "TMDB",
     "searchOmdb": "OMDB",
     "noDescription": "No description available",
-    "omdbOnlyHint": "IMDB ID: "
+    "omdbOnlyHint": "IMDB ID: ",
+    "endOfResults": "That's all for this search",
+    "showMore": "Show more results",
+    "maybeYouLookingFor": "Maybe you're looking for \"{query}\"",
+    "noExpandedResults": "No additional results found",
+    "loadingMore": "Loading more..."
   },
   "prompts": {
     "didYouWatch": "Did you watch",
@@ -119,13 +128,26 @@
     "myLists": "My Movie Lists",
     "language": "Language",
     "notifications": "Notifications",
-    "logout": "Log Out"
+    "deckSettings": "Recommendations",
+    "logout": "Log Out",
+    "version": "Filmber v0.2.0",
+    "madeWith": "Made with"
+  },
+  "deckSettings": {
+    "title": "Recommendations",
+    "sectionPartner": "Partner Recommendations",
+    "showWatched": "Share watched movies",
+    "showWatchedDescription": "Show your favorite movies (rated 3 stars) from your \"Watched\" list to your partner",
+    "info": "When swiping together, your partner will see your favorite movies among recommendations."
   },
   "referral": {
     "title": "Invite Friends",
     "friendsInvited": "friends invited",
     "copy": "Copy",
     "copied": "Copied!",
+    "linkCopied": "Link copied!",
+    "inviteButton": "Invite",
+    "inviteHint": "Tell your friends about us",
     "shareButton": "Share with Friends",
     "shareText": "Join me on Filmber! Find movies you both love.",
     "yourReferrals": "Your Referrals",
@@ -140,5 +162,28 @@
     "watchReminders": "Watch reminders",
     "watchRemindersDesc": "Remind me to rate movies after watching",
     "info": "Notifications are sent via Telegram bot. Make sure you have started the bot."
+  },
+  "nav": {
+    "home": "Home",
+    "lists": "Lists",
+    "profile": "Profile"
+  },
+  "footer": {
+    "madeWith": "Made with ❤️ for movie lovers"
+  },
+  "search": {
+    "filters": "Filters",
+    "clearFilters": "Clear all",
+    "sortBy": "Sort by",
+    "sortRelevance": "Relevance",
+    "sortPopularity": "Popularity",
+    "sortRating": "Rating",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
+    "genres": "Genres",
+    "yearFrom": "From year",
+    "yearTo": "To year",
+    "minRating": "Min rating",
+    "resultsCount": "{count} results"
   }
 }

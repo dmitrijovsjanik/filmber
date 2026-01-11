@@ -31,6 +31,10 @@ interface MovieListItem {
     voteAverage: string | null;
     genres: string | null;
     runtime: number | null;
+    overview: string | null;
+    overviewRu: string | null;
+    imdbRating: string | null;
+    rottenTomatoesRating: string | null;
   } | null;
 }
 
@@ -115,6 +119,10 @@ export async function GET(request: NextRequest) {
           voteAverage: item.movie.voteAverage,
           genres: item.movie.genres,
           runtime: item.movie.runtime,
+          overview: item.movie.overview,
+          overviewRu: item.movie.overviewRu,
+          imdbRating: item.movie.imdbRating,
+          rottenTomatoesRating: item.movie.rottenTomatoesRating,
         }
       : null,
   }));

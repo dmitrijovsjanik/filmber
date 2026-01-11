@@ -26,6 +26,8 @@ export interface TMDBMovie {
   backdrop_path: string | null;
   release_date: string;
   vote_average: number;
+  vote_count: number;
+  popularity: number;
   genre_ids: number[];
 }
 
@@ -70,7 +72,24 @@ export interface SearchResult {
   posterPath: string | null;
   releaseDate: string | null;
   voteAverage: string | null;
+  voteCount?: number | null;
+  popularity?: number | null;
   overview: string | null;
   overviewRu: string | null;
   source: 'tmdb' | 'omdb';
+  // Extended data (available for cached movies)
+  runtime?: number | null;
+  genres?: string | null; // JSON array string
+  genreIds?: number[] | null; // For filtering
+  imdbRating?: string | null;
+}
+
+export type SortOption = 'relevance' | 'popularity' | 'rating' | 'date_desc' | 'date_asc';
+
+export interface SearchFilters {
+  genres: number[];
+  yearFrom: number | null;
+  yearTo: number | null;
+  ratingMin: number | null;
+  sortBy: SortOption;
 }

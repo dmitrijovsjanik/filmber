@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
+import { H1, Large, Muted } from '@/components/ui/typography';
 import type { Movie } from '@/types/movie';
 
 interface MatchFoundProps {
@@ -45,14 +46,15 @@ export function MatchFound({ movie }: MatchFoundProps) {
       </motion.div>
 
       {/* Match text */}
-      <motion.h1
+      <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent"
       >
-        {t('found')}
-      </motion.h1>
+        <H1 className="bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+          {t('found')}
+        </H1>
+      </motion.div>
 
       {/* Movie card */}
       <motion.div
@@ -70,22 +72,23 @@ export function MatchFound({ movie }: MatchFoundProps) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-3">
-          <h3 className="text-lg font-bold text-white line-clamp-2">{title}</h3>
-          <p className="text-sm text-gray-300">
+          <Large className="text-white line-clamp-2">{title}</Large>
+          <Muted className="text-gray-300">
             {movie.releaseDate && new Date(movie.releaseDate).getFullYear()}
-          </p>
+          </Muted>
         </div>
       </motion.div>
 
       {/* Movie title */}
-      <motion.p
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
-        className="text-lg text-gray-600 dark:text-gray-300"
       >
-        {t('enjoy')}
-      </motion.p>
+        <Large className="text-muted-foreground font-normal">
+          {t('enjoy')}
+        </Large>
+      </motion.div>
 
       {/* Hearts decoration */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

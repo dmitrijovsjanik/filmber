@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { H4, Muted, Small } from '@/components/ui/typography';
 
 interface LoginPromptProps {
   isOpen: boolean;
@@ -40,23 +41,23 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl bg-gray-900 p-6 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2"
+            className="fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl bg-card p-6 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2"
           >
             {/* Icon */}
             <div className="mb-4 text-center text-5xl">🎬</div>
 
             {/* Title */}
-            <h2 className="mb-2 text-center text-xl font-bold text-white">
+            <H4 className="mb-2 text-center text-foreground">
               {t('loginPromptTitle', { defaultValue: 'Save Your Movie Picks!' })}
-            </h2>
+            </H4>
 
             {/* Description */}
-            <p className="mb-6 text-center text-gray-400">
+            <Muted className="mb-6 text-center">
               {t('loginPromptDescription', {
                 count: likedCount,
                 defaultValue: `You've liked ${likedCount} movies! Open Filmber in Telegram to save your picks and build your personal watchlist.`,
               })}
-            </p>
+            </Muted>
 
             {/* Features list */}
             <div className="mb-6 space-y-3">
@@ -86,7 +87,7 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
 
               <button
                 onClick={onClose}
-                className="w-full py-2 text-sm text-gray-500 hover:text-gray-400"
+                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 {t('maybeLater', { defaultValue: 'Maybe later' })}
               </button>
@@ -102,7 +103,7 @@ function Feature({ emoji, text }: { emoji: string; text: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-lg">{emoji}</span>
-      <span className="text-sm text-gray-300">{text}</span>
+      <Small className="text-muted-foreground font-normal">{text}</Small>
     </div>
   );
 }

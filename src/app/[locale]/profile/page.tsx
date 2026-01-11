@@ -3,28 +3,21 @@
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
-import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/stores/authStore';
 import { ReferralSection } from '@/components/referral';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronRight, Globe, Bell, LogOut } from 'lucide-react';
+import { H3, Muted } from '@/components/ui/typography';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowRight01Icon, Globe02Icon, Notification01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const router = useRouter();
-  const { logout } = useAuth();
   const user = useUser();
-
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/');
-  };
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background p-4">
-        <div className="mx-auto max-w-md">
+      <div className="flex-1 bg-background p-4">
+        <div className="mx-auto max-w-[280px]">
           {/* Header */}
           <header className="mb-8 text-center">
             {/* Avatar */}
@@ -43,11 +36,11 @@ export default function ProfilePage() {
             </div>
 
             {/* Name */}
-            <h1 className="text-2xl font-bold text-foreground">
+            <H3 className="text-foreground">
               {user?.firstName} {user?.lastName}
-            </h1>
+            </H3>
             {user?.username && (
-              <p className="mt-1 text-muted-foreground">@{user.username}</p>
+              <Muted className="mt-1">@{user.username}</Muted>
             )}
           </header>
 
@@ -57,36 +50,39 @@ export default function ProfilePage() {
           </div>
 
           {/* Menu */}
-          <Card className="mb-4">
-            <CardContent className="p-0">
-              <MenuButton
-                onClick={() => {}}
-                icon={<Globe className="h-5 w-5" />}
-                label={t('language', { defaultValue: 'Language' })}
-                disabled
-              />
-              <div className="mx-4 border-t border-border" />
-              <MenuButton
-                onClick={() => router.push('/profile/notifications')}
-                icon={<Bell className="h-5 w-5" />}
-                label={t('notifications', { defaultValue: 'Notifications' })}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Logout */}
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="h-5 w-5" />
-            {t('logout', { defaultValue: 'Log Out' })}
-          </Button>
+          <div className="overflow-hidden rounded-xl bg-muted/50">
+            <MenuButton
+              onClick={() => {}}
+              icon={<HugeiconsIcon icon={Globe02Icon} size={20} />}
+              label={t('language', { defaultValue: 'Language' })}
+              disabled
+            />
+            <div className="mx-4 border-t border-border" />
+            <MenuButton
+              onClick={() => router.push('/profile/notifications')}
+              icon={<HugeiconsIcon icon={Notification01Icon} size={20} />}
+              label={t('notifications', { defaultValue: 'Notifications' })}
+            />
+            <div className="mx-4 border-t border-border" />
+            <MenuButton
+              onClick={() => router.push('/profile/deck')}
+              icon={<HugeiconsIcon icon={Settings02Icon} size={20} />}
+              label={t('deckSettings', { defaultValue: 'Deck Settings' })}
+            />
+          </div>
 
           {/* Version */}
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            Filmber v0.2.0 • Made with ❤️
+            {t('version', { defaultValue: 'Filmber v0.2.0' })} •{' '}
+            {t('madeWith', { defaultValue: 'Made with' })} ❤️{' '}
+            <a
+              href="https://t.me/ovsjanik"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              @ovsjanik
+            </a>
           </p>
         </div>
       </div>
@@ -109,15 +105,13 @@ function MenuButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex w-full items-center gap-3 p-4 text-left transition-colors ${
-        disabled
-          ? 'cursor-not-allowed opacity-50'
-          : 'hover:bg-accent'
+      className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-accent'
       }`}
     >
       <span className="text-muted-foreground">{icon}</span>
       <span className="flex-1 font-medium text-foreground">{label}</span>
-      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      <HugeiconsIcon icon={ArrowRight01Icon} size={20} className="text-muted-foreground" />
     </button>
   );
 }

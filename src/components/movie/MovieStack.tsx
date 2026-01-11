@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { MovieCard, MovieCardRef } from './MovieCard';
 import { useSwipeStore } from '@/stores/swipeStore';
+import { useQueueStore } from '@/stores/queueStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
@@ -24,7 +25,8 @@ export function MovieStack({
 }: MovieStackProps) {
   const t = useTranslations('swipe');
   const locale = useLocale();
-  const { currentIndex, addSwipe, incrementIndex } = useSwipeStore();
+  const { addSwipe } = useSwipeStore();
+  const { getVisibleMovies, consumeNext, currentIndex, queue, isInitialized } = useQueueStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
   const { trackSwipe } = useAnalytics();
   const topCardRef = useRef<MovieCardRef | null>(null);
@@ -34,9 +36,9 @@ export function MovieStack({
   const token = useAuthToken();
 
   // Refs to hold latest values for stable callback
-  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, incrementIndex });
+  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext });
   useEffect(() => {
-    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, incrementIndex };
+    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext };
   });
 
   // Callback ref to ensure proper assignment
@@ -49,7 +51,7 @@ export function MovieStack({
   // Stable callback that reads from refs
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', movieId: number) => {
-      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, incrementIndex } = stateRef.current;
+      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext } = stateRef.current;
       const action = direction === 'right' ? 'like' : 'skip';
       addSwipe(movieId, action === 'like');
       emitSwipe(movieId, action);
@@ -71,13 +73,17 @@ export function MovieStack({
         }).catch(console.error);
       }
 
-      incrementIndex();
+      consumeNext();
     },
     []
   );
 
-  // Get visible cards (current + next 2)
-  const visibleMovies = movies.slice(currentIndex, currentIndex + 3);
+  // Get visible cards from queue (current + next 2)
+  // Use queue if initialized, fallback to legacy movies prop
+  const visibleItems = isInitialized ? getVisibleMovies(3) : [];
+  const visibleMovies = isInitialized
+    ? visibleItems.map((item) => item.movie)
+    : movies.slice(currentIndex, currentIndex + 3);
 
   const handleButtonClick = (direction: 'left' | 'right') => {
     if (topCardRef.current && visibleMovies[0]) {
@@ -85,7 +91,9 @@ export function MovieStack({
     }
   };
 
-  if (currentIndex >= movies.length) {
+  // Check if we've run out of movies
+  const totalMovies = isInitialized ? queue.length : movies.length;
+  if (currentIndex >= totalMovies) {
     return (
       <div className="flex flex-col items-center justify-center h-[520px] text-center px-4">
         <div className="text-6xl mb-4">🎬</div>

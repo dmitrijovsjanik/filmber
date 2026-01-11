@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Filmber",
-    "tagline": "Найдите фильм, который понравится обоим"
+    "tagline": "Найдите фильм,\nкоторый понравится обоим"
   },
   "home": {
     "title": "Киновечер стал проще",
@@ -15,7 +15,7 @@
   },
   "room": {
     "shareTitle": "Поделитесь комнатой",
-    "shareLink": "Отправьте эту ссылку партнёру:",
+    "shareLink": "Покажите QR-код",
     "orPin": "Или поделитесь PIN-кодом:",
     "waiting": "Ожидаем партнёра...",
     "connected": "Партнёр подключился!",
@@ -29,7 +29,7 @@
     "copied": "Скопировано!",
     "share": "Поделиться",
     "autoCopied": "Ссылка и пароль скопированы",
-    "scanQr": "Или отсканируйте QR-код"
+    "scanQr": "или отправьте быструю ссылку"
   },
   "swipe": {
     "like": "Нравится",
@@ -99,11 +99,20 @@
     "tryAgain": "Попробовать снова",
     "status": "Статус",
     "yourRating": "Ваша оценка",
+    "rateMovie": "Как вам фильм?",
+    "moveToWantToWatch": "Вернуть в «Хочу посмотреть»",
     "removeFromList": "Удалить из списка",
+    "confirmDelete": "Удалить из списка?",
+    "confirmDeleteDescription": "Фильм «{title}» будет удалён из вашего списка.",
     "searchTmdb": "TMDB",
     "searchOmdb": "OMDB",
     "noDescription": "Описание отсутствует",
-    "omdbOnlyHint": "IMDB ID: "
+    "omdbOnlyHint": "IMDB ID: ",
+    "endOfResults": "Это все результаты",
+    "showMore": "Показать ещё",
+    "maybeYouLookingFor": "Возможно, вы ищете \"{query}\"",
+    "noExpandedResults": "Дополнительных результатов не найдено",
+    "loadingMore": "Загрузка..."
   },
   "prompts": {
     "didYouWatch": "Вы посмотрели",
@@ -119,13 +128,26 @@
     "myLists": "Мои списки фильмов",
     "language": "Язык",
     "notifications": "Уведомления",
-    "logout": "Выйти"
+    "deckSettings": "Настройки рекомендаций",
+    "logout": "Выйти",
+    "version": "Filmber v0.2.0",
+    "madeWith": "Сделано с"
+  },
+  "deckSettings": {
+    "title": "Настройки рекомендаций",
+    "sectionPartner": "Рекомендации партнёру",
+    "showWatched": "Делиться просмотренными",
+    "showWatchedDescription": "Показывать партнёру ваши любимые фильмы (с оценкой 3 звезды) из списка \"Просмотрено\"",
+    "info": "Когда вы свайпаете вместе, партнёр увидит ваши любимые фильмы среди рекомендаций."
   },
   "referral": {
     "title": "Пригласить друзей",
     "friendsInvited": "друзей приглашено",
     "copy": "Копировать",
     "copied": "Скопировано!",
+    "linkCopied": "Ссылка скопирована!",
+    "inviteButton": "Пригласить",
+    "inviteHint": "Расскажите о нас вашим друзьям",
     "shareButton": "Поделиться с друзьями",
     "shareText": "Присоединяйся к Filmber! Находи фильмы, которые понравятся обоим.",
     "yourReferrals": "Ваши приглашения",
@@ -140,5 +162,28 @@
     "watchReminders": "Напоминания о просмотре",
     "watchRemindersDesc": "Напоминать оценить фильм после просмотра",
     "info": "Уведомления отправляются через Telegram-бота. Убедитесь, что вы запустили бота."
+  },
+  "nav": {
+    "home": "Главная",
+    "lists": "Списки",
+    "profile": "Профиль"
+  },
+  "footer": {
+    "madeWith": "Сделано с ❤️ для киноманов"
+  },
+  "search": {
+    "filters": "Фильтры",
+    "clearFilters": "Сбросить",
+    "sortBy": "Сортировка",
+    "sortRelevance": "По релевантности",
+    "sortPopularity": "По популярности",
+    "sortRating": "По рейтингу",
+    "sortNewest": "Сначала новые",
+    "sortOldest": "Сначала старые",
+    "genres": "Жанры",
+    "yearFrom": "С года",
+    "yearTo": "По год",
+    "minRating": "Мин. рейтинг",
+    "resultsCount": "{count} результатов"
   }
 }

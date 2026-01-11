@@ -130,13 +130,8 @@ export default function SwipePage() {
           roomCode={roomCode}
           pin={pin || ''}
           isPartnerConnected={isPartnerConnected}
+          onCancel={handleLeaveRoom}
         />
-        <button
-          onClick={handleLeaveRoom}
-          className="mt-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-        >
-          {t('common.cancel')}
-        </button>
       </div>
     );
   }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useRoomStore } from '@/stores/roomStore';
+import { useQueueStore } from '@/stores/queueStore';
 import type { ClientToServerEvents, ServerToClientEvents } from '@/types/socket';
 import type { UserSlot, SwipeAction } from '@/types/room';
 
@@ -94,6 +95,12 @@ export function useSocket(roomCode: string | null, userSlot: UserSlot | null) {
 
     socket.on('room_expired', () => {
       // Handle room expiration
+    });
+
+    socket.on('partner_liked', ({ movie }) => {
+      // Inject partner's liked movie into queue
+      const { injectPartnerLike } = useQueueStore.getState();
+      injectPartnerLike(movie);
     });
 
     socket.on('error', ({ message }) => {

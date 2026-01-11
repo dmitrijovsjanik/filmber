@@ -7,3 +7,8 @@ export const localeNames: Record<Locale, string> = {
   en: 'English',
   ru: 'Русский',
 };
+
+export const localeShortNames: Record<Locale, string> = {
+  en: 'ENG',
+  ru: 'RUS',
+};

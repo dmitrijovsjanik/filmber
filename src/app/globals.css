@@ -38,7 +38,7 @@
 }
 
 @layer base {
-  /* Light theme (optional, for future use) */
+  /* Light theme - Filmber default */
   :root {
     --background: 0 0% 100%;
     --foreground: 220 9% 8%;
@@ -46,7 +46,7 @@
     --card-foreground: 220 9% 8%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 9% 8%;
-    --primary: 160 84% 39%; /* emerald-500 */
+    --primary: 330 81% 60%; /* pink-500 - brand color */
     --primary-foreground: 0 0% 100%;
     --secondary: 220 9% 96%;
     --secondary-foreground: 220 9% 8%;
@@ -58,16 +58,16 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 9% 90%;
     --input: 220 9% 90%;
-    --ring: 160 84% 39%; /* emerald-500 */
+    --ring: 330 81% 60%; /* pink-500 */
     --radius: 0.75rem;
-    --chart-1: 160 84% 39%;
+    --chart-1: 330 81% 60%;
     --chart-2: 199 89% 48%;
     --chart-3: 47 96% 53%;
     --chart-4: 262 83% 58%;
     --chart-5: 339 90% 51%;
   }
 
-  /* Dark theme - Filmber default */
+  /* Dark theme */
   .dark {
     --background: 220 9% 7%; /* gray-900 */
     --foreground: 220 9% 93%;
@@ -75,7 +75,7 @@
     --card-foreground: 220 9% 93%;
     --popover: 220 9% 11%;
     --popover-foreground: 220 9% 93%;
-    --primary: 160 84% 39%; /* emerald-500 */
+    --primary: 330 81% 60%; /* pink-500 - brand color */
     --primary-foreground: 0 0% 100%;
     --secondary: 220 9% 15%; /* gray-700 */
     --secondary-foreground: 220 9% 93%;
@@ -87,8 +87,8 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 9% 20%; /* gray-700 */
     --input: 220 9% 20%;
-    --ring: 160 84% 39%; /* emerald-500 */
-    --chart-1: 160 84% 39%;
+    --ring: 330 81% 60%; /* pink-500 */
+    --chart-1: 330 81% 60%;
     --chart-2: 199 89% 48%;
     --chart-3: 47 96% 53%;
     --chart-4: 262 83% 58%;
@@ -103,4 +103,32 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Typography overrides */
+.text-lg {
+  line-height: 1.4rem !important;
+}
+
+/* Sonner toast styling - fix for centering with dynamic width */
+/* See: https://github.com/emilkowalski/sonner/issues/678 */
+[data-sonner-toaster][data-x-position="center"] {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+[data-sonner-toast][data-x-position="center"] {
+  left: 50% !important;
+  transform: translateX(-50%) var(--y) !important;
+  width: max-content !important;
+  min-width: auto !important;
+  white-space: nowrap !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  color: #10b981 !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: #10b981 !important;
 }

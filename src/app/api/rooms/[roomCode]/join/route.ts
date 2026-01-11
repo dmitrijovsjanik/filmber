@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rooms } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAuthUser } from '@/lib/auth/middleware';
 
 interface RouteParams {
   params: Promise<{ roomCode: string }>;
@@ -46,10 +47,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Room is full' }, { status: 409 });
     }
 
+    // Associate authenticated user with slot (for personalized queue)
+    const user = await getAuthUser(request);
+    if (user) {
+      const updateField =
+        userSlot === 'A' ? { userAId: user.id } : { userBId: user.id };
+      await db.update(rooms).set(updateField).where(eq(rooms.code, roomCode));
+    }
+
+    // Get partner's auth status for response
+    const partnerId = userSlot === 'A' ? room.userBId : room.userAId;
+
     return NextResponse.json({
       roomCode: room.code,
       userSlot,
       moviePoolSeed: room.moviePoolSeed,
+      isPartnerAuthenticated: !!partnerId,
+      partnerId: partnerId ?? null,
     });
   } catch (error) {
     console.error('Failed to join room:', error);

@@ -4,7 +4,8 @@ import { useImperativeHandle, forwardRef, useEffect, useState, useRef } from 're
 import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
-import { RatingBadge } from './RatingBadge';
+import { Badge } from '@/components/ui/badge';
+import { H3, H4, Small } from '@/components/ui/typography';
 import type { Movie } from '@/types/movie';
 
 import 'overlayscrollbars/overlayscrollbars.css';
@@ -115,45 +116,38 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
               transition={{ duration: 0.15 }}
               className="absolute inset-0 bg-black/80 flex flex-col p-4 z-10 rounded-2xl"
             >
-              <h2 className="text-xl font-bold text-white mb-2 line-clamp-2 flex-shrink-0">
+              <H4 className="text-white mb-2 line-clamp-2 flex-shrink-0">
                 {title}
-              </h2>
+              </H4>
 
-              {/* Ratings row */}
-              <div className="flex gap-2 mb-2 flex-wrap flex-shrink-0">
-                <RatingBadge source="TMDB" value={movie.ratings.tmdb} />
-                {movie.ratings.imdb && (
-                  <RatingBadge source="IMDb" value={movie.ratings.imdb} />
-                )}
-                {movie.ratings.rottenTomatoes && (
-                  <RatingBadge source="RT" value={movie.ratings.rottenTomatoes} />
-                )}
-              </div>
-
-              {/* Genres + year + runtime */}
-              <div className="flex flex-wrap gap-1 mb-3 flex-shrink-0 items-center">
-                {movie.genres.slice(0, 3).map((genre) => (
-                  <span
-                    key={genre}
-                    className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white"
-                  >
-                    {genre}
-                  </span>
-                ))}
+              {/* All badges in one container */}
+              <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0 items-center">
                 {movie.releaseDate && (
-                  <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                  <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
                     {new Date(movie.releaseDate).getFullYear()}
-                  </span>
+                  </Badge>
                 )}
                 {movie.runtime && (
-                  <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                  <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
                     {movie.runtime} min
-                  </span>
+                  </Badge>
+                )}
+                {movie.genres.slice(0, 2).map((genre) => (
+                  <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
+                    {genre}
+                  </Badge>
+                ))}
+                <Badge variant="tmdb">TMDB {movie.ratings.tmdb}</Badge>
+                {movie.ratings.imdb && (
+                  <Badge variant="imdb">IMDb {movie.ratings.imdb}</Badge>
+                )}
+                {movie.ratings.rottenTomatoes && (
+                  <Badge variant="rt">RT {movie.ratings.rottenTomatoes}</Badge>
                 )}
               </div>
 
               <OverlayScrollbarsComponent
-                className="flex-1 text-sm text-gray-200"
+                className="flex-1"
                 options={{
                   scrollbars: {
                     visibility: 'visible',
@@ -162,7 +156,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
                   }
                 }}
               >
-                <div className="pr-3">{overview}</div>
+                <Small className="pr-3 text-gray-200 leading-normal font-normal">{overview}</Small>
               </OverlayScrollbarsComponent>
               <button
                 onClick={() => setIsExpanded(false)}
@@ -177,45 +171,38 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
         {/* Content */}
         {!isExpanded && (
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h2 className="text-2xl font-bold text-white mb-2 line-clamp-2">
+          <H3 className="text-white mb-2 line-clamp-2">
             {title}
-          </h2>
+          </H3>
 
-          {/* Ratings row */}
-          <div className="flex gap-2 mb-3 flex-wrap">
-            <RatingBadge source="TMDB" value={movie.ratings.tmdb} />
-            {movie.ratings.imdb && (
-              <RatingBadge source="IMDb" value={movie.ratings.imdb} />
-            )}
-            {movie.ratings.rottenTomatoes && (
-              <RatingBadge source="RT" value={movie.ratings.rottenTomatoes} />
-            )}
-          </div>
-
-          {/* Genres + year + runtime */}
-          <div className="flex flex-wrap gap-1 mb-3 items-center">
-            {movie.genres.slice(0, 3).map((genre) => (
-              <span
-                key={genre}
-                className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white"
-              >
-                {genre}
-              </span>
-            ))}
+          {/* All badges in one container */}
+          <div className="flex flex-wrap gap-1.5 mb-3 items-center">
             {movie.releaseDate && (
-              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+              <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
                 {new Date(movie.releaseDate).getFullYear()}
-              </span>
+              </Badge>
             )}
             {movie.runtime && (
-              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+              <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
                 {movie.runtime} min
-              </span>
+              </Badge>
+            )}
+            {movie.genres.slice(0, 2).map((genre) => (
+              <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
+                {genre}
+              </Badge>
+            ))}
+            <Badge variant="tmdb">TMDB {movie.ratings.tmdb}</Badge>
+            {movie.ratings.imdb && (
+              <Badge variant="imdb">IMDb {movie.ratings.imdb}</Badge>
+            )}
+            {movie.ratings.rottenTomatoes && (
+              <Badge variant="rt">RT {movie.ratings.rottenTomatoes}</Badge>
             )}
           </div>
 
           {/* Overview (truncated) */}
-          <p className="text-sm text-gray-200 line-clamp-3">{overview}</p>
+          <Small className="text-gray-200 line-clamp-3 font-normal leading-normal">{overview}</Small>
 
           {/* Show more button */}
           <button

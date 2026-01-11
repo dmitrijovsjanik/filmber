@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useAuthToken } from '@/stores/authStore';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
-import { ArrowLeft, Film } from 'lucide-react';
+import { H4, Small, Muted } from '@/components/ui/typography';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowLeft01Icon, Film01Icon } from '@hugeicons/core-free-icons';
 
 interface NotificationSettings {
   watchReminders: boolean;
@@ -82,11 +83,11 @@ export default function NotificationsPage() {
               onClick={() => router.back()}
               className="h-10 w-10 rounded-full"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={24} />
             </Button>
-            <h1 className="text-xl font-bold text-foreground">
+            <H4 className="text-foreground">
               {t('title', { defaultValue: 'Notifications' })}
-            </h1>
+            </H4>
           </header>
 
           {isLoading ? (
@@ -97,33 +98,31 @@ export default function NotificationsPage() {
             <div className="space-y-6">
               {/* Bot Messages Section */}
               <section>
-                <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                <Small className="mb-3 block uppercase tracking-wider text-muted-foreground">
                   {t('botMessages', { defaultValue: 'Bot Messages' })}
-                </h2>
+                </Small>
 
-                <Card>
-                  <CardContent className="p-0">
-                    <ToggleItem
-                      icon={<Film className="h-5 w-5" />}
-                      title={t('watchReminders', { defaultValue: 'Watch reminders' })}
-                      description={t('watchRemindersDesc', {
-                        defaultValue: 'Remind me to rate movies after watching',
-                      })}
-                      enabled={settings.watchReminders}
-                      onChange={() => handleToggle('watchReminders')}
-                      disabled={isSaving}
-                    />
-                  </CardContent>
-                </Card>
+                <div className="overflow-hidden rounded-xl bg-muted/50">
+                  <ToggleItem
+                    icon={<HugeiconsIcon icon={Film01Icon} size={24} />}
+                    title={t('watchReminders', { defaultValue: 'Watch reminders' })}
+                    description={t('watchRemindersDesc', {
+                      defaultValue: 'Remind me to rate movies after watching',
+                    })}
+                    enabled={settings.watchReminders}
+                    onChange={() => handleToggle('watchReminders')}
+                    disabled={isSaving}
+                  />
+                </div>
               </section>
 
               {/* Info */}
-              <p className="text-center text-sm text-muted-foreground">
+              <Muted className="block text-center">
                 {t('info', {
                   defaultValue:
                     'Notifications are sent via Telegram bot. Make sure you have started the bot.',
                 })}
-              </p>
+              </Muted>
             </div>
           )}
         </div>
@@ -148,7 +147,7 @@ function ToggleItem({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 p-4">
+    <div className="flex min-h-12 items-center gap-3 px-4 py-3">
       <span className="text-muted-foreground">{icon}</span>
       <div className="flex-1">
         <h3 className="font-medium text-foreground">{title}</h3>

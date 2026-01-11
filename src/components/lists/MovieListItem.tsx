@@ -3,9 +3,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { RatingStars, RatingBadge } from './RatingStars';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { MoreHorizontalIcon } from '@hugeicons/core-free-icons';
+import { RatingBadge as UserRatingBadge } from './RatingStars';
+import { Badge } from '@/components/ui/badge';
 import { WatchTimer, useWatchProgress } from './WatchTimer';
 import { WatchCompletePrompt } from './WatchCompletePrompt';
+import { MovieDetailSheet } from './MovieDetailSheet';
+import { Large } from '@/components/ui/typography';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 
 interface MovieData {
@@ -16,46 +21,60 @@ interface MovieData {
   voteAverage: string | null;
   genres: string | null;
   runtime: number | null;
+  overview: string | null;
+  overviewRu: string | null;
+  imdbRating: string | null;
+  rottenTomatoesRating: string | null;
 }
 
 interface MovieListItemProps {
-  id: string;
+  id?: string;
   tmdbId: number;
-  status: MovieStatus;
-  rating: number | null;
+  status?: MovieStatus | null;
+  rating?: number | null;
   movie: MovieData | null;
-  watchStartedAt: string | null;
-  onStatusChange: (status: MovieStatus) => void;
-  onRatingChange: (rating: number) => void;
-  onRemove: () => void;
+  watchStartedAt?: string | null;
+  onStatusChange?: (status: MovieStatus) => void;
+  onRatingChange?: (rating: number) => void;
+  onRemove?: () => void;
   onWatchComplete?: (rating: number) => void;
   onWatchNotYet?: () => void;
+  onAddedToList?: () => void;
+  showStatusBadge?: boolean;
+  showRatingBadge?: boolean;
 }
 
 export function MovieListItem({
   id,
   tmdbId,
-  status,
-  rating,
+  status = null,
+  rating = null,
   movie,
-  watchStartedAt,
+  watchStartedAt = null,
   onStatusChange,
   onRatingChange,
   onRemove,
   onWatchComplete,
   onWatchNotYet,
+  onAddedToList,
+  showStatusBadge = true,
+  showRatingBadge = true,
 }: MovieListItemProps) {
   const t = useTranslations('lists');
-  const tCommon = useTranslations('common');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingWatched, setPendingWatched] = useState(false); // Waiting for rating before changing to watched
+
+  // Determine if this is a search result (no status yet) or a list item
+  const isSearchMode = status === null;
 
   const posterUrl = movie?.posterPath
     ? `https://image.tmdb.org/t/p/w200${movie.posterPath}`
     : '/placeholder-poster.png';
 
   const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
+
+  // Parse genres from JSON string
+  const genres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
 
   // Check if watch timer is complete
   const isWatchComplete = useWatchProgress(watchStartedAt, movie?.runtime || null);
@@ -82,40 +101,25 @@ export function MovieListItem({
     }
   };
 
-  // Handle click on "Watched" button - show rating picker first
-  const handleWatchedClick = () => {
-    if (status === MOVIE_STATUS.WATCHED) return; // Already watched
-    setPendingWatched(true);
-  };
-
-  // Handle rating selection when pending watched
-  const handlePendingRating = (selectedRating: number) => {
-    onRatingChange(selectedRating);
-    onStatusChange(MOVIE_STATUS.WATCHED);
-    setPendingWatched(false);
-  };
-
-  // Cancel pending watched
-  const handleCancelPending = () => {
-    setPendingWatched(false);
-  };
+  // Display Russian title if available
+  const displayTitle = movie?.titleRu || movie?.title || `Movie #${tmdbId}`;
 
   return (
     <motion.div
       layout
-      className="overflow-hidden rounded-xl bg-gray-800/50"
+      className="overflow-hidden"
     >
       {/* Main row */}
       <div
-        className="flex cursor-pointer gap-3 p-3"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex cursor-pointer gap-3"
+        onClick={() => setIsSheetOpen(true)}
       >
         {/* Poster */}
-        <div className="h-24 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-700">
+        <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
           {movie?.posterPath ? (
             <img
               src={posterUrl}
-              alt={movie?.title || 'Movie poster'}
+              alt={displayTitle}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -126,30 +130,48 @@ export function MovieListItem({
         </div>
 
         {/* Info */}
-        <div className="flex flex-1 flex-col justify-center gap-1">
-          <h3 className="font-semibold text-white line-clamp-2">
-            {movie?.title || `Movie #${tmdbId}`}
-          </h3>
-          {year && <p className="text-sm text-gray-400">{year}</p>}
+        <div className="flex flex-1 flex-col justify-center gap-1.5 overflow-hidden">
+          <Large className="text-foreground line-clamp-2">
+            {displayTitle}
+          </Large>
 
-          {/* Status badge and rating */}
-          <div className="flex items-center gap-2">
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                status === MOVIE_STATUS.WATCHED
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : status === MOVIE_STATUS.WATCHING
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-blue-500/20 text-blue-400'
-              }`}
-            >
-              {status === MOVIE_STATUS.WATCHED
-                ? t('watched', { defaultValue: 'Watched' })
-                : status === MOVIE_STATUS.WATCHING
-                ? t('watching', { defaultValue: 'Watching' })
-                : t('wantToWatch', { defaultValue: 'Want to watch' })}
-            </span>
-            <RatingBadge rating={rating} />
+          {/* All badges in one container */}
+          <div className="flex flex-wrap items-center gap-1">
+            {/* Year */}
+            {year && (
+              <Badge variant="secondary">{year}</Badge>
+            )}
+            {/* Runtime */}
+            {movie?.runtime && (
+              <Badge variant="secondary">{movie.runtime} min</Badge>
+            )}
+            {/* Genres */}
+            {genres.slice(0, 2).map((genre) => (
+              <Badge key={genre} variant="secondary">{genre}</Badge>
+            ))}
+            {/* Platform ratings */}
+            {movie?.voteAverage && (
+              <Badge variant="tmdb">TMDB {parseFloat(movie.voteAverage).toFixed(1)}</Badge>
+            )}
+            {movie?.imdbRating && (
+              <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
+            )}
+            {/* Status badge - only for list items, hide "Watched" badge (stars indicate watched) */}
+            {!isSearchMode && showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (
+              <Badge
+                variant={
+                  status === MOVIE_STATUS.WATCHING
+                    ? 'watching'
+                    : 'wantToWatch'
+                }
+              >
+                {status === MOVIE_STATUS.WATCHING
+                  ? t('watching', { defaultValue: 'Watching' })
+                  : t('wantToWatch', { defaultValue: 'Want to watch' })}
+              </Badge>
+            )}
+            {/* User rating - only for list items */}
+            {!isSearchMode && showRatingBadge && <UserRatingBadge rating={rating} />}
           </div>
 
           {/* Watch timer (when active and not complete) */}
@@ -163,14 +185,9 @@ export function MovieListItem({
           )}
         </div>
 
-        {/* Expand arrow */}
-        <div className="flex items-center text-gray-500">
-          <motion.span
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            ▼
-          </motion.span>
+        {/* More icon */}
+        <div className="flex items-center text-muted-foreground">
+          <HugeiconsIcon icon={MoreHorizontalIcon} size={20} />
         </div>
       </div>
 
@@ -186,83 +203,19 @@ export function MovieListItem({
         )}
       </AnimatePresence>
 
-      {/* Expanded actions */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="border-t border-gray-700"
-          >
-            <div className="space-y-4 p-4">
-              {/* Status toggle */}
-              {!pendingWatched ? (
-                <div>
-                  <label className="mb-2 block text-sm text-gray-400">
-                    {t('status', { defaultValue: 'Status' })}
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onStatusChange(MOVIE_STATUS.WANT_TO_WATCH)}
-                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                        status === MOVIE_STATUS.WANT_TO_WATCH
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      📋 {t('wantToWatch', { defaultValue: 'Want to watch' })}
-                    </button>
-                    <button
-                      onClick={handleWatchedClick}
-                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                        status === MOVIE_STATUS.WATCHED
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      ✅ {t('watched', { defaultValue: 'Watched' })}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Rating selection before marking as watched */
-                <div>
-                  <label className="mb-2 block text-sm text-gray-400">
-                    {t('yourRating', { defaultValue: 'Your rating' })}
-                  </label>
-                  <RatingStars rating={null} onChange={handlePendingRating} size="lg" />
-                  <button
-                    onClick={handleCancelPending}
-                    className="mt-2 text-sm text-gray-400 hover:text-gray-300"
-                  >
-                    {tCommon('cancel')}
-                  </button>
-                </div>
-              )}
-
-              {/* Rating (only for already watched - allow changing) */}
-              {status === MOVIE_STATUS.WATCHED && !pendingWatched && (
-                <div>
-                  <label className="mb-2 block text-sm text-gray-400">
-                    {t('yourRating', { defaultValue: 'Your rating' })}
-                  </label>
-                  <RatingStars rating={rating} onChange={onRatingChange} size="lg" />
-                </div>
-              )}
-
-              {/* Remove button */}
-              <button
-                onClick={onRemove}
-                className="w-full rounded-lg bg-red-500/10 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
-              >
-                🗑️ {t('removeFromList', { defaultValue: 'Remove from list' })}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Detail Sheet */}
+      <MovieDetailSheet
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        tmdbId={tmdbId}
+        status={status}
+        rating={rating}
+        movie={movie}
+        onStatusChange={onStatusChange}
+        onRatingChange={onRatingChange}
+        onRemove={onRemove}
+        onAddedToList={onAddedToList}
+      />
     </motion.div>
   );
 }

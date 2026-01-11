@@ -1,7 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { db } from '../db';
-import { rooms, swipes } from '../db/schema';
+import { rooms, swipes, movieCache } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { enhanceMovieData } from '../api/moviePool';
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9,6 +10,7 @@ import type {
   SwipePayload,
   LeaveRoomPayload,
 } from '@/types/socket';
+import type { Movie } from '@/types/movie';
 
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -124,6 +126,14 @@ export function setupSocketHandlers(io: TypedServer) {
         if (action === 'like') {
           const otherSlot = userSlot === 'A' ? 'B' : 'A';
 
+          // Get movie data to send to partner
+          const movie = await getMovieById(movieId);
+
+          // Notify partner to inject this movie into their queue
+          if (movie) {
+            socket.to(roomCode).emit('partner_liked', { movieId, movie });
+          }
+
           // Check if other user also liked this movie
           const [otherSwipe] = await db
             .select()
@@ -206,5 +216,43 @@ async function handleUserLeave(
     io.to(roomCode).emit('user_left', { userSlot });
   } catch (error) {
     console.error('Error handling user leave:', error);
+  }
+}
+
+async function getMovieById(tmdbId: number): Promise<Movie | null> {
+  try {
+    // Check cache first
+    const [cached] = await db
+      .select()
+      .from(movieCache)
+      .where(eq(movieCache.tmdbId, tmdbId));
+
+    if (cached) {
+      return {
+        tmdbId: cached.tmdbId,
+        title: cached.title,
+        titleRu: cached.titleRu,
+        overview: cached.overview || '',
+        overviewRu: cached.overviewRu,
+        posterUrl: cached.posterPath
+          ? `https://image.tmdb.org/t/p/w500${cached.posterPath}`
+          : '',
+        releaseDate: cached.releaseDate || '',
+        ratings: {
+          tmdb: cached.voteAverage || '0',
+          imdb: cached.imdbRating,
+          rottenTomatoes: cached.rottenTomatoesRating,
+          metacritic: cached.metacriticRating,
+        },
+        genres: JSON.parse(cached.genres || '[]'),
+        runtime: cached.runtime,
+      };
+    }
+
+    // Fetch and cache if not found
+    return enhanceMovieData(tmdbId);
+  } catch (error) {
+    console.error(`Failed to get movie ${tmdbId}:`, error);
+    return null;
   }
 }

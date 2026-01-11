@@ -10,15 +10,16 @@ interface AnonymousSwipe {
 }
 
 interface SwipeState {
-  currentIndex: number;
+  // Note: currentIndex is now managed by queueStore
   swipedMovieIds: number[];
   likedMovieIds: number[];
 
   // Anonymous swipes for import after login
   anonymousSwipes: AnonymousSwipe[];
 
-  incrementIndex: () => void;
   addSwipe: (movieId: number, liked: boolean) => void;
+  hasSwipedMovie: (movieId: number) => boolean;
+  hasLikedMovie: (movieId: number) => boolean;
   reset: () => void;
 
   // Anonymous swipe management
@@ -29,15 +30,9 @@ interface SwipeState {
 export const useSwipeStore = create<SwipeState>()(
   persist(
     (set, get) => ({
-      currentIndex: 0,
       swipedMovieIds: [],
       likedMovieIds: [],
       anonymousSwipes: [],
-
-      incrementIndex: () =>
-        set((state) => ({
-          currentIndex: state.currentIndex + 1,
-        })),
 
       addSwipe: (movieId, liked) =>
         set((state) => ({
@@ -54,9 +49,12 @@ export const useSwipeStore = create<SwipeState>()(
           ],
         })),
 
+      hasSwipedMovie: (movieId) => get().swipedMovieIds.includes(movieId),
+
+      hasLikedMovie: (movieId) => get().likedMovieIds.includes(movieId),
+
       reset: () =>
         set({
-          currentIndex: 0,
           swipedMovieIds: [],
           likedMovieIds: [],
           // Keep anonymousSwipes for potential import
@@ -83,3 +81,4 @@ export const useSwipeStore = create<SwipeState>()(
 // Selector for anonymous swipe count
 export const useAnonymousSwipeCount = () => useSwipeStore((state) => state.anonymousSwipes.length);
 export const useLikedMovieCount = () => useSwipeStore((state) => state.likedMovieIds.length);
+export const useSwipedMovieIds = () => useSwipeStore((state) => state.swipedMovieIds);
