@@ -7,6 +7,7 @@ import { H4, Muted } from '@/components/ui/typography';
 import { Loader } from '@/components/ui/Loader';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Share01Icon } from '@hugeicons/core-free-icons';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface ShareLinkProps {
   roomCode: string;
@@ -18,19 +19,22 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const t = useTranslations('room');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+  const { trackShareRoom } = useAnalytics();
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmber_app_bot';
 
   // TG Mini App link with startapp parameter for instant join
   const startAppParam = `room_${roomCode}_${pin}`;
-  const tgAppUrl = `https://t.me/${botUsername}/app?startapp=${startAppParam}`;
+  const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'filmber_test';
+  const tgAppUrl = `https://t.me/${botUsername}/${miniAppName}?startapp=${startAppParam}`;
 
   const handleShare = async () => {
+    trackShareRoom();
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Filmber',
-          text: t('shareLink'),
+          text: t('shareMessage'),
           url: tgAppUrl,
         });
       } catch (err) {
@@ -40,7 +44,7 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
       }
     } else {
       // Fallback: open Telegram share
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(t('shareLink'))}`;
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(t('shareMessage'))}`;
       window.open(shareUrl, '_blank');
     }
   };

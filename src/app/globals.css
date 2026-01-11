@@ -100,8 +100,11 @@
   * {
     @apply border-border;
   }
+  html,
   body {
     @apply bg-background text-foreground;
+    /* Disable iOS rubber-band overscroll effect */
+    overscroll-behavior: none;
   }
 }
 
@@ -131,4 +134,76 @@
 
 [data-sonner-toast][data-type="success"] [data-icon] svg {
   color: #10b981 !important;
+}
+
+/* Overscroll behavior utilities */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+/* Safe area utilities */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Navbar height: 64px (h-16) + safe-area */
+.pb-navbar {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0));
+}
+
+/* Scroll container with gradient fade edges */
+.scroll-fade-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll-fade-container > div {
+  flex: 1;
+  min-height: 0;
+}
+
+.scroll-fade-container::before,
+.scroll-fade-container::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.scroll-fade-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.8) 40%, transparent 100%);
+}
+
+.scroll-fade-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.8) 40%, transparent 100%);
+}
+
+.scroll-fade-container.fade-top::before {
+  opacity: 1;
+}
+
+.scroll-fade-container.fade-bottom::after {
+  opacity: 1;
+}
+
+/* Bottom nav - stay fixed at viewport bottom, don't move with virtual keyboard */
+.bottom-nav-fixed {
+  position: fixed;
+  bottom: 0;
+  /* Use env(safe-area-inset-bottom) for iPhone notch */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  /* Prevent moving with keyboard on iOS */
+  transform: translateZ(0);
 }

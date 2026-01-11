@@ -7,6 +7,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { Badge } from '@/components/ui/badge';
 import { H3, H4, Small } from '@/components/ui/typography';
 import type { Movie } from '@/types/movie';
+import { translateGenres } from '@/lib/genres';
 
 import 'overlayscrollbars/overlayscrollbars.css';
 
@@ -38,6 +39,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const title = locale === 'ru' && movie.titleRu ? movie.titleRu : movie.title;
   const overview =
     locale === 'ru' && movie.overviewRu ? movie.overviewRu : movie.overview;
+  const genres = translateGenres(movie.genres, locale);
 
   // Use ref to always have latest onSwipe callback - update synchronously on every render
   const onSwipeRef = useRef(onSwipe);
@@ -129,10 +131,10 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
                 )}
                 {movie.runtime && (
                   <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
-                    {movie.runtime} min
+                    {movie.runtime} {locale === 'ru' ? 'мин' : 'min'}
                   </Badge>
                 )}
-                {movie.genres.slice(0, 2).map((genre) => (
+                {genres.slice(0, 2).map((genre) => (
                   <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
                     {genre}
                   </Badge>
@@ -184,10 +186,10 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
             )}
             {movie.runtime && (
               <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
-                {movie.runtime} min
+                {movie.runtime} {locale === 'ru' ? 'мин' : 'min'}
               </Badge>
             )}
-            {movie.genres.slice(0, 2).map((genre) => (
+            {genres.slice(0, 2).map((genre) => (
               <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
                 {genre}
               </Badge>

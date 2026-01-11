@@ -25,6 +25,9 @@ interface RoomState {
   // Partner progress
   partnerSwipeCount: number;
 
+  // Partner has watchlist (triggers queue refetch)
+  partnerHasWatchlist: boolean;
+
   // Actions
   setRoom: (code: string, pin: string, slot: UserSlot, seed: number) => void;
   setSoloMode: (seed: number) => void;
@@ -34,6 +37,7 @@ interface RoomState {
   setMatchFound: (found: boolean) => void;
   setMatchedMovieId: (id: number | null) => void;
   setPartnerSwipeCount: (count: number) => void;
+  setPartnerHasWatchlist: (has: boolean) => void;
   reset: () => void;
 }
 
@@ -49,6 +53,7 @@ const initialState = {
   isMatchFound: false,
   matchedMovieId: null,
   partnerSwipeCount: 0,
+  partnerHasWatchlist: false,
 };
 
 export const useRoomStore = create<RoomState>()((set) => ({
@@ -78,6 +83,7 @@ export const useRoomStore = create<RoomState>()((set) => ({
   setMatchFound: (found) => set({ isMatchFound: found }),
   setMatchedMovieId: (id) => set({ matchedMovieId: id }),
   setPartnerSwipeCount: (count) => set({ partnerSwipeCount: count }),
+  setPartnerHasWatchlist: (has) => set({ partnerHasWatchlist: has }),
 
   reset: () => set(initialState),
 }));

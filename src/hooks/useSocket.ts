@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useRoomStore } from '@/stores/roomStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { useAuthStore } from '@/stores/authStore';
 import type { ClientToServerEvents, ServerToClientEvents } from '@/types/socket';
 import type { UserSlot, SwipeAction } from '@/types/room';
 
@@ -91,6 +92,23 @@ export function useSocket(roomCode: string | null, userSlot: UserSlot | null) {
     socket.on('match_found', ({ movieId }) => {
       setMatchFound(true);
       setMatchedMovieId(movieId);
+
+      // Update matched movie status to "watching" (with timer)
+      const { token } = useAuthStore.getState();
+      if (token) {
+        fetch('/api/lists', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            tmdbId: movieId,
+            status: 'watching',
+            source: 'swipe',
+          }),
+        }).catch(console.error);
+      }
     });
 
     socket.on('room_expired', () => {
@@ -101,6 +119,14 @@ export function useSocket(roomCode: string | null, userSlot: UserSlot | null) {
       // Inject partner's liked movie into queue
       const { injectPartnerLike } = useQueueStore.getState();
       injectPartnerLike(movie);
+    });
+
+    socket.on('partner_auth_changed', ({ hasWantToWatchList }) => {
+      // Partner joined with authentication - refetch queue to get their watchlist
+      if (hasWantToWatchList) {
+        const { setPartnerHasWatchlist } = useRoomStore.getState();
+        setPartnerHasWatchlist(true);
+      }
     });
 
     socket.on('error', ({ message }) => {

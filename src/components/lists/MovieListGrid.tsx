@@ -12,34 +12,15 @@ import { SearchResultItem } from './SearchResultItem';
 import { SearchFilters } from './SearchFilters';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
+import { ScrollFadeContainer } from '@/components/ui/ScrollFadeContainer';
 import { useAuthToken } from '@/stores/authStore';
+import { useListStore, type ListItem } from '@/stores/listStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
+import { useClearSearchTrigger } from '@/stores/searchStore';
 import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
-
-interface MovieData {
-  title: string;
-  titleRu: string | null;
-  posterPath: string | null;
-  releaseDate: string | null;
-  voteAverage: string | null;
-  genres: string | null;
-  runtime: number | null;
-  overview: string | null;
-  overviewRu: string | null;
-  imdbRating: string | null;
-  rottenTomatoesRating: string | null;
-}
-
-interface ListItem {
-  id: string;
-  tmdbId: number;
-  status: MovieStatus;
-  rating: number | null;
-  movie: MovieData | null;
-  watchStartedAt: string | null;
-}
 
 interface FilterCounts {
   all: number;
@@ -56,9 +37,23 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   const t = useTranslations('lists');
   const locale = useLocale();
   const token = useAuthToken();
+  const clearSearchTrigger = useClearSearchTrigger();
+  const { trackMovieRemoved, trackListSearchUsed } = useAnalytics();
+
+  // Use listStore for caching
+  const {
+    cache,
+    hasHydrated,
+    setCache,
+    updateItem,
+    removeItem: removeItemFromCache,
+    isCacheValid,
+    isCacheStale,
+    setFetching,
+  } = useListStore();
 
   const [items, setItems] = useState<ListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoadingLocal] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filters
@@ -66,6 +61,13 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
+
+  // Clear search when triggered from nav
+  useEffect(() => {
+    if (clearSearchTrigger > 0) {
+      setSearchQuery('');
+    }
+  }, [clearSearchTrigger]);
 
   // Counts for list filters
   const [listCounts, setListCounts] = useState<FilterCounts>({
@@ -84,6 +86,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     omdbCount: number;
   }>({ tmdb: [], omdb: [], tmdbCount: 0, omdbCount: 0 });
   const [isSearching, setIsSearching] = useState(false);
+  const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
 
   // Pagination state for infinite scroll
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,27 +182,18 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     return result;
   }, [items, searchFilters]);
 
-  // Fetch user's list items
-  const fetchItems = useCallback(async () => {
+  // Fetch user's list items from API
+  const fetchFromApi = useCallback(async (isBackground = false) => {
     if (!token) return;
 
-    setIsLoading(true);
+    if (!isBackground) {
+      setIsLoadingLocal(true);
+    }
     setError(null);
 
     try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-      if (ratingFilter !== null) {
-        params.set('rating', ratingFilter.toString());
-      }
-      // Only pass search to local API when not doing external search
-      if (searchQuery && searchMode === 'local') {
-        params.set('search', searchQuery);
-      }
-
-      const response = await fetch(`/api/lists?${params}`, {
+      // Always fetch full list for caching, filter locally
+      const response = await fetch('/api/lists', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -210,24 +204,56 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       }
 
       const data = await response.json();
-      setItems(data.items);
 
-      // Update counts from API response
+      // Update cache
+      setCache(data.items, data.counts || {
+        all: data.items.length,
+        wantToWatch: 0,
+        watched: 0,
+        ratings: { 1: 0, 2: 0, 3: 0 },
+      });
+
+      setItems(data.items);
       if (data.counts) {
         setListCounts(data.counts);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setIsLoadingLocal(false);
+      setFetching(false);
     }
-  }, [token, statusFilter, ratingFilter, searchQuery, searchMode]);
+  }, [token, setCache, setFetching]);
 
+  // Initialize from cache or fetch
   useEffect(() => {
-    if (searchMode === 'local') {
-      fetchItems();
+    if (!hasHydrated || !token) return;
+    if (searchMode !== 'local') return;
+
+    // If we have valid cache, use it immediately
+    if (cache && isCacheValid()) {
+      setItems(cache.items);
+      setListCounts(cache.counts);
+      setIsLoadingLocal(false);
+
+      // If cache is stale, refetch in background
+      if (isCacheStale()) {
+        setFetching(true);
+        fetchFromApi(true);
+      }
+    } else {
+      // No cache or invalid, fetch fresh data
+      fetchFromApi(false);
     }
-  }, [fetchItems, searchMode]);
+  }, [hasHydrated, token, searchMode]);
+
+  // Refetch when filters change (but use cached data for display)
+  const fetchItems = useCallback(async () => {
+    // This is now mainly for refreshing counts after mutations
+    // The actual filtering happens locally via filteredItems
+    if (!token) return;
+    await fetchFromApi(true);
+  }, [token, fetchFromApi]);
 
   // Build search URL with filters
   const buildSearchUrl = useCallback(
@@ -270,12 +296,19 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       setExpandedResults([]);
       setShowExpandedSection(false);
       setExpandedQuery(null);
+      setHasTrackedSearch(false);
       return;
     }
 
     // Switch to external search mode
     if (searchMode === 'local') {
       setSearchMode('tmdb');
+    }
+
+    // Track search usage once per search session
+    if (!hasTrackedSearch) {
+      trackListSearchUsed();
+      setHasTrackedSearch(true);
     }
 
     // Reset pagination and expanded search on new query
@@ -311,9 +344,17 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     searchExternalServices();
   }, [debouncedQuery, searchFilters, buildSearchUrl]);
 
-  // Update item status
+  // Update item status - optimistic update
   const handleStatusChange = async (tmdbId: number, newStatus: MovieStatus) => {
     if (!token) return;
+
+    // Optimistic update - update local state and cache immediately
+    setItems((prev) =>
+      prev.map((item) =>
+        item.tmdbId === tmdbId ? { ...item, status: newStatus } : item
+      )
+    );
+    updateItem(tmdbId, { status: newStatus });
 
     try {
       const response = await fetch(`/api/lists/${tmdbId}`, {
@@ -325,23 +366,29 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.tmdbId === tmdbId ? { ...item, status: newStatus } : item
-          )
-        );
-        // Refetch to update counts
+      if (!response.ok) {
+        // Revert on error - refetch to get correct state
         fetchItems();
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+      fetchItems(); // Revert on error
     }
   };
 
-  // Update item rating
+  // Update item rating - optimistic update
   const handleRatingChange = async (tmdbId: number, newRating: number) => {
     if (!token) return;
+
+    const rating = newRating || null;
+
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((item) =>
+        item.tmdbId === tmdbId ? { ...item, rating } : item
+      )
+    );
+    updateItem(tmdbId, { rating });
 
     try {
       const response = await fetch(`/api/lists/${tmdbId}`, {
@@ -350,26 +397,26 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ rating: newRating || null }),
+        body: JSON.stringify({ rating }),
       });
 
-      if (response.ok) {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.tmdbId === tmdbId ? { ...item, rating: newRating || null } : item
-          )
-        );
-        // Refetch to update counts
-        fetchItems();
+      if (!response.ok) {
+        fetchItems(); // Revert on error
       }
     } catch (err) {
       console.error('Failed to update rating:', err);
+      fetchItems(); // Revert on error
     }
   };
 
-  // Remove item
+  // Remove item - optimistic update
   const handleRemove = async (tmdbId: number) => {
     if (!token) return;
+
+    // Optimistic update
+    trackMovieRemoved(tmdbId);
+    setItems((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    removeItemFromCache(tmdbId);
 
     try {
       const response = await fetch(`/api/lists/${tmdbId}`, {
@@ -379,10 +426,8 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         },
       });
 
-      if (response.ok) {
-        setItems((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-        // Refetch to update counts
-        fetchItems();
+      if (!response.ok) {
+        fetchItems(); // Revert on error
       }
     } catch (err) {
       console.error('Failed to remove item:', err);
@@ -471,9 +516,18 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     }
   }, [debouncedQuery, canExpandSearch, getBroaderQuery, searchResults.tmdb]);
 
-  // Handle watch complete (from timer prompt)
+  // Handle watch complete (from timer prompt) - optimistic update
   const handleWatchComplete = async (tmdbId: number, rating: number) => {
     if (!token) return;
+
+    // Optimistic update
+    const updates = { status: 'watched' as MovieStatus, rating, watchStartedAt: null };
+    setItems((prev) =>
+      prev.map((item) =>
+        item.tmdbId === tmdbId ? { ...item, ...updates } : item
+      )
+    );
+    updateItem(tmdbId, updates);
 
     try {
       const response = await fetch(`/api/lists/${tmdbId}`, {
@@ -488,24 +542,26 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         }),
       });
 
-      if (response.ok) {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.tmdbId === tmdbId
-              ? { ...item, status: 'watched' as MovieStatus, rating, watchStartedAt: null }
-              : item
-          )
-        );
-        fetchItems();
+      if (!response.ok) {
+        fetchItems(); // Revert on error
       }
     } catch (err) {
       console.error('Failed to mark as watched:', err);
+      fetchItems(); // Revert on error
     }
   };
 
-  // Handle "not yet" (from timer prompt)
+  // Handle "not yet" (from timer prompt) - optimistic update
   const handleWatchNotYet = async (tmdbId: number) => {
     if (!token) return;
+
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((item) =>
+        item.tmdbId === tmdbId ? { ...item, watchStartedAt: null } : item
+      )
+    );
+    updateItem(tmdbId, { watchStartedAt: null });
 
     try {
       // Clear watchStartedAt so prompt doesn't show again
@@ -520,15 +576,12 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         }),
       });
 
-      if (response.ok) {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.tmdbId === tmdbId ? { ...item, watchStartedAt: null } : item
-          )
-        );
+      if (!response.ok) {
+        fetchItems(); // Revert on error
       }
     } catch (err) {
       console.error('Failed to update watch status:', err);
+      fetchItems(); // Revert on error
     }
   };
 
@@ -539,60 +592,74 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   const isExternalSearch = searchMode === 'tmdb' || searchMode === 'omdb';
 
   return (
-    <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={t('searchPlaceholder', { defaultValue: 'Search movies...' })}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 pl-10 text-sm text-foreground placeholder-muted-foreground transition-colors focus:outline-none focus:border-primary"
-        />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-          <HugeiconsIcon icon={Search01Icon} size={20} />
-        </span>
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} size={20} />
-          </button>
+    <div className="flex flex-col h-full">
+      {/* Fixed header: Search + Filters */}
+      <div className="flex-shrink-0 space-y-2 pb-4 bg-background">
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder={t('searchPlaceholder', { defaultValue: 'Search movies...' })}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 pl-10 text-sm text-foreground placeholder-muted-foreground transition-colors focus:outline-none focus:border-primary"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <HugeiconsIcon icon={Search01Icon} size={20} />
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Service tabs (when doing external search) */}
+        {isExternalSearch && (
+          <SearchServiceTabs
+            activeService={searchMode as 'tmdb' | 'omdb'}
+            tmdbCount={searchResults.tmdbCount}
+            omdbCount={searchResults.omdbCount}
+            onServiceChange={setSearchMode}
+            isSearching={isSearching}
+          />
         )}
+
+        {/* Status/Rating filters (when viewing local list) */}
+        {!isExternalSearch && (
+          <ListFilter
+            status={statusFilter}
+            rating={ratingFilter}
+            onStatusChange={setStatusFilter}
+            onRatingChange={setRatingFilter}
+            counts={listCounts}
+          />
+        )}
+
+        {/* Search filters */}
+        <SearchFilters
+          filters={searchFilters}
+          onFiltersChange={setSearchFilters}
+          locale={locale}
+          disabled={isSearching}
+        />
       </div>
 
-      {/* Service tabs (when doing external search) */}
-      {isExternalSearch && (
-        <SearchServiceTabs
-          activeService={searchMode as 'tmdb' | 'omdb'}
-          tmdbCount={searchResults.tmdbCount}
-          omdbCount={searchResults.omdbCount}
-          onServiceChange={setSearchMode}
-          isSearching={isSearching}
-        />
-      )}
-
-      {/* Status/Rating filters (when viewing local list) */}
-      {!isExternalSearch && (
-        <ListFilter
-          status={statusFilter}
-          rating={ratingFilter}
-          onStatusChange={setStatusFilter}
-          onRatingChange={setRatingFilter}
-          counts={listCounts}
-        />
-      )}
-
-      {/* Search filters */}
-      <SearchFilters
-        filters={searchFilters}
-        onFiltersChange={setSearchFilters}
-        locale={locale}
-        disabled={isSearching}
-      />
-
-      {/* Content */}
+      {/* Scrollable content */}
+      <ScrollFadeContainer innerClassName="pb-2">
       {isExternalSearch ? (
         // External search results
         isSearching ? (
@@ -748,6 +815,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           </AnimatePresence>
         </motion.div>
       )}
+      </ScrollFadeContainer>
     </div>
   );
 }

@@ -103,6 +103,9 @@ export interface TelegramWebApp {
     },
     callback?: (buttonId: string) => void
   ) => void;
+  disableVerticalSwipes?: () => void;
+  enableVerticalSwipes?: () => void;
+  isVerticalSwipesEnabled?: boolean;
 }
 
 declare global {
@@ -129,6 +132,12 @@ export function useTelegramWebApp() {
 
       // Expand to full height
       tg.expand();
+
+      // Disable vertical swipes to prevent accidental app closure when scrolling
+      // Available since Telegram WebApp API v7.7
+      if (typeof tg.disableVerticalSwipes === 'function') {
+        tg.disableVerticalSwipes();
+      }
 
       setIsReady(true);
     } else {
@@ -162,6 +171,7 @@ export function useTelegramWebApp() {
     isTelegramMiniApp: !!webApp,
     initData: webApp?.initData || '',
     user: webApp?.initDataUnsafe?.user,
+    startParam: webApp?.initDataUnsafe?.start_param,
     colorScheme: webApp?.colorScheme || 'light',
     themeParams: webApp?.themeParams || {},
     platform: webApp?.platform || 'unknown',

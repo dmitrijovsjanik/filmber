@@ -27,7 +27,10 @@ export default function SoloSwipePage() {
     reset: resetRoom,
   } = useRoomStore();
 
-  const { currentIndex, addSwipe, incrementIndex, reset: resetSwipe } = useSwipeStore();
+  const { addSwipe, reset: resetSwipe } = useSwipeStore();
+
+  // Local state for current index in solo mode
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Auth state for saving liked movies
   const isAuthenticated = useIsAuthenticated();
@@ -85,7 +88,7 @@ export default function SoloSwipePage() {
     (direction: 'left' | 'right', movieId: number) => {
       const isLike = direction === 'right';
       addSwipe(movieId, isLike);
-      incrementIndex();
+      setCurrentIndex((prev) => prev + 1);
 
       // If authenticated and liked, save to list with watch timer
       if (isLike) {
@@ -110,7 +113,7 @@ export default function SoloSwipePage() {
         setMatchedMovieId(movieId);
       }
     },
-    [addSwipe, incrementIndex, setMatchFound, setMatchedMovieId]
+    [addSwipe, setMatchFound, setMatchedMovieId]
   );
 
   const handleButtonClick = (direction: 'left' | 'right') => {
@@ -123,6 +126,7 @@ export default function SoloSwipePage() {
   const handleLeave = () => {
     resetRoom();
     resetSwipe();
+    setCurrentIndex(0);
     router.push(`/${locale}`);
   };
 

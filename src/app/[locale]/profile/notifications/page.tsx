@@ -5,12 +5,13 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useAuthToken } from '@/stores/authStore';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { H4, Small, Muted } from '@/components/ui/typography';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeft01Icon, Film01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 
 interface NotificationSettings {
   watchReminders: boolean;
@@ -20,6 +21,7 @@ export default function NotificationsPage() {
   const t = useTranslations('notifications');
   const router = useRouter();
   const token = useAuthToken();
+  const { trackNotificationsToggle } = useAnalytics();
 
   const [settings, setSettings] = useState<NotificationSettings>({
     watchReminders: true,
@@ -62,6 +64,7 @@ export default function NotificationsPage() {
         },
         body: JSON.stringify({ [key]: newValue }),
       });
+      trackNotificationsToggle(newValue);
     } catch (error) {
       // Revert on error
       setSettings((prev) => ({ ...prev, [key]: !newValue }));
@@ -73,7 +76,7 @@ export default function NotificationsPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background p-4">
+      <div className="flex-1 bg-background p-4">
         <div className="mx-auto max-w-md">
           {/* Header */}
           <header className="mb-6 flex items-center gap-4">
@@ -104,7 +107,6 @@ export default function NotificationsPage() {
 
                 <div className="overflow-hidden rounded-xl bg-muted/50">
                   <ToggleItem
-                    icon={<HugeiconsIcon icon={Film01Icon} size={24} />}
                     title={t('watchReminders', { defaultValue: 'Watch reminders' })}
                     description={t('watchRemindersDesc', {
                       defaultValue: 'Remind me to rate movies after watching',
@@ -132,14 +134,12 @@ export default function NotificationsPage() {
 }
 
 function ToggleItem({
-  icon,
   title,
   description,
   enabled,
   onChange,
   disabled,
 }: {
-  icon: React.ReactNode;
   title: string;
   description: string;
   enabled: boolean;
@@ -148,7 +148,6 @@ function ToggleItem({
 }) {
   return (
     <div className="flex min-h-12 items-center gap-3 px-4 py-3">
-      <span className="text-muted-foreground">{icon}</span>
       <div className="flex-1">
         <h3 className="font-medium text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>

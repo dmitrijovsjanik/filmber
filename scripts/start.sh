@@ -30,13 +30,9 @@ until docker exec filmber-postgres pg_isready -U user -d filmber > /dev/null 2>&
 done
 echo "PostgreSQL is ready."
 
-# Check if migrations need to be run
-echo "Checking database schema..."
-TABLE_COUNT=$(docker exec filmber-postgres psql -U user -d filmber -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ')
-if [ "$TABLE_COUNT" -lt 8 ]; then
-    echo "Running database migrations..."
-    DATABASE_URL="postgresql://user:password@localhost:5432/filmber" npm run db:push
-fi
+# Skip automatic migrations - run manually if needed:
+# DATABASE_URL="postgresql://user:password@localhost:5432/filmber" npx drizzle-kit push
+echo "Database ready. Run migrations manually if needed."
 
 # Start the dev server
 echo "Starting Next.js + Socket.io server..."

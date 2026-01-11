@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { db } from '../db';
-import { rooms, swipes, movieCache } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { rooms, swipes, movieCache, userMovieLists, MOVIE_STATUS } from '../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { enhanceMovieData } from '../api/moviePool';
 import type {
   ClientToServerEvents,
@@ -57,6 +57,30 @@ export function setupSocketHandlers(io: TypedServer) {
 
         // Notify room members
         io.to(roomCode).emit('user_joined', { userSlot });
+
+        // Check if joining user is authenticated and notify partner
+        const joiningUserId = userSlot === 'A' ? room.userAId : room.userBId;
+        if (joiningUserId) {
+          // Check if user has items in their watchlist
+          const watchlistCount = await db
+            .select()
+            .from(userMovieLists)
+            .where(
+              and(
+                eq(userMovieLists.userId, joiningUserId),
+                inArray(userMovieLists.status, [
+                  MOVIE_STATUS.WANT_TO_WATCH,
+                  MOVIE_STATUS.WATCHING,
+                ])
+              )
+            );
+
+          // Notify partner that this user is authenticated (so they can refetch queue)
+          socket.to(roomCode).emit('partner_auth_changed', {
+            isAuthenticated: true,
+            hasWantToWatchList: watchlistCount.length > 0,
+          });
+        }
 
         // Check if both users are connected
         const [updatedRoom] = await db
@@ -125,6 +149,7 @@ export function setupSocketHandlers(io: TypedServer) {
         // Check for match if this is a "like"
         if (action === 'like') {
           const otherSlot = userSlot === 'A' ? 'B' : 'A';
+          const partnerId = userSlot === 'A' ? room.userBId : room.userAId;
 
           // Get movie data to send to partner
           const movie = await getMovieById(movieId);
@@ -134,7 +159,7 @@ export function setupSocketHandlers(io: TypedServer) {
             socket.to(roomCode).emit('partner_liked', { movieId, movie });
           }
 
-          // Check if other user also liked this movie
+          // Check if other user also liked this movie (via swipe)
           const [otherSwipe] = await db
             .select()
             .from(swipes)
@@ -147,7 +172,26 @@ export function setupSocketHandlers(io: TypedServer) {
               )
             );
 
-          if (otherSwipe) {
+          // Check if movie is in partner's watchlist (for instant match)
+          let partnerHasInWatchlist = false;
+          if (!otherSwipe && partnerId) {
+            const [watchlistEntry] = await db
+              .select()
+              .from(userMovieLists)
+              .where(
+                and(
+                  eq(userMovieLists.userId, partnerId),
+                  eq(userMovieLists.tmdbId, movieId),
+                  inArray(userMovieLists.status, [
+                    MOVIE_STATUS.WANT_TO_WATCH,
+                    MOVIE_STATUS.WATCHING,
+                  ])
+                )
+              );
+            partnerHasInWatchlist = !!watchlistEntry;
+          }
+
+          if (otherSwipe || partnerHasInWatchlist) {
             // MATCH FOUND!
             const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes TTL
 

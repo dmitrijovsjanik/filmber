@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,15 @@ import { H1, Lead, Muted } from '@/components/ui/typography';
 import { useRoomStore } from '@/stores/roomStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAuth } from '@/hooks/useAuth';
-import { localeShortNames, type Locale } from '@/i18n/config';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
+
+// Parse room params from startapp parameter (format: room_{code}_{pin})
+function parseRoomParam(startParam?: string): { code: string; pin: string } | null {
+  if (!startParam) return null;
+  const match = startParam.match(/^room_([A-Z0-9]+)_(\d+)$/i);
+  if (!match) return null;
+  return { code: match[1].toUpperCase(), pin: match[2] };
+}
 
 type Mode = 'solo' | 'pair';
 
@@ -21,10 +29,48 @@ export default function HomePage() {
   const { setRoom, setSoloMode } = useRoomStore();
   const { trackRoomCreated } = useAnalytics();
   const { isAuthenticated, isInitialized } = useAuth();
+  const { startParam, isReady: isTgReady } = useTelegramWebApp();
 
   const [mode, setMode] = useState<Mode>('pair');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const joinAttemptedRef = useRef(false);
+
+  // Auto-join room from startapp parameter
+  useEffect(() => {
+    if (!isTgReady || joinAttemptedRef.current) return;
+
+    const roomParams = parseRoomParam(startParam);
+    if (!roomParams) return;
+
+    joinAttemptedRef.current = true;
+    setIsJoiningRoom(true);
+
+    const joinRoom = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${roomParams.code}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: roomParams.pin, viaLink: true }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to join room');
+        }
+
+        setRoom(roomParams.code, roomParams.pin, data.userSlot, data.moviePoolSeed);
+        router.push(`/${locale}/room/${roomParams.code}/swipe`);
+      } catch (err) {
+        console.error('Auto-join failed:', err);
+        setError(err instanceof Error ? err.message : 'Failed to join room');
+        setIsJoiningRoom(false);
+      }
+    };
+
+    joinRoom();
+  }, [isTgReady, startParam, locale, router, setRoom]);
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmber_app_bot';
 
@@ -82,12 +128,8 @@ export default function HomePage() {
   };
 
 
-  const switchLocale = (newLocale: Locale) => {
-    router.push(`/${newLocale}`);
-  };
-
-  // Show loading state while auth is initializing
-  if (!isInitialized) {
+  // Show loading state while auth is initializing or joining room
+  if (!isInitialized || isJoiningRoom) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
@@ -99,23 +141,6 @@ export default function HomePage() {
   if (!isAuthenticated) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        {/* Language switcher */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-          {Object.entries(localeShortNames).map(([loc, name]) => (
-            <button
-              key={loc}
-              onClick={() => switchLocale(loc as Locale)}
-              className={`px-2 py-1 text-sm font-medium transition-colors ${
-                locale === loc
-                  ? 'text-pink-500'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-
         {/* Centered content group */}
         <div className="flex flex-col items-center w-full max-w-[280px]">
           {/* Logo and tagline */}
@@ -192,23 +217,6 @@ export default function HomePage() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
-      {/* Language switcher */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-        {Object.entries(localeShortNames).map(([loc, name]) => (
-          <button
-            key={loc}
-            onClick={() => switchLocale(loc as Locale)}
-            className={`px-2 py-1 text-sm font-medium transition-colors ${
-              locale === loc
-                ? 'text-pink-500'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-
       {/* Centered content group */}
       <div className="flex flex-col items-center w-full max-w-[280px]">
         {/* Logo and tagline */}

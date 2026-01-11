@@ -28,6 +28,7 @@
     "password": "Password",
     "copied": "Copied!",
     "share": "Share",
+    "shareMessage": "Hey! Let's pick a movie together in Filmber 🎬",
     "autoCopied": "Link and password copied",
     "scanQr": "or send a quick link"
   },
@@ -149,7 +150,7 @@
     "inviteButton": "Invite",
     "inviteHint": "Tell your friends about us",
     "shareButton": "Share with Friends",
-    "shareText": "Join me on Filmber! Find movies you both love.",
+    "shareText": "Tired of arguing about movies? Filmber solves it! 🍿",
     "yourReferrals": "Your Referrals",
     "showAll": "Show all ({count})"
   },
@@ -165,7 +166,7 @@
   },
   "nav": {
     "home": "Home",
-    "lists": "Lists",
+    "lists": "My Movies",
     "profile": "Profile"
   },
   "footer": {

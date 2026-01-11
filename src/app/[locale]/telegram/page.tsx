@@ -2,17 +2,67 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { useAuth } from '@/hooks/useAuth';
+import { useRoomStore } from '@/stores/roomStore';
 import { Loader } from '@/components/ui/Loader';
 import { H4, Muted } from '@/components/ui/typography';
 
+// Parse room params from startapp parameter (format: room_{code}_{pin})
+function parseRoomParam(startParam?: string): { code: string; pin: string } | null {
+  if (!startParam) return null;
+  const match = startParam.match(/^room_([A-Z0-9]+)_(\d+)$/i);
+  if (!match) return null;
+  return { code: match[1].toUpperCase(), pin: match[2] };
+}
+
 export default function TelegramEntryPage() {
   const router = useRouter();
-  const { isTelegramMiniApp, initData, isReady } = useTelegramWebApp();
+  const locale = useLocale();
+  const { isTelegramMiniApp, initData, isReady, startParam } = useTelegramWebApp();
   const { authenticateWithTelegram, isAuthenticated, isLoading } = useAuth();
+  const { setRoom } = useRoomStore();
   const [error, setError] = useState<string | null>(null);
   const [authAttempted, setAuthAttempted] = useState(false);
+  const [roomJoinAttempted, setRoomJoinAttempted] = useState(false);
+
+  // Handle room join after authentication
+  useEffect(() => {
+    if (!isReady || !isAuthenticated || roomJoinAttempted) return;
+
+    const roomParams = parseRoomParam(startParam);
+    if (!roomParams) {
+      // No room param, just go home
+      router.replace('/');
+      return;
+    }
+
+    setRoomJoinAttempted(true);
+
+    const joinRoom = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${roomParams.code}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: roomParams.pin, viaLink: true }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to join room');
+        }
+
+        setRoom(roomParams.code, roomParams.pin, data.userSlot, data.moviePoolSeed);
+        router.replace(`/${locale}/room/${roomParams.code}/swipe`);
+      } catch (err) {
+        console.error('Auto-join failed:', err);
+        setError(err instanceof Error ? err.message : 'Failed to join room');
+      }
+    };
+
+    joinRoom();
+  }, [isReady, isAuthenticated, startParam, roomJoinAttempted, locale, router, setRoom]);
 
   useEffect(() => {
     // Wait for Telegram WebApp to be ready
@@ -24,9 +74,8 @@ export default function TelegramEntryPage() {
       return;
     }
 
-    // If already authenticated, redirect to home
+    // If already authenticated, let the room join effect handle redirect
     if (isAuthenticated) {
-      router.replace('/');
       return;
     }
 
@@ -41,11 +90,10 @@ export default function TelegramEntryPage() {
       setAuthAttempted(true);
       authenticateWithTelegram(initData)
         .then((success) => {
-          if (success) {
-            router.replace('/');
-          } else {
+          if (!success) {
             setError('Authentication failed. Please try again.');
           }
+          // Room join will be handled by the other effect
         })
         .catch(() => {
           setError('An error occurred during authentication.');

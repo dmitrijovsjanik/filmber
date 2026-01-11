@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { translateGenres } from '@/lib/genres';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowTurnBackwardIcon, Delete02Icon } from '@hugeicons/core-free-icons';
 import {
@@ -25,6 +26,7 @@ import { RatingStars } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useAuthToken } from '@/stores/authStore';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface MovieData {
   title: string;
@@ -67,10 +69,36 @@ export function MovieDetailSheet({
 }: MovieDetailSheetProps) {
   const t = useTranslations('lists');
   const tCommon = useTranslations('common');
+  const tMovie = useTranslations('movie');
+  const locale = useLocale();
   const token = useAuthToken();
+  const { trackMovieDetailsOpened, trackMovieAddedToWatchlist, trackMovieRated } = useAnalytics();
   const [isLoading, setIsLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState<MovieStatus | null>(status ?? null);
+  const [localRating, setLocalRating] = useState<number | null>(rating ?? null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasTrackedOpen, setHasTrackedOpen] = useState(false);
+
+  // Sync local rating with props when they change (e.g., when sheet reopens)
+  useEffect(() => {
+    setLocalRating(rating ?? null);
+  }, [rating]);
+
+  // Sync local status with props when they change
+  useEffect(() => {
+    setLocalStatus(status ?? null);
+  }, [status]);
+
+  // Track when sheet opens
+  useEffect(() => {
+    if (isOpen && !hasTrackedOpen) {
+      trackMovieDetailsOpened(tmdbId);
+      setHasTrackedOpen(true);
+    }
+    if (!isOpen) {
+      setHasTrackedOpen(false);
+    }
+  }, [isOpen, tmdbId, hasTrackedOpen, trackMovieDetailsOpened]);
 
   // Determine if this is a search result (no status yet) or a list item
   const isSearchMode = status === null;
@@ -85,7 +113,8 @@ export function MovieDetailSheet({
     : null;
 
   const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
-  const genres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  const genres = translateGenres(rawGenres, locale);
 
   // Add movie to list (for search mode)
   const addToList = async (newStatus: MovieStatus) => {
@@ -106,6 +135,9 @@ export function MovieDetailSheet({
       });
       if (response.ok) {
         setLocalStatus(newStatus);
+        if (newStatus === MOVIE_STATUS.WANT_TO_WATCH) {
+          trackMovieAddedToWatchlist(tmdbId);
+        }
         onAddedToList?.();
       }
     } catch (err) {
@@ -118,6 +150,11 @@ export function MovieDetailSheet({
   // Add with rating (for search mode "watched" selection)
   const addToListWithRating = async (selectedRating: number) => {
     if (!token) return;
+
+    // Optimistic update - show rating immediately
+    setLocalRating(selectedRating);
+    setLocalStatus(MOVIE_STATUS.WATCHED);
+
     setIsLoading(true);
     try {
       const response = await fetch('/api/lists', {
@@ -134,11 +171,18 @@ export function MovieDetailSheet({
         }),
       });
       if (response.ok) {
-        setLocalStatus(MOVIE_STATUS.WATCHED);
+        trackMovieRated(tmdbId, selectedRating);
         onAddedToList?.();
+      } else {
+        // Revert on error
+        setLocalRating(rating ?? null);
+        setLocalStatus(status ?? null);
       }
     } catch (err) {
       console.error('Failed to add to list:', err);
+      // Revert on error
+      setLocalRating(rating ?? null);
+      setLocalStatus(status ?? null);
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +199,9 @@ export function MovieDetailSheet({
   };
 
   const handleMoveToWantToWatch = () => {
+    // Optimistic update
+    setLocalStatus(MOVIE_STATUS.WANT_TO_WATCH);
+    setLocalRating(null);
     onStatusChange?.(MOVIE_STATUS.WANT_TO_WATCH);
     onRatingChange?.(0);
   };
@@ -171,11 +218,16 @@ export function MovieDetailSheet({
       // Search mode: add to list with rating via API
       addToListWithRating(selectedRating);
     } else {
-      // List mode: update rating and status
-      onRatingChange?.(selectedRating);
+      // List mode: optimistic update + callback
+      setLocalRating(selectedRating || null);
       if (selectedRating > 0 && currentStatus !== MOVIE_STATUS.WATCHED) {
+        setLocalStatus(MOVIE_STATUS.WATCHED);
         onStatusChange?.(MOVIE_STATUS.WATCHED);
       }
+      if (selectedRating > 0) {
+        trackMovieRated(tmdbId, selectedRating);
+      }
+      onRatingChange?.(selectedRating);
     }
   };
 
@@ -216,7 +268,7 @@ export function MovieDetailSheet({
             )}
             {/* Runtime */}
             {movie?.runtime && (
-              <Badge variant="secondary">{movie.runtime} min</Badge>
+              <Badge variant="secondary">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
             )}
             {/* Genres */}
             {genres.slice(0, 3).map((genre) => (
@@ -270,7 +322,7 @@ export function MovieDetailSheet({
 
             {/* Rating stars - always visible */}
             <RatingStars
-              rating={rating}
+              rating={localRating}
               onChange={handleRatingClick}
               size="md"
             />

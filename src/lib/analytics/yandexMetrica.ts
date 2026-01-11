@@ -10,12 +10,24 @@ declare global {
 
 // Event names for custom tracking
 export const YM_EVENTS = {
+  // Core events
   ROOM_CREATED: 'room_created',
   ROOM_JOINED: 'room_joined',
   SWIPE_LIKE: 'swipe_like',
   SWIPE_SKIP: 'swipe_skip',
   MATCH_FOUND: 'match_found',
   SOLO_MODE_STARTED: 'solo_mode_started',
+  // Social events
+  SHARE_ROOM_CLICK: 'share_room_click',
+  REFERRAL_INVITE_CLICK: 'referral_invite_click',
+  NOTIFICATIONS_TOGGLE: 'notifications_toggle',
+  // Movie events
+  MOVIE_ADDED_TO_WATCHLIST: 'movie_added_to_watchlist',
+  MOVIE_DETAILS_OPENED: 'movie_details_opened',
+  MOVIE_RATED: 'movie_rated',
+  MOVIE_REMOVED: 'movie_removed',
+  LIST_FILTER_CHANGED: 'list_filter_changed',
+  LIST_SEARCH_USED: 'list_search_used',
 } as const;
 
 // Helper function to track goal events

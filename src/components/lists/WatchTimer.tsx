@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { Progress } from '@/components/ui/progress';
 
 interface WatchTimerProps {
   watchStartedAt: string;
@@ -54,17 +54,10 @@ export function WatchTimer({ watchStartedAt, runtime }: WatchTimerProps) {
   return (
     <div className="w-full">
       {/* Progress bar */}
-      <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-700">
-        <motion.div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-emerald-400"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
-      </div>
+      <Progress value={progressPercent} />
 
       {/* Time info */}
-      <div className="mt-1 flex items-center justify-between text-xs text-gray-400">
+      <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
         <span>{progressPercent}%</span>
         {remainingTime > 0 && (
           <span>

@@ -1,22 +1,32 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useUser } from '@/stores/authStore';
 import { ReferralSection } from '@/components/referral';
 import { H3, Muted } from '@/components/ui/typography';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, Globe02Icon, Notification01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+import { localeNames, type Locale } from '@/i18n/config';
+import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
+  const locale = useLocale();
   const router = useRouter();
   const user = useUser();
+  const { switchLocale: globalSwitchLocale } = useLocaleSwitch();
+
+  const handleLocaleChange = (newLocale: string) => {
+    if (newLocale === locale) return;
+    globalSwitchLocale(newLocale as Locale);
+  };
 
   return (
     <AuthGuard>
-      <div className="flex-1 bg-background p-4">
+      <div className="flex-1 bg-background p-4 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-[280px]">
           {/* Header */}
           <header className="mb-8 text-center">
@@ -51,12 +61,24 @@ export default function ProfilePage() {
 
           {/* Menu */}
           <div className="overflow-hidden rounded-xl bg-muted/50">
-            <MenuButton
-              onClick={() => {}}
-              icon={<HugeiconsIcon icon={Globe02Icon} size={20} />}
-              label={t('language', { defaultValue: 'Language' })}
-              disabled
-            />
+            <div className="flex min-h-12 w-full items-center gap-3 px-4 py-3">
+              <span className="text-muted-foreground">
+                <HugeiconsIcon icon={LanguageSquareIcon} size={20} />
+              </span>
+              <span className="flex-1 font-medium text-foreground">
+                {t('language', { defaultValue: 'Language' })}
+              </span>
+              <Select value={locale} onValueChange={handleLocaleChange}>
+                <SelectTrigger className="w-auto h-8 gap-1 border-none bg-transparent px-2 focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(localeNames).map(([loc, name]) => (
+                    <SelectItem key={loc} value={loc}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="mx-4 border-t border-border" />
             <MenuButton
               onClick={() => router.push('/profile/notifications')}

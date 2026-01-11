@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { H4, Small, Muted } from '@/components/ui/typography';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeft01Icon, Film01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 
 export default function DeckSettingsPage() {
   const t = useTranslations('deckSettings');
@@ -30,7 +30,7 @@ export default function DeckSettingsPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background p-4">
+      <div className="flex-1 bg-background p-4">
         <div className="mx-auto max-w-md">
           {/* Header */}
           <header className="mb-6 flex items-center gap-4">
@@ -59,9 +59,6 @@ export default function DeckSettingsPage() {
 
                 <div className="overflow-hidden rounded-xl bg-muted/50">
                   <div className="flex min-h-12 items-center gap-3 px-4 py-3">
-                    <span className="text-muted-foreground">
-                      <HugeiconsIcon icon={Film01Icon} size={24} />
-                    </span>
                     <div className="flex-1">
                       <h3 className="font-medium text-foreground">{t('showWatched')}</h3>
                       <p className="text-sm text-muted-foreground">

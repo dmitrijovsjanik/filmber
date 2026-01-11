@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex h-5 items-center rounded-full border px-2 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
@@ -15,14 +15,14 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
-        // Status variants
-        watched: "border-transparent bg-emerald-500/20 text-emerald-400",
-        watching: "border-transparent bg-amber-500/20 text-amber-400",
-        wantToWatch: "border-transparent bg-blue-500/20 text-blue-400",
+        // Status variants (high contrast)
+        watched: "border-transparent bg-emerald-500/20 text-emerald-700",
+        watching: "border-transparent bg-yellow-500/20 text-yellow-700",
+        wantToWatch: "border-transparent bg-blue-500/20 text-blue-700",
         // Platform rating variants
-        tmdb: "border-transparent bg-emerald-500 text-white font-bold",
-        imdb: "border-transparent bg-yellow-500 text-white font-bold",
-        rt: "border-transparent bg-red-500 text-white font-bold",
+        tmdb: "border-transparent bg-emerald-500 text-white",
+        imdb: "border-transparent bg-yellow-500 text-white",
+        rt: "border-transparent bg-red-500 text-white",
       },
     },
     defaultVariants: {

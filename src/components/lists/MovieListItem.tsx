@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { translateGenres } from '@/lib/genres';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreHorizontalIcon } from '@hugeicons/core-free-icons';
 import { RatingBadge as UserRatingBadge } from './RatingStars';
@@ -61,6 +62,8 @@ export function MovieListItem({
   showRatingBadge = true,
 }: MovieListItemProps) {
   const t = useTranslations('lists');
+  const tMovie = useTranslations('movie');
+  const locale = useLocale();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -73,8 +76,9 @@ export function MovieListItem({
 
   const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
 
-  // Parse genres from JSON string
-  const genres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  // Parse and translate genres from JSON string
+  const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  const genres = translateGenres(rawGenres, locale);
 
   // Check if watch timer is complete
   const isWatchComplete = useWatchProgress(watchStartedAt, movie?.runtime || null);
@@ -143,7 +147,7 @@ export function MovieListItem({
             )}
             {/* Runtime */}
             {movie?.runtime && (
-              <Badge variant="secondary">{movie.runtime} min</Badge>
+              <Badge variant="secondary">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
             )}
             {/* Genres */}
             {genres.slice(0, 2).map((genre) => (

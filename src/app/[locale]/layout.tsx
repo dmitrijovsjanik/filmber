@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -10,13 +10,22 @@ import { RouteTracker } from '@/components/analytics/RouteTracker';
 import { CookieConsent } from '@/components/consent/CookieConsent';
 import { TelegramAuthProvider } from '@/components/auth';
 import { BottomNav } from '@/components/ui/BottomNav';
+import { MainContent } from '@/components/ui/MainContent';
 import { Toaster } from '@/components/ui/sonner';
+import { LocaleSwitchProvider } from '@/contexts/LocaleSwitchContext';
 import '../globals.css';
 
 interface LayoutProps {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export async function generateMetadata({
   params,
@@ -50,17 +59,19 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
           strategy="beforeInteractive"
         />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body className="h-dvh bg-background text-foreground antialiased overflow-hidden">
         <NextIntlClientProvider messages={messages}>
           <TelegramAuthProvider>
-            <YandexMetrica />
-            <Suspense fallback={null}>
-              <RouteTracker />
-            </Suspense>
-            <main className="min-h-screen flex flex-col pb-16">{children}</main>
-            <BottomNav />
-            <CookieConsent />
-            <Toaster />
+            <LocaleSwitchProvider>
+              <YandexMetrica />
+              <Suspense fallback={null}>
+                <RouteTracker />
+              </Suspense>
+              <MainContent>{children}</MainContent>
+              <BottomNav />
+              <CookieConsent />
+              <Toaster />
+            </LocaleSwitchProvider>
           </TelegramAuthProvider>
         </NextIntlClientProvider>
       </body>

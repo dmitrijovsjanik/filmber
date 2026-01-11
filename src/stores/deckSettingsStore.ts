@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface DeckSettings {
   showWatchedMovies: boolean;
@@ -9,24 +10,42 @@ export interface DeckSettings {
 interface DeckSettingsState extends DeckSettings {
   isLoaded: boolean;
   isLoading: boolean;
+  lastFetched: number | null;
+  hasHydrated: boolean;
 
   // Actions
   loadSettings: () => Promise<void>;
   updateSettings: (settings: Partial<DeckSettings>) => Promise<void>;
   reset: () => void;
+  setHasHydrated: (hydrated: boolean) => void;
 }
 
 const defaultSettings: DeckSettings = {
   showWatchedMovies: false,
 };
 
-export const useDeckSettingsStore = create<DeckSettingsState>()((set, get) => ({
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+export const useDeckSettingsStore = create<DeckSettingsState>()(
+  persist(
+    (set, get) => ({
   ...defaultSettings,
   isLoaded: false,
   isLoading: false,
+  lastFetched: null,
+  hasHydrated: false,
 
   loadSettings: async () => {
-    if (get().isLoading) return;
+    const state = get();
+    if (state.isLoading) return;
+
+    // If cache is still valid, skip fetch
+    const isCacheValid =
+      state.lastFetched && Date.now() - state.lastFetched < CACHE_TTL;
+
+    if (state.isLoaded && isCacheValid) {
+      return;
+    }
 
     set({ isLoading: true });
 
@@ -37,7 +56,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()((set, get) => ({
 
       if (!response.ok) {
         // If unauthorized or error, use default settings
-        set({ ...defaultSettings, isLoaded: true, isLoading: false });
+        set({ ...defaultSettings, isLoaded: true, isLoading: false, lastFetched: Date.now() });
         return;
       }
 
@@ -46,6 +65,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()((set, get) => ({
         showWatchedMovies: data.showWatchedMovies ?? false,
         isLoaded: true,
         isLoading: false,
+        lastFetched: Date.now(),
       });
     } catch (error) {
       console.error('Failed to load deck settings:', error);
@@ -80,6 +100,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()((set, get) => ({
       set({
         showWatchedMovies: data.showWatchedMovies ?? false,
         isLoading: false,
+        lastFetched: Date.now(),
       });
     } catch (error) {
       console.error('Failed to update deck settings:', error);
@@ -92,12 +113,29 @@ export const useDeckSettingsStore = create<DeckSettingsState>()((set, get) => ({
   },
 
   reset: () => {
-    set({ ...defaultSettings, isLoaded: false, isLoading: false });
+    set({ ...defaultSettings, isLoaded: false, isLoading: false, lastFetched: null });
   },
-}));
+
+  setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+    }),
+    {
+      name: 'filmber-deck-settings',
+      partialize: (state) => ({
+        showWatchedMovies: state.showWatchedMovies,
+        lastFetched: state.lastFetched,
+        isLoaded: state.isLoaded,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);
 
 // Selectors
 export const useShowWatchedMovies = () =>
   useDeckSettingsStore((state) => state.showWatchedMovies);
 export const useDeckSettingsLoaded = () =>
   useDeckSettingsStore((state) => state.isLoaded);
+export const useDeckSettingsHydrated = () =>
+  useDeckSettingsStore((state) => state.hasHydrated);

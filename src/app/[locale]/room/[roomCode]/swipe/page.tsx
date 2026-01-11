@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { MovieStack } from '@/components/movie/MovieStack';
@@ -9,6 +9,7 @@ import { MatchFound } from '@/components/room/MatchFound';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
 import { useSwipeStore } from '@/stores/swipeStore';
+import { useQueueStore } from '@/stores/queueStore';
 import { useSocket } from '@/hooks/useSocket';
 import type { Movie } from '@/types/movie';
 
@@ -27,55 +28,124 @@ export default function SwipePage() {
     isRoomReady,
     isMatchFound,
     matchedMovieId,
+    partnerHasWatchlist,
+    setPartnerHasWatchlist,
     reset: resetRoom,
   } = useRoomStore();
 
   const { reset: resetSwipe } = useSwipeStore();
+  const { initializeQueue, reset: resetQueue, queue, currentIndex } = useQueueStore();
 
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const hasRefetchedForPartner = useRef(false);
 
   // Initialize socket connection
   const { disconnect } = useSocket(roomCode, userSlot);
 
-  // Fetch movies when room is ready
+  // Fetch queue function (extracted for reuse)
+  const fetchQueue = useCallback(async (isRefetch = false) => {
+    if (!moviePoolSeed || !userSlot) return;
+
+    try {
+      // Use new queue API for personalized movie order
+      const response = await fetch(
+        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=50`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch movies');
+      }
+
+      // Initialize queueStore with the fetched data
+      const queueItems = data.movies.map(
+        (item: { movie: Movie; source: string }) => ({
+          movie: item.movie,
+          source: item.source,
+        })
+      );
+
+      // On refetch, merge new priority items into existing queue
+      if (isRefetch && currentIndex > 0) {
+        // Get priority items (partner's watchlist) that we don't have yet
+        const priorityItems = queueItems.filter(
+          (item: { source: string }) => item.source === 'priority'
+        );
+        if (priorityItems.length > 0) {
+          // Inject priority items after current position
+          const { injectPartnerLike } = useQueueStore.getState();
+          priorityItems.forEach((item: { movie: Movie }) => {
+            injectPartnerLike(item.movie);
+          });
+        }
+      } else {
+        initializeQueue(roomCode, userSlot, queueItems, data.meta);
+      }
+
+      // Also set movies for fallback/match display
+      setMovies(queueItems.map((item: { movie: Movie }) => item.movie));
+    } catch (err) {
+      console.error('Queue API error, falling back to movies API:', err);
+
+      // Fallback to old API if queue API fails (only on initial load)
+      if (!isRefetch) {
+        try {
+          const response = await fetch(`/api/movies?seed=${moviePoolSeed}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch movies');
+          }
+
+          setMovies(data.movies);
+        } catch (fallbackErr) {
+          setError(
+            fallbackErr instanceof Error
+              ? fallbackErr.message
+              : 'Failed to load movies'
+          );
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [moviePoolSeed, userSlot, roomCode, initializeQueue, currentIndex]);
+
+  // Initial queue fetch
   useEffect(() => {
-    if (!moviePoolSeed) {
+    if (!moviePoolSeed || !userSlot) {
       router.push(`/${locale}`);
       return;
     }
 
-    const fetchMovies = async () => {
-      try {
-        const response = await fetch(`/api/movies?seed=${moviePoolSeed}`);
-        const data = await response.json();
+    fetchQueue();
+  }, [moviePoolSeed, userSlot, locale, router, fetchQueue]);
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch movies');
-        }
-
-        setMovies(data.movies);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load movies');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMovies();
-  }, [moviePoolSeed, locale, router]);
+  // Refetch queue when partner joins with watchlist
+  useEffect(() => {
+    if (partnerHasWatchlist && !hasRefetchedForPartner.current) {
+      hasRefetchedForPartner.current = true;
+      fetchQueue(true);
+      // Reset the flag after refetch so it doesn't trigger again
+      setPartnerHasWatchlist(false);
+    }
+  }, [partnerHasWatchlist, fetchQueue, setPartnerHasWatchlist]);
 
   // Handle leave room
   const handleLeaveRoom = () => {
     disconnect();
     resetRoom();
     resetSwipe();
+    resetQueue();
     router.push(`/${locale}`);
   };
 
-  // Find matched movie
-  const matchedMovie = movies.find((m) => m.tmdbId === matchedMovieId);
+  // Find matched movie from queue or movies array
+  const matchedMovie =
+    queue.find((item) => item.movie.tmdbId === matchedMovieId)?.movie ||
+    movies.find((m) => m.tmdbId === matchedMovieId);
 
   // Show match found screen
   if (isMatchFound && matchedMovie) {
@@ -97,9 +167,7 @@ export default function SwipePage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
-        <p className="mt-4 text-gray-500">
-          {t('common.loading')}
-        </p>
+        <p className="mt-4 text-gray-500">{t('common.loading')}</p>
       </div>
     );
   }
@@ -141,9 +209,7 @@ export default function SwipePage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
-        <p className="mt-4 text-gray-500">
-          {t('room.connecting')}
-        </p>
+        <p className="mt-4 text-gray-500">{t('room.connecting')}</p>
       </div>
     );
   }
@@ -171,16 +237,11 @@ export default function SwipePage() {
             />
           </svg>
         </button>
-
       </div>
 
       {/* Movie stack */}
-      {movies.length > 0 && userSlot && (
-        <MovieStack
-          movies={movies}
-          roomCode={roomCode}
-          userSlot={userSlot}
-        />
+      {(queue.length > 0 || movies.length > 0) && userSlot && (
+        <MovieStack movies={movies} roomCode={roomCode} userSlot={userSlot} />
       )}
     </div>
   );

@@ -57,7 +57,8 @@ export function MovieStack({
       emitSwipe(movieId, action);
       trackSwipe(direction, movieId);
 
-      // If authenticated and liked, save to list with watch timer
+      // If authenticated and liked, save to "want to watch" list
+      // Note: Only matched movies get "watching" status (with timer) - handled by match event
       if (direction === 'right' && isAuthenticated && token) {
         fetch('/api/lists', {
           method: 'POST',
@@ -67,7 +68,7 @@ export function MovieStack({
           },
           body: JSON.stringify({
             tmdbId: movieId,
-            status: 'watching',
+            status: 'want_to_watch',
             source: 'swipe',
           }),
         }).catch(console.error);
