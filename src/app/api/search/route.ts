@@ -248,25 +248,32 @@ export async function GET(request: NextRequest) {
       imdbRating: m.imdbRating,
     }));
 
-    // Merge normalized search results with main results
+    // Merge results from all sources (EN + RU + normalized variants)
+    // RU API often returns more results for Russian queries
     const seenTmdbIds = new Set<number>();
+
+    // Collect all unique movies from EN results first
     const allTmdbEnResults = [...tmdbDataEn.results, ...tmdbDataEnNorm.results].filter((r) => {
       if (seenTmdbIds.has(r.id)) return false;
       seenTmdbIds.add(r.id);
       return true;
     });
 
+    // Collect all unique movies from RU results (may have additional movies not in EN)
     const allTmdbRuResults = [...tmdbDataRu.results, ...tmdbDataRuNorm.results].filter((r) => {
-      if (seenTmdbIds.has(r.id)) return true;
+      if (seenTmdbIds.has(r.id)) return false;
       seenTmdbIds.add(r.id);
       return true;
     });
 
+    // Create map of RU data for all movies (from both EN and RU results)
     const ruDataMap = new Map(
-      allTmdbRuResults.map((r) => [r.id, { title: r.title, overview: r.overview }])
+      [...tmdbDataRu.results, ...tmdbDataRuNorm.results].map((r) => [r.id, { title: r.title, overview: r.overview }])
     );
 
-    const newTmdbMovies = allTmdbEnResults.filter((r) => !localTmdbIds.has(r.id));
+    // Combine EN and RU results (RU may have movies that EN doesn't have for Russian queries)
+    const allUniqueMovies = [...allTmdbEnResults, ...allTmdbRuResults];
+    const newTmdbMovies = allUniqueMovies.filter((r) => !localTmdbIds.has(r.id));
 
     // Format new TMDB results with genreIds
     const tmdbSearchResults: SearchResult[] = newTmdbMovies.map((r) => {
