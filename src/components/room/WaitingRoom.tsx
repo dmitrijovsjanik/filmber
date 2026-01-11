@@ -24,7 +24,7 @@ export function WaitingRoom({
     <div className="flex flex-col items-center gap-8 p-4">
       <ShareLink roomCode={roomCode} pin={pin} />
 
-      <Card className="w-full max-w-md border-none bg-card/50">
+      <Card className="w-full max-w-md">
         <CardContent className="flex flex-col items-center gap-4 pt-6">
           {isPartnerConnected ? (
             <>

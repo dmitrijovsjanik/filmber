@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useAuthToken } from '@/stores/authStore';
 import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader } from '@/components/ui/Loader';
+import { ArrowLeft, Film } from 'lucide-react';
 
 interface NotificationSettings {
   watchReminders: boolean;
@@ -68,49 +72,53 @@ export default function NotificationsPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-900 p-4">
+      <div className="min-h-screen bg-background p-4">
         <div className="mx-auto max-w-md">
           {/* Header */}
           <header className="mb-6 flex items-center gap-4">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.back()}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-800 text-white transition-colors hover:bg-gray-700"
+              className="h-10 w-10 rounded-full"
             >
-              ←
-            </button>
-            <h1 className="text-xl font-bold text-white">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold text-foreground">
               {t('title', { defaultValue: 'Notifications' })}
             </h1>
           </header>
 
           {isLoading ? (
             <div className="flex h-40 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+              <Loader size="lg" />
             </div>
           ) : (
             <div className="space-y-6">
               {/* Bot Messages Section */}
               <section>
-                <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-gray-400">
+                <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
                   {t('botMessages', { defaultValue: 'Bot Messages' })}
                 </h2>
 
-                <div className="overflow-hidden rounded-xl bg-gray-800/50">
-                  <ToggleItem
-                    icon="🎬"
-                    title={t('watchReminders', { defaultValue: 'Watch reminders' })}
-                    description={t('watchRemindersDesc', {
-                      defaultValue: 'Remind me to rate movies after watching',
-                    })}
-                    enabled={settings.watchReminders}
-                    onChange={(value) => handleToggle('watchReminders')}
-                    disabled={isSaving}
-                  />
-                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <ToggleItem
+                      icon={<Film className="h-5 w-5" />}
+                      title={t('watchReminders', { defaultValue: 'Watch reminders' })}
+                      description={t('watchRemindersDesc', {
+                        defaultValue: 'Remind me to rate movies after watching',
+                      })}
+                      enabled={settings.watchReminders}
+                      onChange={() => handleToggle('watchReminders')}
+                      disabled={isSaving}
+                    />
+                  </CardContent>
+                </Card>
               </section>
 
               {/* Info */}
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-muted-foreground">
                 {t('info', {
                   defaultValue:
                     'Notifications are sent via Telegram bot. Make sure you have started the bot.',
@@ -132,7 +140,7 @@ function ToggleItem({
   onChange,
   disabled,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   description: string;
   enabled: boolean;
@@ -141,10 +149,10 @@ function ToggleItem({
 }) {
   return (
     <div className="flex items-center gap-3 p-4">
-      <span className="text-2xl">{icon}</span>
+      <span className="text-muted-foreground">{icon}</span>
       <div className="flex-1">
-        <h3 className="font-medium text-white">{title}</h3>
-        <p className="text-sm text-gray-400">{description}</p>
+        <h3 className="font-medium text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <Switch
         checked={enabled}

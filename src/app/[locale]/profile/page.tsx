@@ -6,6 +6,9 @@ import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/stores/authStore';
 import { ReferralSection } from '@/components/referral';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronRight, Globe, Bell, LogOut } from 'lucide-react';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
@@ -20,7 +23,7 @@ export default function ProfilePage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-900 p-4">
+      <div className="min-h-screen bg-background p-4">
         <div className="mx-auto max-w-md">
           {/* Header */}
           <header className="mb-8 text-center">
@@ -40,11 +43,11 @@ export default function ProfilePage() {
             </div>
 
             {/* Name */}
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               {user?.firstName} {user?.lastName}
             </h1>
             {user?.username && (
-              <p className="mt-1 text-gray-400">@{user.username}</p>
+              <p className="mt-1 text-muted-foreground">@{user.username}</p>
             )}
           </header>
 
@@ -54,30 +57,35 @@ export default function ProfilePage() {
           </div>
 
           {/* Menu */}
-          <div className="space-y-2">
-            <MenuButton
-              onClick={() => {}}
-              icon="🌐"
-              label={t('language', { defaultValue: 'Language' })}
-              disabled
-            />
-            <MenuButton
-              onClick={() => router.push('/profile/notifications')}
-              icon="🔔"
-              label={t('notifications', { defaultValue: 'Notifications' })}
-            />
-          </div>
+          <Card className="mb-4">
+            <CardContent className="p-0">
+              <MenuButton
+                onClick={() => {}}
+                icon={<Globe className="h-5 w-5" />}
+                label={t('language', { defaultValue: 'Language' })}
+                disabled
+              />
+              <div className="mx-4 border-t border-border" />
+              <MenuButton
+                onClick={() => router.push('/profile/notifications')}
+                icon={<Bell className="h-5 w-5" />}
+                label={t('notifications', { defaultValue: 'Notifications' })}
+              />
+            </CardContent>
+          </Card>
 
           {/* Logout */}
-          <button
+          <Button
             onClick={handleLogout}
-            className="mt-8 w-full rounded-xl bg-red-500/10 py-4 text-center font-medium text-red-400 transition-colors hover:bg-red-500/20"
+            variant="ghost"
+            className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
+            <LogOut className="h-5 w-5" />
             {t('logout', { defaultValue: 'Log Out' })}
-          </button>
+          </Button>
 
           {/* Version */}
-          <p className="mt-8 text-center text-xs text-gray-600">
+          <p className="mt-8 text-center text-xs text-muted-foreground">
             Filmber v0.2.0 • Made with ❤️
           </p>
         </div>
@@ -93,7 +101,7 @@ function MenuButton({
   disabled = false,
 }: {
   onClick: () => void;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   disabled?: boolean;
 }) {
@@ -101,15 +109,15 @@ function MenuButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex w-full items-center gap-3 rounded-xl bg-gray-800/50 p-4 text-left transition-colors ${
+      className={`flex w-full items-center gap-3 p-4 text-left transition-colors ${
         disabled
           ? 'cursor-not-allowed opacity-50'
-          : 'hover:bg-gray-800'
+          : 'hover:bg-accent'
       }`}
     >
-      <span className="text-xl">{icon}</span>
-      <span className="flex-1 font-medium text-white">{label}</span>
-      <span className="text-gray-500">›</span>
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="flex-1 font-medium text-foreground">{label}</span>
+      <ChevronRight className="h-5 w-5 text-muted-foreground" />
     </button>
   );
 }

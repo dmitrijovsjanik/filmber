@@ -109,7 +109,7 @@ export function ShareLink({ roomCode, pin }: ShareLinkProps) {
         )}
       </AnimatePresence>
 
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md bg-card/50">
         <CardHeader>
           <CardTitle>{t('shareTitle')}</CardTitle>
           <CardDescription>{t('shareLink')}</CardDescription>
