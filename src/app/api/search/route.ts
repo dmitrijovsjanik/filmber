@@ -23,6 +23,33 @@ const normalizeRu = (str: string) => str.toLowerCase().replace(/ё/g, 'е');
 const getYear = (movie: SearchResult) =>
   parseInt(movie.releaseDate?.substring(0, 4) || '0');
 
+// Check if title starts with query as a complete word/phrase
+// "Аватар: Путь воды" starts with "Аватар" ✓
+// "Аватарка" does NOT start with "Аватар" as a word ✗
+function startsWithWord(title: string, query: string): boolean {
+  if (!title.startsWith(query)) return false;
+  if (title.length === query.length) return true;
+  // Check if next character is a word boundary (space, colon, dash, digit, etc.)
+  const nextChar = title[query.length];
+  return /[\s:.\-–—,!?0-9]/.test(nextChar);
+}
+
+// Check if title contains query as a complete word/phrase
+function containsWord(title: string, query: string): boolean {
+  if (title === query) return true;
+  // Check various word boundary patterns
+  const patterns = [
+    new RegExp(`^${escapeRegex(query)}[\\s:.\-–—,!?0-9]`), // starts with
+    new RegExp(`[\\s:.\-–—,!?]${escapeRegex(query)}[\\s:.\-–—,!?0-9]`), // middle
+    new RegExp(`[\\s:.\-–—,!?]${escapeRegex(query)}$`), // ends with
+  ];
+  return patterns.some(p => p.test(title));
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Calculate relevance score combining multiple factors
 function calculateRelevanceScore(movie: SearchResult, query: string): number {
   const voteCount = movie.voteCount || 0;
@@ -291,6 +318,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Filter out results that don't contain the query at all
+    // TMDB sometimes returns loosely related results
+    const queryNormForFilter = normalizeRu(query);
+    allTmdbResults = allTmdbResults.filter((m) => {
+      const titleRu = normalizeRu(m.titleRu || '');
+      const titleEn = (m.title || '').toLowerCase();
+      // Keep if title contains query (partial match is ok for filtering)
+      return titleRu.includes(queryNormForFilter) || titleEn.includes(queryNormForFilter);
+    });
+
     // Extract episode/part number from title for franchise sorting
     const extractEpisodeNumber = (title: string): number | null => {
       const romanToArabic: Record<string, number> = {
@@ -331,26 +368,32 @@ export async function GET(request: NextRequest) {
       if (exactMatchA && !exactMatchB) return -1;
       if (exactMatchB && !exactMatchA) return 1;
 
-      // 2. Starts with query (franchise titles like "Аватар: Путь воды")
-      const startsWithA = titleA.startsWith(queryNorm) || titleEnA.startsWith(queryNorm);
-      const startsWithB = titleB.startsWith(queryNorm) || titleEnB.startsWith(queryNorm);
+      // 2. Starts with query as a complete word (not partial match)
+      // "Аватар: Путь воды" ✓, "Аватарка" ✗
+      const startsWithA = startsWithWord(titleA, queryNorm) || startsWithWord(titleEnA, queryNorm);
+      const startsWithB = startsWithWord(titleB, queryNorm) || startsWithWord(titleEnB, queryNorm);
       if (startsWithA && !startsWithB) return -1;
       if (startsWithB && !startsWithA) return 1;
 
-      // 3. Combined relevance score (vote count + popularity + rating + title match)
-      // This gives more weight to vote count (historical) over popularity (trending)
+      // 3. Contains query as a complete word (for titles like "Изгой-один: Звёздные войны")
+      const containsA = containsWord(titleA, queryNorm) || containsWord(titleEnA, queryNorm);
+      const containsB = containsWord(titleB, queryNorm) || containsWord(titleEnB, queryNorm);
+      if (containsA && !containsB) return -1;
+      if (containsB && !containsA) return 1;
+
+      // 4. Combined relevance score (vote count + popularity + rating + title match)
       const scoreA = calculateRelevanceScore(a, query);
       const scoreB = calculateRelevanceScore(b, query);
       if (Math.abs(scoreA - scoreB) > 0.1) return scoreB - scoreA;
 
-      // 4. Episode number (for franchises: Avatar 1, Avatar 2, etc.)
+      // 5. Episode number (for franchises: Avatar 1, Avatar 2, etc.)
       const episodeA = extractEpisodeNumber(a.titleRu || a.title || '');
       const episodeB = extractEpisodeNumber(b.titleRu || b.title || '');
       if (episodeA !== null && episodeB !== null) return episodeA - episodeB;
       if (episodeA !== null && episodeB === null) return -1;
       if (episodeB !== null && episodeA === null) return 1;
 
-      // 5. Release date (older = original, show first in franchise)
+      // 6. Release date (older = original, show first in franchise)
       return getYear(a) - getYear(b);
     };
 
