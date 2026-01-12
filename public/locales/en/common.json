@@ -46,7 +46,8 @@
   "movie": {
     "rating": "Rating",
     "runtime": "{minutes} min",
-    "released": "Released"
+    "released": "Released",
+    "similarMovies": "Similar movies"
   },
   "join": {
     "title": "Join Room",

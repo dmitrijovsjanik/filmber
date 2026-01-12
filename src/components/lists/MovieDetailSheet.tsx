@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
+import { SimilarMoviesSection } from './SimilarMoviesSection';
 import { Badge } from '@/components/ui/badge';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useAuthToken } from '@/stores/authStore';
@@ -307,14 +308,27 @@ export function MovieDetailSheet({
             )}
           </div>
 
-          {/* Overview - scrollable */}
-          {displayOverview && (
-            <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
+          {/* Scrollable content area */}
+          <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
+            {/* Overview */}
+            {displayOverview && (
               <p className="text-sm text-foreground leading-relaxed">
                 {displayOverview}
               </p>
-            </div>
-          )}
+            )}
+
+            {/* Similar movies - only show if we have a valid tmdbId */}
+            {tmdbId > 0 && (
+              <SimilarMoviesSection
+                tmdbId={tmdbId}
+                onMovieClick={() => {
+                  // Close sheet when user clicks a similar movie
+                  // They can find it via search or it may be in their list
+                  onClose();
+                }}
+              />
+            )}
+          </div>
 
           {/* Actions section - fixed at bottom */}
           <div className="mt-4 flex items-center justify-center gap-4 flex-shrink-0 pb-2">

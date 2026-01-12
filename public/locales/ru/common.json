@@ -46,7 +46,8 @@
   "movie": {
     "rating": "Рейтинг",
     "runtime": "{minutes} мин",
-    "released": "Дата выхода"
+    "released": "Дата выхода",
+    "similarMovies": "Похожие фильмы"
   },
   "join": {
     "title": "Войти в комнату",
