@@ -115,12 +115,13 @@ rotate_backups() {
     log "INFO" "Ротация старых бэкапов..."
 
     # Считаем бэкапы по типам
-    local daily_count=$(ls -1 "${BACKUP_DIR}"/*_daily_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
-    local weekly_count=$(ls -1 "${BACKUP_DIR}"/*_weekly_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
-    local monthly_count=$(ls -1 "${BACKUP_DIR}"/*_monthly_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+    local daily_count weekly_count monthly_count
+    daily_count=$(find "${BACKUP_DIR}" -maxdepth 1 -name "*_daily_*.sql.gz" 2>/dev/null | wc -l | xargs)
+    weekly_count=$(find "${BACKUP_DIR}" -maxdepth 1 -name "*_weekly_*.sql.gz" 2>/dev/null | wc -l | xargs)
+    monthly_count=$(find "${BACKUP_DIR}" -maxdepth 1 -name "*_monthly_*.sql.gz" 2>/dev/null | wc -l | xargs)
 
     # Удаляем старые daily
-    if [ "${daily_count}" -gt "${KEEP_DAILY}" ]; then
+    if [ "${daily_count:-0}" -gt "${KEEP_DAILY}" ]; then
         ls -1t "${BACKUP_DIR}"/*_daily_*.sql.gz 2>/dev/null | \
             tail -n +$((KEEP_DAILY + 1)) | \
             xargs -r rm -f
@@ -128,7 +129,7 @@ rotate_backups() {
     fi
 
     # Удаляем старые weekly
-    if [ "${weekly_count}" -gt "${KEEP_WEEKLY}" ]; then
+    if [ "${weekly_count:-0}" -gt "${KEEP_WEEKLY}" ]; then
         ls -1t "${BACKUP_DIR}"/*_weekly_*.sql.gz 2>/dev/null | \
             tail -n +$((KEEP_WEEKLY + 1)) | \
             xargs -r rm -f
@@ -136,7 +137,7 @@ rotate_backups() {
     fi
 
     # Удаляем старые monthly
-    if [ "${monthly_count}" -gt "${KEEP_MONTHLY}" ]; then
+    if [ "${monthly_count:-0}" -gt "${KEEP_MONTHLY}" ]; then
         ls -1t "${BACKUP_DIR}"/*_monthly_*.sql.gz 2>/dev/null | \
             tail -n +$((KEEP_MONTHLY + 1)) | \
             xargs -r rm -f
