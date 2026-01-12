@@ -12,8 +12,8 @@ on:
         default: 'main'
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  build:
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -35,14 +35,64 @@ jobs:
 
       - name: Build project
         run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Prune dev dependencies
+        run: npm prune --production
+
+      - name: Create deployment package
+        run: |
+          tar -czf deploy.tar.gz \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.ts \
+            ecosystem.config.js \
+            server \
+            src/lib \
+            drizzle.config.ts \
+            tsconfig.json \
+            node_modules
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-package
+          path: deploy.tar.gz
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-package
 
       - name: Deploy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "deploy.tar.gz"
+          target: "/tmp"
+          overwrite: true
+
+      - name: Setup release on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          command_timeout: 5m
           script: |
             set -e
 
@@ -52,56 +102,42 @@ jobs:
 
             echo "Starting deployment ${RELEASE_TIMESTAMP}..."
 
-            # Создаем директории релиза и логов
+            # Создаем директории
             mkdir -p "${RELEASE_DIR}"
             mkdir -p "${APP_DIR}/logs"
 
-            # Обновляем репозиторий
-            if [ -d "${APP_DIR}/repo" ]; then
-              cd "${APP_DIR}/repo"
-              git fetch origin
-              git checkout ${{ github.event.inputs.branch || 'main' }}
-              git pull origin ${{ github.event.inputs.branch || 'main' }}
-            else
-              git clone --branch ${{ github.event.inputs.branch || 'main' }} https://github.com/${{ github.repository }}.git "${APP_DIR}/repo"
-              cd "${APP_DIR}/repo"
-            fi
-
-            # Копируем файлы
-            rsync -a --exclude='.git' --exclude='node_modules' ./ "${RELEASE_DIR}/"
-
-            # Копируем node_modules если есть
-            if [ -d "${APP_DIR}/current/node_modules" ]; then
-              cp -r "${APP_DIR}/current/node_modules" "${RELEASE_DIR}/"
-            fi
-
-            cd "${RELEASE_DIR}"
+            # Распаковываем артефакты
+            echo "Extracting deployment package..."
+            tar -xzf /tmp/deploy.tar.gz -C "${RELEASE_DIR}"
+            rm -f /tmp/deploy.tar.gz
 
             # Линкуем .env
             ln -sf "${APP_DIR}/shared/.env" "${RELEASE_DIR}/.env"
 
-            # Устанавливаем зависимости и собираем
-            npm ci --production=false
-            npm run build
-
-            # Миграции (загружаем переменные из .env)
+            # Миграции (если нужны)
+            cd "${RELEASE_DIR}"
             set -a
             source "${APP_DIR}/shared/.env"
             set +a
-            npm run db:push || true
+            npx drizzle-kit push 2>/dev/null || true
 
             # Переключаем релиз
             ln -sfn "${RELEASE_DIR}" "${APP_DIR}/current"
 
-            # Перезапуск PM2
+            # Перезапуск PM2 (graceful reload)
             cd "${APP_DIR}/current"
-            pm2 delete filmber 2>/dev/null || true
-            pm2 start ecosystem.config.js --env production
+            if pm2 describe filmber > /dev/null 2>&1; then
+              echo "Reloading existing PM2 process..."
+              pm2 reload filmber --update-env
+            else
+              echo "Starting new PM2 process..."
+              pm2 start ecosystem.config.js --env production
+            fi
             pm2 save
 
             # Очистка старых релизов (оставляем 5)
             cd "${APP_DIR}/releases"
-            ls -1t | tail -n +6 | xargs -r rm -rf || true
+            ls -1t | tail -n +6 | xargs -r rm -rf 2>/dev/null || true
 
             echo "Deployment completed: ${RELEASE_TIMESTAMP}"
 
@@ -136,7 +172,6 @@ jobs:
             if [ -n "$PREV_RELEASE" ]; then
               ln -sfn "${APP_DIR}/releases/${PREV_RELEASE}" "${APP_DIR}/current"
               cd "${APP_DIR}/current"
-              pm2 delete filmber 2>/dev/null || true
-              pm2 start ecosystem.config.js --env production
+              pm2 reload filmber --update-env || pm2 start ecosystem.config.js --env production
               echo "Rolled back to ${PREV_RELEASE}"
             fi
