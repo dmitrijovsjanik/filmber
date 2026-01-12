@@ -255,3 +255,7 @@ export const useListCounts = () => useListStore((state) => state.cache?.counts |
 export const useListLoading = () => useListStore((state) => state.isLoading);
 export const useListFetching = () => useListStore((state) => state.isFetching);
 export const useListHasHydrated = () => useListStore((state) => state.hasHydrated);
+
+// Find item by tmdbId
+export const useListItemByTmdbId = (tmdbId: number) =>
+  useListStore((state) => state.cache?.items.find((item) => item.tmdbId === tmdbId) || null);

@@ -160,8 +160,8 @@ export function MovieListItem({
             {movie?.imdbRating && (
               <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
             )}
-            {/* Status badge - only for list items, hide "Watched" badge (stars indicate watched) */}
-            {!isSearchMode && showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (
+            {/* Status badge - hide "Watched" badge (stars indicate watched) */}
+            {showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (
               <Badge
                 variant={
                   status === MOVIE_STATUS.WATCHING
@@ -174,8 +174,8 @@ export function MovieListItem({
                   : t('wantToWatch', { defaultValue: 'Want to watch' })}
               </Badge>
             )}
-            {/* User rating - only for list items */}
-            {!isSearchMode && showRatingBadge && <UserRatingBadge rating={rating} />}
+            {/* User rating badge */}
+            {showRatingBadge && <UserRatingBadge rating={rating} />}
           </div>
 
           {/* Watch timer (when active and not complete) */}

@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react';
 import { MovieListItem } from './MovieListItem';
+import { useListItemByTmdbId } from '@/stores/listStore';
 import type { SearchResult } from '@/types/movie';
 
 interface SearchResultItemProps extends SearchResult {
@@ -31,6 +32,9 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
       return null;
     }
 
+    // Check if movie is already in user's list
+    const listItem = useListItemByTmdbId(tmdbId);
+
     // Convert SearchResult to MovieData format for MovieListItem
     const movieData = {
       title,
@@ -51,7 +55,11 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
         <MovieListItem
           tmdbId={tmdbId}
           movie={movieData}
+          status={listItem?.status}
+          rating={listItem?.rating}
           onAddedToList={onAddedToList}
+          showStatusBadge={!!listItem}
+          showRatingBadge={!!listItem}
         />
       </div>
     );

@@ -1,14 +1,20 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useUser } from '@/stores/authStore';
 import { ReferralSection } from '@/components/referral';
 import { H3, Muted } from '@/components/ui/typography';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { localeNames, type Locale } from '@/i18n/config';
 import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
 
@@ -18,10 +24,12 @@ export default function ProfilePage() {
   const router = useRouter();
   const user = useUser();
   const { switchLocale: globalSwitchLocale } = useLocaleSwitch();
+  const [isLanguageSheetOpen, setIsLanguageSheetOpen] = useState(false);
 
   const handleLocaleChange = (newLocale: string) => {
     if (newLocale === locale) return;
     globalSwitchLocale(newLocale as Locale);
+    setIsLanguageSheetOpen(false);
   };
 
   return (
@@ -61,24 +69,21 @@ export default function ProfilePage() {
 
           {/* Menu */}
           <div className="overflow-hidden rounded-xl bg-muted/50">
-            <div className="flex min-h-12 w-full items-center gap-3 px-4 py-3">
+            <button
+              onClick={() => setIsLanguageSheetOpen(true)}
+              className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+            >
               <span className="text-muted-foreground">
                 <HugeiconsIcon icon={LanguageSquareIcon} size={20} />
               </span>
               <span className="flex-1 font-medium text-foreground">
                 {t('language', { defaultValue: 'Language' })}
               </span>
-              <Select value={locale} onValueChange={handleLocaleChange}>
-                <SelectTrigger className="w-auto h-8 gap-1 border-none bg-transparent px-2 focus:ring-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(localeNames).map(([loc, name]) => (
-                    <SelectItem key={loc} value={loc}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <span className="text-sm text-muted-foreground">
+                {localeNames[locale as Locale]}
+              </span>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={20} className="text-muted-foreground" />
+            </button>
             <div className="mx-4 border-t border-border" />
             <MenuButton
               onClick={() => router.push('/profile/notifications')}
@@ -108,6 +113,29 @@ export default function ProfilePage() {
           </p>
         </div>
       </div>
+
+      {/* Language Sheet */}
+      <Sheet open={isLanguageSheetOpen} onOpenChange={setIsLanguageSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader className="text-left">
+            <SheetTitle>{t('language', { defaultValue: 'Language' })}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-1">
+            {Object.entries(localeNames).map(([loc, name]) => (
+              <button
+                key={loc}
+                onClick={() => handleLocaleChange(loc)}
+                className="flex min-h-12 w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors hover:bg-accent"
+              >
+                <span className="font-medium text-foreground">{name}</span>
+                {locale === loc && (
+                  <HugeiconsIcon icon={Tick02Icon} size={20} className="text-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </AuthGuard>
   );
 }
