@@ -16,7 +16,8 @@
     "services:start": "./scripts/start.sh",
     "services:stop": "./scripts/stop.sh",
     "services:restart": "./scripts/restart.sh",
-    "services:clean": "./scripts/clean-start.sh"
+    "services:clean": "./scripts/clean-start.sh",
+    "bot:setup": "dotenv -e .env.local -- tsx server/bot/setup.ts"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^3.1.1",
