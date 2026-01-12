@@ -115,9 +115,9 @@ rotate_backups() {
     log "INFO" "Ротация старых бэкапов..."
 
     # Считаем бэкапы по типам
-    local daily_count=$(ls -1 "${BACKUP_DIR}"/*_daily_*.sql.gz 2>/dev/null | wc -l || echo 0)
-    local weekly_count=$(ls -1 "${BACKUP_DIR}"/*_weekly_*.sql.gz 2>/dev/null | wc -l || echo 0)
-    local monthly_count=$(ls -1 "${BACKUP_DIR}"/*_monthly_*.sql.gz 2>/dev/null | wc -l || echo 0)
+    local daily_count=$(ls -1 "${BACKUP_DIR}"/*_daily_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+    local weekly_count=$(ls -1 "${BACKUP_DIR}"/*_weekly_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+    local monthly_count=$(ls -1 "${BACKUP_DIR}"/*_monthly_*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
 
     # Удаляем старые daily
     if [ "${daily_count}" -gt "${KEEP_DAILY}" ]; then
