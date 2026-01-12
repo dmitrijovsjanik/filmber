@@ -131,8 +131,10 @@
     "notifications": "Notifications",
     "deckSettings": "Recommendations",
     "logout": "Log Out",
-    "version": "Filmber v0.2.0",
-    "madeWith": "Made with"
+    "version": "Filmber v2.0",
+    "copyright": "2025 Filmber",
+    "madeWith": "Made with",
+    "support": "Support"
   },
   "deckSettings": {
     "title": "Recommendations",

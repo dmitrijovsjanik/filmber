@@ -14,7 +14,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon } from '@hugeicons/core-free-icons';
+import { Button } from '@/components/ui/button';
 import { localeNames, type Locale } from '@/i18n/config';
 import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
 
@@ -98,10 +99,26 @@ export default function ProfilePage() {
             />
           </div>
 
-          {/* Version */}
+          {/* Support Button */}
+          <Button
+            asChild
+            className="mt-4 h-12 w-full bg-[#FF5204]/15 text-base font-medium text-[#FF5204] hover:bg-[#FF5204]/25"
+          >
+            <a
+              href="https://boosty.to/ovsjanik/donate"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <HugeiconsIcon icon={FavouriteIcon} size={24} className="!size-6" />
+              {t('support')}
+            </a>
+          </Button>
+
+          {/* Version & Copyright */}
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            {t('version', { defaultValue: 'Filmber v0.2.0' })} •{' '}
-            {t('madeWith', { defaultValue: 'Made with' })} ❤️{' '}
+            {t('version')} • © {t('copyright')}
+            <br />
+            {t('madeWith')} ❤️{' '}
             <a
               href="https://t.me/ovsjanik"
               target="_blank"
