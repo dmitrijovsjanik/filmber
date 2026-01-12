@@ -72,7 +72,7 @@ export default function HomePage() {
     joinRoom();
   }, [isTgReady, startParam, locale, router, setRoom]);
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmber_app_bot';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
 
   const handleTelegramLogin = () => {
     window.location.href = `https://t.me/${botUsername}?start=auth`;

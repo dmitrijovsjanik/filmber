@@ -5,7 +5,7 @@ import { getAuthUser, unauthorized, success } from '@/lib/auth/middleware';
 import { eq, desc } from 'drizzle-orm';
 import { getReferralLink } from '@/lib/referral/utils';
 
-const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'filmber_app_bot';
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
 
 interface Referral {
   id: string;

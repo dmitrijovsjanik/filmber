@@ -16,7 +16,7 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
 
   const openTelegramBot = () => {
     // Open the Telegram bot
-    const botUsername = 'filmber_app_bot';
+    const botUsername = 'filmberonline_bot';
     const url = `https://t.me/${botUsername}`;
 
     // Try to open in Telegram app if available

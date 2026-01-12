@@ -21,11 +21,11 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const locale = useLocale();
   const { trackShareRoom } = useAnalytics();
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmber_app_bot';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
 
   // TG Mini App link with startapp parameter for instant join
   const startAppParam = `room_${roomCode}_${pin}`;
-  const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'filmber_test';
+  const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'app';
   const tgAppUrl = `https://t.me/${botUsername}/${miniAppName}?startapp=${startAppParam}`;
 
   const handleShare = async () => {
