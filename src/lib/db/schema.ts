@@ -84,6 +84,7 @@ export const movies = pgTable(
     // Media
     posterPath: varchar('poster_path', { length: 500 }), // TMDB path
     posterUrl: varchar('poster_url', { length: 500 }), // Direct URL (Kinopoisk)
+    localPosterPath: varchar('local_poster_path', { length: 200 }), // Local compressed poster
     backdropPath: varchar('backdrop_path', { length: 500 }),
 
     // Metadata

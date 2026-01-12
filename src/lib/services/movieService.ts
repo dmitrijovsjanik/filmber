@@ -4,6 +4,7 @@ import { eq, or } from 'drizzle-orm';
 import { tmdb, TMDBClient } from '@/lib/api/tmdb';
 import { omdb, OMDBClient } from '@/lib/api/omdb';
 import { kinopoisk } from '@/lib/api/kinopoisk';
+import { posterService } from '@/lib/services/posterService';
 import type { MovieSource, SearchResult, KinopoiskSearchResult } from '@/types/movie';
 
 // Cache duration: 30 days
@@ -116,7 +117,26 @@ class MovieService {
 
     // Insert into database
     const result = await db.insert(movies).values(movieData).returning();
-    return result[0] || null;
+    const movie = result[0];
+
+    if (!movie) {
+      return null;
+    }
+
+    // Download and save poster locally (in background to not block response)
+    const sourceUrl = posterService.getSourceUrl(movieData.posterPath || null, movieData.posterUrl || null);
+    if (sourceUrl) {
+      posterService.downloadAndSave(sourceUrl, movie.id).then((localPath) => {
+        if (localPath) {
+          db.update(movies)
+            .set({ localPosterPath: localPath })
+            .where(eq(movies.id, movie.id))
+            .catch(console.error);
+        }
+      }).catch(console.error);
+    }
+
+    return movie;
   }
 
   /**
@@ -325,9 +345,14 @@ class MovieService {
 
   /**
    * Get poster URL for a movie
+   * Priority: local compressed poster > TMDB > Kinopoisk > fallback
    */
   getPosterUrl(movie: Movie, size: 'w185' | 'w342' | 'w500' | 'original' = 'w500'): string {
-    // Prefer TMDB poster path
+    // Prefer local compressed poster
+    if (movie.localPosterPath) {
+      return movie.localPosterPath;
+    }
+    // Fall back to TMDB poster path
     if (movie.posterPath) {
       return TMDBClient.getPosterUrl(movie.posterPath, size);
     }
