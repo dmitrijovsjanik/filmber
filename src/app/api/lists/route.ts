@@ -222,6 +222,13 @@ export async function POST(request: NextRequest) {
       .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
 
     if (existing) {
+      // Determine if we should start the watch timer
+      // Start timer when: source is swipe, status is watching, and timer not already started
+      const shouldStartTimer =
+        movieSource === MOVIE_SOURCE.SWIPE &&
+        status === MOVIE_STATUS.WATCHING &&
+        !existing.watchStartedAt;
+
       // Update existing entry
       const [updated] = await db
         .update(userMovieLists)
@@ -230,6 +237,7 @@ export async function POST(request: NextRequest) {
           rating: rating || existing.rating,
           notes: notes !== undefined ? notes : existing.notes,
           watchedAt: status === MOVIE_STATUS.WATCHED ? new Date() : existing.watchedAt,
+          watchStartedAt: shouldStartTimer ? new Date() : existing.watchStartedAt,
           updatedAt: new Date(),
         })
         .where(eq(userMovieLists.id, existing.id))

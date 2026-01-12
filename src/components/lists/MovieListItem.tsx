@@ -100,6 +100,18 @@ export function MovieListItem({
   const showTimer = watchStartedAt && status === MOVIE_STATUS.WATCHING;
   const showPrompt = showTimer && isWatchComplete;
 
+  // Calculate average rating from all available platforms
+  const averageRating = (() => {
+    if (!movie) return null;
+    const ratings: number[] = [];
+    if (movie.voteAverage) ratings.push(parseFloat(movie.voteAverage));
+    if (movie.imdbRating) ratings.push(parseFloat(movie.imdbRating));
+    if (movie.kinopoiskRating) ratings.push(parseFloat(movie.kinopoiskRating));
+    if (ratings.length === 0) return null;
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    return avg.toFixed(1);
+  })();
+
   const handleWatchComplete = async (selectedRating: number) => {
     if (!onWatchComplete) return;
     setIsLoading(true);
@@ -168,15 +180,9 @@ export function MovieListItem({
             {genres.slice(0, 2).map((genre) => (
               <Badge key={genre} variant="secondary">{genre}</Badge>
             ))}
-            {/* Platform ratings */}
-            {movie?.voteAverage && (
-              <Badge variant="tmdb">TMDB {parseFloat(movie.voteAverage).toFixed(1)}</Badge>
-            )}
-            {movie?.imdbRating && (
-              <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
-            )}
-            {movie?.kinopoiskRating && (
-              <Badge variant="kinopoisk">КП {parseFloat(movie.kinopoiskRating).toFixed(1)}</Badge>
+            {/* Average rating from all platforms */}
+            {averageRating && (
+              <Badge variant="rating">{averageRating}</Badge>
             )}
             {/* Status badge - hide "Watched" badge (stars indicate watched) */}
             {showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (

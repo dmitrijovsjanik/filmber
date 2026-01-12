@@ -24,6 +24,8 @@ const badgeVariants = cva(
         imdb: "border-transparent bg-yellow-500 text-white",
         rt: "border-transparent bg-red-500 text-white",
         kinopoisk: "border-transparent bg-orange-500 text-white",
+        // Unified average rating
+        rating: "border-transparent bg-amber-500 text-white font-semibold",
       },
     },
     defaultVariants: {

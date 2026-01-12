@@ -248,6 +248,19 @@ export function MovieDetailSheet({
   // Derived state
   const isWatched = currentStatus === MOVIE_STATUS.WATCHED;
 
+  // Calculate average rating from all available platforms
+  const averageRating = (() => {
+    if (!movie) return null;
+    const ratings: number[] = [];
+    if (movie.voteAverage) ratings.push(parseFloat(movie.voteAverage));
+    if (movie.imdbRating) ratings.push(parseFloat(movie.imdbRating));
+    if (movie.kinopoiskRating) ratings.push(parseFloat(movie.kinopoiskRating));
+    if (movie.rottenTomatoesRating) ratings.push(parseFloat(movie.rottenTomatoesRating));
+    if (ratings.length === 0) return null;
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    return avg.toFixed(1);
+  })();
+
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -288,18 +301,9 @@ export function MovieDetailSheet({
             {genres.slice(0, 3).map((genre) => (
               <Badge key={genre} variant="secondary">{genre}</Badge>
             ))}
-            {/* Platform ratings */}
-            {movie?.voteAverage && (
-              <Badge variant="tmdb">TMDB {parseFloat(movie.voteAverage).toFixed(1)}</Badge>
-            )}
-            {movie?.imdbRating && (
-              <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
-            )}
-            {movie?.kinopoiskRating && (
-              <Badge variant="kinopoisk">КП {parseFloat(movie.kinopoiskRating).toFixed(1)}</Badge>
-            )}
-            {movie?.rottenTomatoesRating && (
-              <Badge variant="rt">RT {parseFloat(movie.rottenTomatoesRating).toFixed(1)}</Badge>
+            {/* Average rating from all platforms */}
+            {averageRating && (
+              <Badge variant="rating">{averageRating}</Badge>
             )}
           </div>
 

@@ -40,6 +40,7 @@ export default function SwipePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const hasRefetchedForPartner = useRef(false);
+  const [fetchedMatchMovie, setFetchedMatchMovie] = useState<Movie | null>(null);
 
   // Initialize socket connection
   const { disconnect } = useSocket(roomCode, userSlot);
@@ -133,6 +134,28 @@ export default function SwipePage() {
     }
   }, [partnerHasWatchlist, fetchQueue, setPartnerHasWatchlist]);
 
+  // Find matched movie from queue or movies array
+  const matchedMovie =
+    queue.find((item) => item.movie.tmdbId === matchedMovieId)?.movie ||
+    movies.find((m) => m.tmdbId === matchedMovieId);
+
+  // Fetch matched movie if not found in local queue (for instant match scenario)
+  useEffect(() => {
+    if (isMatchFound && matchedMovieId && !matchedMovie && !fetchedMatchMovie) {
+      fetch(`/api/movies/${matchedMovieId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.movie) {
+            setFetchedMatchMovie(data.movie);
+          }
+        })
+        .catch((err) => console.error('Failed to fetch matched movie:', err));
+    }
+  }, [isMatchFound, matchedMovieId, matchedMovie, fetchedMatchMovie]);
+
+  // Combined movie for match display
+  const displayMatchMovie = matchedMovie || fetchedMatchMovie;
+
   // Handle leave room
   const handleLeaveRoom = () => {
     disconnect();
@@ -142,22 +165,27 @@ export default function SwipePage() {
     router.push(`/${locale}`);
   };
 
-  // Find matched movie from queue or movies array
-  const matchedMovie =
-    queue.find((item) => item.movie.tmdbId === matchedMovieId)?.movie ||
-    movies.find((m) => m.tmdbId === matchedMovieId);
-
   // Show match found screen
-  if (isMatchFound && matchedMovie) {
+  if (isMatchFound && displayMatchMovie) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <MatchFound movie={matchedMovie} />
+        <MatchFound movie={displayMatchMovie} />
         <button
           onClick={handleLeaveRoom}
           className="mt-8 px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
         >
           {t('common.backToHome')}
         </button>
+      </div>
+    );
+  }
+
+  // Show loading while fetching matched movie
+  if (isMatchFound && !displayMatchMovie) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <Loader size="lg" />
+        <p className="mt-4 text-gray-500">{t('common.loading')}</p>
       </div>
     );
   }
