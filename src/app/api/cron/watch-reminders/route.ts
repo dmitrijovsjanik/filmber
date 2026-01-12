@@ -4,19 +4,20 @@ import {
   userMovieLists,
   users,
   movieCache,
+  movies,
   watchPrompts,
   notificationSettings,
   MOVIE_STATUS,
 } from '@/lib/db/schema';
-import { eq, and, lt, isNull, or, isNotNull } from 'drizzle-orm';
+import { eq, and, isNull, or, isNotNull } from 'drizzle-orm';
 import { getBot } from '../../../../../server/bot';
 import { InlineKeyboard } from 'grammy';
 
 // Cron secret for authentication
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Minimum watch time before sending reminder (5 minutes in ms)
-const MIN_WATCH_TIME_MS = 5 * 60 * 1000;
+// Buffer time after movie ends before sending reminder (5 minutes in ms)
+const BUFFER_AFTER_MOVIE_MS = 5 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -27,11 +28,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const now = new Date();
-    const minWatchStartTime = new Date(now.getTime() - MIN_WATCH_TIME_MS);
 
-    // Find movies with 'watching' status where timer has passed 5 minutes
-    // and no pending prompt exists
-    const moviesNeedingReminder = await db
+    // Find movies with 'watching' status
+    // We need to check if: now > watchStartedAt + runtime + 5 minutes
+    const watchingMovies = await db
       .select({
         listId: userMovieLists.id,
         userId: userMovieLists.userId,
@@ -42,14 +42,21 @@ export async function GET(request: NextRequest) {
           firstName: users.firstName,
           languageCode: users.languageCode,
         },
-        movie: {
+        movieCache: {
           title: movieCache.title,
           titleRu: movieCache.titleRu,
+          runtime: movieCache.runtime,
+        },
+        movie: {
+          title: movies.title,
+          titleRu: movies.titleRu,
+          runtime: movies.runtime,
         },
       })
       .from(userMovieLists)
       .innerJoin(users, eq(userMovieLists.userId, users.id))
       .leftJoin(movieCache, eq(userMovieLists.tmdbId, movieCache.tmdbId))
+      .leftJoin(movies, eq(userMovieLists.unifiedMovieId, movies.id))
       .leftJoin(
         notificationSettings,
         eq(users.id, notificationSettings.userId)
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(userMovieLists.status, MOVIE_STATUS.WATCHING),
-          lt(userMovieLists.watchStartedAt, minWatchStartTime),
+          isNotNull(userMovieLists.watchStartedAt),
           // Check notification settings (default true if no settings)
           or(
             isNull(notificationSettings.watchReminders),
@@ -65,6 +72,24 @@ export async function GET(request: NextRequest) {
           )
         )
       );
+
+    // Filter movies where: now > watchStartedAt + runtime + 5 min buffer
+    const moviesNeedingReminder = watchingMovies.filter((item) => {
+      if (!item.watchStartedAt) return false;
+
+      // Get runtime from either movies or movieCache table
+      const runtime = item.movie?.runtime || item.movieCache?.runtime || 120; // default 2 hours
+      const watchEndTime = new Date(item.watchStartedAt.getTime() + runtime * 60 * 1000);
+      const reminderTime = new Date(watchEndTime.getTime() + BUFFER_AFTER_MOVIE_MS);
+
+      return now >= reminderTime;
+    }).map((item) => ({
+      ...item,
+      movie: {
+        title: item.movie?.title || item.movieCache?.title,
+        titleRu: item.movie?.titleRu || item.movieCache?.titleRu,
+      },
+    }));
 
     // Filter out movies that already have pending prompts (not responded yet)
     // or have been snoozed (snoozeUntil > now)

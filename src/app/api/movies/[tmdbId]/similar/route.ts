@@ -15,11 +15,20 @@ const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 interface SimilarMovie {
   tmdbId: number;
+  imdbId: string | null;
+  kinopoiskId: number | null;
   title: string;
   titleRu: string | null;
   posterPath: string | null;
+  posterUrl: string | null;
   releaseDate: string | null;
   voteAverage: string | null;
+  overview: string | null;
+  overviewRu: string | null;
+  runtime: number | null;
+  genres: string | null;
+  imdbRating: string | null;
+  kinopoiskRating: string | null;
 }
 
 // Match TasteDive movie name to TMDB ID
@@ -142,11 +151,20 @@ export async function GET(
         if (movie && movie.tmdbId) {
           similarMovies.push({
             tmdbId: movie.tmdbId,
+            imdbId: movie.imdbId,
+            kinopoiskId: movie.kinopoiskId,
             title: movie.title,
             titleRu: movie.titleRu,
             posterPath: movie.posterPath,
+            posterUrl: movie.posterUrl,
             releaseDate: movie.releaseDate,
             voteAverage: movie.tmdbRating,
+            overview: movie.overview,
+            overviewRu: movie.overviewRu,
+            runtime: movie.runtime,
+            genres: movie.genres,
+            imdbRating: movie.imdbRating,
+            kinopoiskRating: movie.kinopoiskRating,
           });
         }
       })

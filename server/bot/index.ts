@@ -185,8 +185,8 @@ For the full experience, use the Mini App!`;
 
       const ratingEmoji = rating === 1 ? '😐' : rating === 2 ? '🙂' : '🤩';
       const successMessage = isRussian
-        ? `✅ Отлично! «${movieTitle}» сохранён с оценкой ${ratingEmoji}`
-        : `✅ Great! "${movieTitle}" saved with rating ${ratingEmoji}`;
+        ? `🎬 Надеюсь, вы хорошо провели время за просмотром «${movieTitle}»!\n\nОтметил оценкой ${ratingEmoji}`
+        : `🎬 Hope you had a great time watching "${movieTitle}"!\n\nMarked with rating ${ratingEmoji}`;
 
       await ctx.editMessageText(successMessage);
       await ctx.answerCallbackQuery({
@@ -220,17 +220,27 @@ For the full experience, use the Mini App!`;
         return;
       }
 
-      // Set snooze for 1 day
-      const snoozeUntil = new Date();
-      snoozeUntil.setDate(snoozeUntil.getDate() + 1);
+      // Update movie status back to want_to_watch and clear watchStartedAt
+      await db
+        .update(userMovieLists)
+        .set({
+          status: MOVIE_STATUS.WANT_TO_WATCH,
+          watchStartedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(userMovieLists.userId, user.id),
+            eq(userMovieLists.tmdbId, tmdbId)
+          )
+        );
 
-      // Update or create prompt with snooze
+      // Mark prompt as responded
       await db
         .update(watchPrompts)
         .set({
           respondedAt: new Date(),
           response: 'not_yet',
-          snoozeUntil,
         })
         .where(
           and(
@@ -239,11 +249,22 @@ For the full experience, use the Mini App!`;
           )
         );
 
-      const snoozeMessage = isRussian
-        ? '⏰ Хорошо! Напомню завтра.'
-        : '⏰ Okay! I\'ll remind you tomorrow.';
+      // Get movie title for message
+      const [movie] = await db
+        .select()
+        .from(movieCache)
+        .where(eq(movieCache.tmdbId, tmdbId));
 
-      await ctx.editMessageText(snoozeMessage);
+      const movieTitle =
+        isRussian && movie?.titleRu
+          ? movie.titleRu
+          : movie?.title || `Movie #${tmdbId}`;
+
+      const notYetMessage = isRussian
+        ? `😔 Как жаль, что не удалось посмотреть «${movieTitle}».\n\nОставил в списке «Хочу посмотреть».`
+        : `😔 Too bad you didn't get to watch "${movieTitle}".\n\nKept it in your "Want to Watch" list.`;
+
+      await ctx.editMessageText(notYetMessage);
       await ctx.answerCallbackQuery();
     } catch (error) {
       console.error('Error handling not_yet callback:', error);

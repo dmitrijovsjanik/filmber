@@ -1,21 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { Loader } from '@/components/ui/Loader';
+import { SearchResultItem } from './SearchResultItem';
 
 interface SimilarMovie {
   tmdbId: number;
+  imdbId: string | null;
+  kinopoiskId: number | null;
   title: string;
   titleRu: string | null;
   posterPath: string | null;
+  posterUrl: string | null;
   releaseDate: string | null;
   voteAverage: string | null;
+  overview: string | null;
+  overviewRu: string | null;
+  runtime: number | null;
+  genres: string | null;
+  imdbRating: string | null;
+  kinopoiskRating: string | null;
 }
 
 interface SimilarMoviesSectionProps {
   tmdbId: number;
-  onMovieClick: (tmdbId: number) => void;
+  onMovieClick?: (tmdbId: number) => void;
 }
 
 export function SimilarMoviesSection({
@@ -23,7 +33,6 @@ export function SimilarMoviesSection({
   onMovieClick,
 }: SimilarMoviesSectionProps) {
   const t = useTranslations('movie');
-  const locale = useLocale();
   const [movies, setMovies] = useState<SimilarMovie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -80,49 +89,33 @@ export function SimilarMoviesSection({
   }
 
   return (
-    <div className="mt-4 flex-shrink-0">
-      <h3 className="text-sm font-medium text-foreground mb-2">
+    <div className="mt-6 flex-shrink-0">
+      <h3 className="text-sm font-medium text-foreground mb-3">
         {t('similarMovies', { defaultValue: 'Similar movies' })}
       </h3>
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-        {movies.map((movie) => {
-          const posterUrl = movie.posterPath
-            ? `https://image.tmdb.org/t/p/w185${movie.posterPath}`
-            : null;
-          const displayTitle =
-            locale === 'ru' && movie.titleRu ? movie.titleRu : movie.title;
-          const year = movie.releaseDate
-            ? new Date(movie.releaseDate).getFullYear()
-            : null;
-
-          return (
-            <div
-              key={movie.tmdbId}
-              className="flex-shrink-0 w-20 cursor-pointer group"
-              onClick={() => onMovieClick(movie.tmdbId)}
-            >
-              <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted">
-                {posterUrl ? (
-                  <img
-                    src={posterUrl}
-                    alt={displayTitle}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">
-                    🎬
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-foreground truncate mt-1">
-                {displayTitle}
-              </p>
-              {year && (
-                <p className="text-xs text-muted-foreground">{year}</p>
-              )}
-            </div>
-          );
-        })}
+      <div className="space-y-2">
+        {movies.map((movie) => (
+          <SearchResultItem
+            key={movie.tmdbId}
+            tmdbId={movie.tmdbId}
+            imdbId={movie.imdbId}
+            kinopoiskId={movie.kinopoiskId}
+            title={movie.title}
+            titleRu={movie.titleRu}
+            posterPath={movie.posterPath}
+            posterUrl={movie.posterUrl}
+            releaseDate={movie.releaseDate}
+            voteAverage={movie.voteAverage}
+            overview={movie.overview}
+            overviewRu={movie.overviewRu}
+            runtime={movie.runtime}
+            genres={movie.genres}
+            imdbRating={movie.imdbRating}
+            kinopoiskRating={movie.kinopoiskRating}
+            source="tmdb"
+            onAddedToList={() => onMovieClick?.(movie.tmdbId)}
+          />
+        ))}
       </div>
     </div>
   );

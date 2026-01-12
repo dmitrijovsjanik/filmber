@@ -132,6 +132,19 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   const filteredItems = useMemo(() => {
     let result = [...items];
 
+    // Filter by status (from ListFilter tabs)
+    // Note: "watching" status movies are shown in all tabs (active timer)
+    if (statusFilter !== 'all') {
+      result = result.filter((item) =>
+        item.status === statusFilter || item.status === MOVIE_STATUS.WATCHING
+      );
+    }
+
+    // Filter by rating (from ListFilter tabs, only for watched)
+    if (ratingFilter !== null) {
+      result = result.filter((item) => item.rating === ratingFilter);
+    }
+
     // Filter by genres
     if (searchFilters.genres.length > 0) {
       result = result.filter((item) => {
@@ -173,33 +186,46 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       });
     }
 
-    // Sort
-    if (searchFilters.sortBy !== 'relevance') {
-      result.sort((a, b) => {
-        switch (searchFilters.sortBy) {
-          case 'popularity':
-            // For local list, we don't have popularity data, so skip
-            return 0;
-          case 'rating':
-            const ratingA = parseFloat(a.movie?.voteAverage || '0');
-            const ratingB = parseFloat(b.movie?.voteAverage || '0');
-            return ratingB - ratingA;
-          case 'date_desc':
-            const dateA = a.movie?.releaseDate || '0000';
-            const dateB = b.movie?.releaseDate || '0000';
-            return dateB.localeCompare(dateA);
-          case 'date_asc':
-            const dateA2 = a.movie?.releaseDate || '9999';
-            const dateB2 = b.movie?.releaseDate || '9999';
-            return dateA2.localeCompare(dateB2);
-          default:
-            return 0;
+    // Sort: watching movies always first, then apply selected sort
+    result.sort((a, b) => {
+      // Watching status takes priority
+      const aIsWatching = a.status === MOVIE_STATUS.WATCHING ? 1 : 0;
+      const bIsWatching = b.status === MOVIE_STATUS.WATCHING ? 1 : 0;
+      if (aIsWatching !== bIsWatching) {
+        return bIsWatching - aIsWatching;
+      }
+
+      // Then apply selected sort
+      if (searchFilters.sortBy === 'relevance') {
+        return 0;
+      }
+
+      switch (searchFilters.sortBy) {
+        case 'popularity':
+          // For local list, we don't have popularity data, so skip
+          return 0;
+        case 'rating': {
+          const ratingA = parseFloat(a.movie?.voteAverage || '0');
+          const ratingB = parseFloat(b.movie?.voteAverage || '0');
+          return ratingB - ratingA;
         }
-      });
-    }
+        case 'date_desc': {
+          const dateA = a.movie?.releaseDate || '0000';
+          const dateB = b.movie?.releaseDate || '0000';
+          return dateB.localeCompare(dateA);
+        }
+        case 'date_asc': {
+          const dateA = a.movie?.releaseDate || '9999';
+          const dateB = b.movie?.releaseDate || '9999';
+          return dateA.localeCompare(dateB);
+        }
+        default:
+          return 0;
+      }
+    });
 
     return result;
-  }, [items, searchFilters]);
+  }, [items, statusFilter, ratingFilter, searchFilters]);
 
   // Fetch user's list items from API
   const fetchFromApi = useCallback(async (isBackground = false) => {
@@ -852,23 +878,21 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           )}
         </div>
       ) : (
-        <motion.div layout className="space-y-3">
-          <AnimatePresence>
-            {filteredItems.map((item) => (
-              <MovieListItem
-                key={item.id}
-                {...item}
-                onStatusChange={(status) => handleStatusChange(item.tmdbId, status)}
-                onRatingChange={(rating) => handleRatingChange(item.tmdbId, rating)}
-                onRemove={() => handleRemove(item.tmdbId)}
-                onWatchComplete={(rating) => handleWatchComplete(item.tmdbId, rating)}
-                onWatchNotYet={() => handleWatchNotYet(item.tmdbId)}
-                showStatusBadge={statusFilter === 'all'}
-                showRatingBadge={ratingFilter === null}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div className="space-y-3">
+          {filteredItems.map((item) => (
+            <MovieListItem
+              key={item.id}
+              {...item}
+              onStatusChange={(status) => handleStatusChange(item.tmdbId, status)}
+              onRatingChange={(rating) => handleRatingChange(item.tmdbId, rating)}
+              onRemove={() => handleRemove(item.tmdbId)}
+              onWatchComplete={(rating) => handleWatchComplete(item.tmdbId, rating)}
+              onWatchNotYet={() => handleWatchNotYet(item.tmdbId)}
+              showStatusBadge={statusFilter === 'all'}
+              showRatingBadge={ratingFilter === null}
+            />
+          ))}
+        </div>
       )}
       </ScrollFadeContainer>
     </div>

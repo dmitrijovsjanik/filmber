@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { translateGenres } from '@/lib/genres';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -136,10 +136,7 @@ export function MovieListItem({
   const displayTitle = movie?.titleRu || movie?.title || `Movie #${tmdbId}`;
 
   return (
-    <motion.div
-      layout
-      className="overflow-hidden"
-    >
+    <div className="overflow-hidden">
       {/* Main row */}
       <div
         className="flex cursor-pointer gap-3"
@@ -184,18 +181,16 @@ export function MovieListItem({
             {averageRating && (
               <Badge variant="rating">{averageRating}</Badge>
             )}
-            {/* Status badge - hide "Watched" badge (stars indicate watched) */}
-            {showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (
-              <Badge
-                variant={
-                  status === MOVIE_STATUS.WATCHING
-                    ? 'watching'
-                    : 'wantToWatch'
-                }
-              >
-                {status === MOVIE_STATUS.WATCHING
-                  ? t('watching', { defaultValue: 'Watching' })
-                  : t('wantToWatch', { defaultValue: 'Want to watch' })}
+            {/* Watching badge - always shown */}
+            {status === MOVIE_STATUS.WATCHING && (
+              <Badge variant="watching">
+                {t('watching', { defaultValue: 'Watching' })}
+              </Badge>
+            )}
+            {/* Want to watch badge - only in "All" tab */}
+            {showStatusBadge && status === MOVIE_STATUS.WANT_TO_WATCH && (
+              <Badge variant="wantToWatch">
+                {t('wantToWatch', { defaultValue: 'Want to watch' })}
               </Badge>
             )}
             {/* User rating badge */}
@@ -248,6 +243,6 @@ export function MovieListItem({
         canAddToList={canAddToList}
         source={source}
       />
-    </motion.div>
+    </div>
   );
 }

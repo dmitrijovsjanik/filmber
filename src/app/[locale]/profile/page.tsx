@@ -116,7 +116,7 @@ export default function ProfilePage() {
 
           {/* Version & Copyright */}
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            {t('version')} • © {t('copyright')}
+            Filmber ver {process.env.NEXT_PUBLIC_BUILD_ID} • © {t('copyright')}
             <br />
             {t('madeWith')} ❤️{' '}
             <a

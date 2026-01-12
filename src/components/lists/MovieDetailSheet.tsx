@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
-import { SimilarMoviesSection } from './SimilarMoviesSection';
+// import { SimilarMoviesSection } from './SimilarMoviesSection'; // TODO: Move to separate page
 import { Badge } from '@/components/ui/badge';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useAuthToken } from '@/stores/authStore';
@@ -317,17 +317,7 @@ export function MovieDetailSheet({
               </p>
             )}
 
-            {/* Similar movies - only show if we have a valid tmdbId */}
-            {tmdbId > 0 && (
-              <SimilarMoviesSection
-                tmdbId={tmdbId}
-                onMovieClick={() => {
-                  // Close sheet when user clicks a similar movie
-                  // They can find it via search or it may be in their list
-                  onClose();
-                }}
-              />
-            )}
+            {/* TODO: Similar movies moved to separate page */}
           </div>
 
           {/* Actions section - fixed at bottom */}
