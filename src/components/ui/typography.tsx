@@ -138,6 +138,17 @@ export function Small({ className, children, ...props }: TypographyProps) {
   )
 }
 
+export function XSmall({ className, children, ...props }: TypographyProps) {
+  return (
+    <span
+      className={cn("text-xs font-medium leading-none", className)}
+      {...props}
+    >
+      {children}
+    </span>
+  )
+}
+
 export function Muted({ className, children, ...props }: TypographyProps) {
   return (
     <p

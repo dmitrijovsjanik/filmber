@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
 // import { SimilarMoviesSection } from './SimilarMoviesSection'; // TODO: Move to separate page
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
+import { Muted, Small } from '@/components/ui/typography';
 import { useAuthToken } from '@/stores/authStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
@@ -281,7 +282,7 @@ export function MovieDetailSheet({
               <div className="flex flex-1 flex-col justify-center overflow-hidden">
                 <SheetTitle className="pr-8 line-clamp-2">{displayTitle}</SheetTitle>
                 {secondaryTitle && (
-                  <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{secondaryTitle}</p>
+                  <Muted className="mt-1 line-clamp-1">{secondaryTitle}</Muted>
                 )}
               </div>
             </div>
@@ -307,9 +308,9 @@ export function MovieDetailSheet({
           <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
             {/* Overview */}
             {displayOverview && (
-              <p className="text-sm text-foreground leading-relaxed">
+              <Small className="text-foreground font-normal leading-relaxed">
                 {displayOverview}
-              </p>
+              </Small>
             )}
 
             {/* TODO: Similar movies moved to separate page */}

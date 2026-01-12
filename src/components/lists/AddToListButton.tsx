@@ -7,6 +7,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Loading02Icon, CheckmarkCircle02Icon, Playlist01Icon, Tick02Icon, Add01Icon } from '@hugeicons/core-free-icons';
 import { useAuthToken, useIsAuthenticated } from '@/stores/authStore';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
+import { Small } from '@/components/ui/typography';
 
 interface AddToListButtonProps {
   tmdbId: number;
@@ -110,11 +111,11 @@ export function AddToListButton({
       </motion.button>
 
       {showLabel && status && (
-        <span className="ml-2 text-sm text-gray-400">
+        <Small className="ml-2 text-muted-foreground font-normal">
           {status === MOVIE_STATUS.WATCHED
             ? t('watched', { defaultValue: 'Watched' })
             : t('wantToWatch', { defaultValue: 'Want to watch' })}
-        </span>
+        </Small>
       )}
 
       {/* Dropdown menu */}

@@ -7,6 +7,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon, Film02Icon, CheckmarkCircle02Icon, TimeHalfPassIcon } from '@hugeicons/core-free-icons';
 import { useAuthToken, useIsAuthenticated } from '@/stores/authStore';
 import { RatingStars } from '@/components/lists/RatingStars';
+import { Small, Large, Muted } from '@/components/ui/typography';
 
 interface Prompt {
   id: string;
@@ -135,18 +136,18 @@ export function WatchPromptBanner() {
 
           {/* Content */}
           <div className="flex-1 pr-6">
-            <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <Small className="mb-1 flex items-center gap-1.5 text-muted-foreground">
               <HugeiconsIcon icon={Film02Icon} size={16} />
               {t('didYouWatch', { defaultValue: 'Did you watch' })}
-            </p>
-            <p className="mb-4 text-lg font-semibold text-foreground">{movieTitle}?</p>
+            </Small>
+            <Large className="mb-4 text-foreground">{movieTitle}?</Large>
 
             {showRating ? (
               // Rating selection
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
+                <Muted>
                   {t('howWasIt', { defaultValue: 'How was it?' })}
-                </p>
+                </Muted>
                 <RatingStars
                   rating={selectedRating}
                   onChange={setSelectedRating}

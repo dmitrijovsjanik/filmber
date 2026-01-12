@@ -16,6 +16,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Small, XSmall, Muted } from '@/components/ui/typography';
 import type { SearchFilters as Filters, SortOption, MediaTypeFilter } from '@/types/movie';
 
 interface Genre {
@@ -183,9 +184,9 @@ export function SearchFilters({
           <div className="space-y-6">
             {/* Media type filter */}
             <div>
-              <label className="text-sm font-medium mb-3 block">
+              <Small className="mb-3 block">
                 {t('mediaType')}
-              </label>
+              </Small>
               <ToggleGroup
                 type="single"
                 value={filters.mediaType}
@@ -211,11 +212,11 @@ export function SearchFilters({
 
             {/* Genre toggles */}
             <div>
-              <label className="text-sm font-medium mb-3 block">
+              <Small className="mb-3 block">
                 {t('genres')}
-              </label>
+              </Small>
               {isLoadingGenres ? (
-                <div className="text-sm text-muted-foreground">Loading...</div>
+                <Muted>Loading...</Muted>
               ) : (
                 <ToggleGroup
                   type="multiple"
@@ -241,9 +242,9 @@ export function SearchFilters({
 
             {/* Year range */}
             <div>
-              <label className="text-sm font-medium mb-3 block">
+              <Small className="mb-3 block">
                 {t('yearFrom')} — {t('yearTo')}
-              </label>
+              </Small>
               <div className="flex items-center gap-3">
                 <Input
                   type="number"
@@ -281,9 +282,9 @@ export function SearchFilters({
 
             {/* Rating slider */}
             <div>
-              <label className="text-sm font-medium mb-3 block">
+              <Small className="mb-3 block">
                 {t('minRating')}: <span className="text-primary">{filters.ratingMin || 0}</span>
-              </label>
+              </Small>
               <div className="px-1">
                 <Slider
                   min={0}
@@ -299,10 +300,10 @@ export function SearchFilters({
                   disabled={disabled}
                   className="w-full"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>0</span>
-                  <span>5</span>
-                  <span>9+</span>
+                <div className="flex justify-between mt-2">
+                  <XSmall className="text-muted-foreground">0</XSmall>
+                  <XSmall className="text-muted-foreground">5</XSmall>
+                  <XSmall className="text-muted-foreground">9+</XSmall>
                 </div>
               </div>
             </div>
