@@ -651,7 +651,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         {/* Search */}
         <div className="relative">
           <input
-            type="search"
+            type="text"
             inputMode="search"
             enterKeyHint="search"
             autoComplete="off"
