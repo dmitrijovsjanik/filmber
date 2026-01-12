@@ -3,12 +3,12 @@
 import { useImperativeHandle, forwardRef, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
-import { Badge } from '@/components/ui/badge';
 import { H3, H4, Small } from '@/components/ui/typography';
-import type { Movie } from '@/types/movie';
+import { MovieBadges } from '@/components/molecules/MovieBadges';
+import { calculateAverageRating } from '@/lib/utils/rating';
 import { translateGenres } from '@/lib/genres';
+import type { Movie } from '@/types/movie';
 
 import 'overlayscrollbars/overlayscrollbars.css';
 
@@ -27,7 +27,6 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   { movie, onSwipe, isTop = false, locale = 'en' },
   ref
 ) {
-  const t = useTranslations('movie');
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
@@ -41,26 +40,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const overview =
     locale === 'ru' && movie.overviewRu ? movie.overviewRu : movie.overview;
   const genres = translateGenres(movie.genres, locale);
-
-  // Calculate average rating from all available platforms
-  const averageRating = (() => {
-    const ratings: number[] = [];
-    if (movie.ratings.tmdb && movie.ratings.tmdb !== '0') {
-      const val = parseFloat(movie.ratings.tmdb);
-      if (!isNaN(val)) ratings.push(val);
-    }
-    if (movie.ratings.imdb) {
-      const val = parseFloat(movie.ratings.imdb);
-      if (!isNaN(val)) ratings.push(val);
-    }
-    if (movie.ratings.rottenTomatoes) {
-      const val = parseFloat(movie.ratings.rottenTomatoes);
-      if (!isNaN(val)) ratings.push(val);
-    }
-    if (ratings.length === 0) return null;
-    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-    return avg.toFixed(1);
-  })();
+  const averageRating = calculateAverageRating(movie.ratings);
 
   // Use ref to always have latest onSwipe callback - update synchronously on every render
   const onSwipeRef = useRef(onSwipe);
@@ -143,37 +123,19 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
                 {title}
               </H4>
 
-              {/* All badges in one container */}
+              {/* Badges */}
               <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0 items-center">
-                {movie.mediaType === 'tv' && (
-                  <Badge variant="cardTv">
-                    {t('tvSeries')}
-                  </Badge>
-                )}
-                {movie.releaseDate && (
-                  <Badge variant="cardSecondary">
-                    {new Date(movie.releaseDate).getFullYear()}
-                  </Badge>
-                )}
-                {movie.mediaType === 'tv' && (movie.numberOfSeasons || movie.numberOfEpisodes) ? (
-                  <Badge variant="cardSecondary">
-                    {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
-                    {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
-                    {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
-                  </Badge>
-                ) : movie.runtime ? (
-                  <Badge variant="cardSecondary">
-                    {t('runtime', { minutes: movie.runtime })}
-                  </Badge>
-                ) : null}
-                {genres.slice(0, 2).map((genre) => (
-                  <Badge key={genre} variant="cardSecondary">
-                    {genre}
-                  </Badge>
-                ))}
-                {averageRating && (
-                  <Badge variant="rating">{averageRating}</Badge>
-                )}
+                <MovieBadges
+                  variant="card"
+                  mediaType={movie.mediaType}
+                  releaseDate={movie.releaseDate}
+                  runtime={movie.runtime}
+                  numberOfSeasons={movie.numberOfSeasons}
+                  numberOfEpisodes={movie.numberOfEpisodes}
+                  genres={genres}
+                  averageRating={averageRating}
+                  showMediaType={movie.mediaType === 'tv'}
+                />
               </div>
 
               <OverlayScrollbarsComponent
@@ -205,37 +167,19 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
             {title}
           </H3>
 
-          {/* All badges in one container */}
+          {/* Badges */}
           <div className="flex flex-wrap gap-1.5 mb-3 items-center">
-            {movie.mediaType === 'tv' && (
-              <Badge variant="cardTv">
-                {t('tvSeries')}
-              </Badge>
-            )}
-            {movie.releaseDate && (
-              <Badge variant="cardSecondary">
-                {new Date(movie.releaseDate).getFullYear()}
-              </Badge>
-            )}
-            {movie.mediaType === 'tv' && (movie.numberOfSeasons || movie.numberOfEpisodes) ? (
-              <Badge variant="cardSecondary">
-                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
-                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
-                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
-              </Badge>
-            ) : movie.runtime ? (
-              <Badge variant="cardSecondary">
-                {t('runtime', { minutes: movie.runtime })}
-              </Badge>
-            ) : null}
-            {genres.slice(0, 2).map((genre) => (
-              <Badge key={genre} variant="cardSecondary">
-                {genre}
-              </Badge>
-            ))}
-            {averageRating && (
-              <Badge variant="rating">{averageRating}</Badge>
-            )}
+            <MovieBadges
+              variant="card"
+              mediaType={movie.mediaType}
+              releaseDate={movie.releaseDate}
+              runtime={movie.runtime}
+              numberOfSeasons={movie.numberOfSeasons}
+              numberOfEpisodes={movie.numberOfEpisodes}
+              genres={genres}
+              averageRating={averageRating}
+              showMediaType={movie.mediaType === 'tv'}
+            />
           </div>
 
           {/* Overview (truncated) */}

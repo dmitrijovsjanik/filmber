@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { translateGenres } from '@/lib/genres';
+import { calculateAverageRatingFromStrings } from '@/lib/utils/rating';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowTurnBackwardIcon, Delete02Icon } from '@hugeicons/core-free-icons';
+import { MovieBadges } from '@/components/molecules/MovieBadges';
 import {
   Sheet,
   SheetContent,
@@ -24,7 +26,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
 // import { SimilarMoviesSection } from './SimilarMoviesSection'; // TODO: Move to separate page
-import { Badge } from '@/components/ui/badge';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useAuthToken } from '@/stores/authStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -85,7 +86,6 @@ export function MovieDetailSheet({
 }: MovieDetailSheetProps) {
   const t = useTranslations('lists');
   const tCommon = useTranslations('common');
-  const tMovie = useTranslations('movie');
   const locale = useLocale();
   const token = useAuthToken();
   const { trackMovieDetailsOpened, trackMovieAddedToWatchlist, trackMovieRated } = useAnalytics();
@@ -130,7 +130,6 @@ export function MovieDetailSheet({
       ? movie.posterUrl
       : null;
 
-  const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
   const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
   const genres = translateGenres(rawGenres, locale);
 
@@ -253,17 +252,14 @@ export function MovieDetailSheet({
   const isWatched = currentStatus === MOVIE_STATUS.WATCHED;
 
   // Calculate average rating from all available platforms
-  const averageRating = (() => {
-    if (!movie) return null;
-    const ratings: number[] = [];
-    if (movie.voteAverage) ratings.push(parseFloat(movie.voteAverage));
-    if (movie.imdbRating) ratings.push(parseFloat(movie.imdbRating));
-    if (movie.kinopoiskRating) ratings.push(parseFloat(movie.kinopoiskRating));
-    if (movie.rottenTomatoesRating) ratings.push(parseFloat(movie.rottenTomatoesRating));
-    if (ratings.length === 0) return null;
-    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-    return avg.toFixed(1);
-  })();
+  const averageRating = movie
+    ? calculateAverageRatingFromStrings(
+        movie.voteAverage,
+        movie.imdbRating,
+        movie.kinopoiskRating,
+        movie.rottenTomatoesRating
+      )
+    : null;
 
   return (
     <>
@@ -293,34 +289,18 @@ export function MovieDetailSheet({
 
           {/* Badges - fixed */}
           <div className="mt-4 flex flex-wrap items-center gap-1.5 flex-shrink-0">
-            {/* TV Series badge */}
-            {movie?.mediaType === 'tv' && (
-              <Badge variant="tv">
-                {tMovie('tvSeries')}
-              </Badge>
-            )}
-            {/* Year */}
-            {year && (
-              <Badge variant="info">{year}</Badge>
-            )}
-            {/* Runtime or Seasons/Episodes */}
-            {movie?.mediaType === 'tv' && (movie?.numberOfSeasons || movie?.numberOfEpisodes) ? (
-              <Badge variant="info">
-                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
-                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
-                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
-              </Badge>
-            ) : movie?.runtime ? (
-              <Badge variant="info">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
-            ) : null}
-            {/* Genres */}
-            {genres.slice(0, 3).map((genre) => (
-              <Badge key={genre} variant="info">{genre}</Badge>
-            ))}
-            {/* Average rating from all platforms */}
-            {averageRating && (
-              <Badge variant="rating">{averageRating}</Badge>
-            )}
+            <MovieBadges
+              variant="list"
+              mediaType={movie?.mediaType}
+              releaseDate={movie?.releaseDate}
+              runtime={movie?.runtime}
+              numberOfSeasons={movie?.numberOfSeasons}
+              numberOfEpisodes={movie?.numberOfEpisodes}
+              genres={genres}
+              averageRating={averageRating}
+              maxGenres={3}
+              showMediaType={movie?.mediaType === 'tv'}
+            />
           </div>
 
           {/* Scrollable content area */}

@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { translateGenres } from '@/lib/genres';
+import { calculateAverageRatingFromStrings } from '@/lib/utils/rating';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreHorizontalIcon, Film02Icon } from '@hugeicons/core-free-icons';
+import { MovieBadges } from '@/components/molecules/MovieBadges';
 import { RatingBadge as UserRatingBadge } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
 import { WatchTimer, useWatchProgress } from './WatchTimer';
@@ -79,7 +81,6 @@ export function MovieListItem({
   source,
 }: MovieListItemProps) {
   const t = useTranslations('lists');
-  const tMovie = useTranslations('movie');
   const locale = useLocale();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,8 +95,6 @@ export function MovieListItem({
       ? movie.posterUrl
       : '/placeholder-poster.png';
 
-  const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
-
   // Parse and translate genres from JSON string
   const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
   const genres = translateGenres(rawGenres, locale);
@@ -108,16 +107,13 @@ export function MovieListItem({
   const showPrompt = status === MOVIE_STATUS.WATCHING && (!watchStartedAt || isWatchComplete);
 
   // Calculate average rating from all available platforms
-  const averageRating = (() => {
-    if (!movie) return null;
-    const ratings: number[] = [];
-    if (movie.voteAverage) ratings.push(parseFloat(movie.voteAverage));
-    if (movie.imdbRating) ratings.push(parseFloat(movie.imdbRating));
-    if (movie.kinopoiskRating) ratings.push(parseFloat(movie.kinopoiskRating));
-    if (ratings.length === 0) return null;
-    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-    return avg.toFixed(1);
-  })();
+  const averageRating = movie
+    ? calculateAverageRatingFromStrings(
+        movie.voteAverage,
+        movie.imdbRating,
+        movie.kinopoiskRating
+      )
+    : null;
 
   const handleWatchComplete = async (selectedRating: number) => {
     if (!onWatchComplete) return;
@@ -172,39 +168,18 @@ export function MovieListItem({
 
           {/* All badges in one container */}
           <div className="flex flex-wrap items-center gap-1">
-            {/* Media type badge - only when showMediaTypeBadge is true */}
-            {showMediaTypeBadge && movie?.mediaType === 'tv' && (
-              <Badge variant="tv">
-                {tMovie('tvSeries')}
-              </Badge>
-            )}
-            {showMediaTypeBadge && movie?.mediaType !== 'tv' && (
-              <Badge variant="movie">
-                {tMovie('film')}
-              </Badge>
-            )}
-            {/* Year */}
-            {year && (
-              <Badge variant="info">{year}</Badge>
-            )}
-            {/* Runtime or Seasons/Episodes */}
-            {movie?.mediaType === 'tv' && (movie?.numberOfSeasons || movie?.numberOfEpisodes) ? (
-              <Badge variant="info">
-                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
-                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
-                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
-              </Badge>
-            ) : movie?.runtime ? (
-              <Badge variant="info">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
-            ) : null}
-            {/* Genres */}
-            {genres.slice(0, 2).map((genre) => (
-              <Badge key={genre} variant="info">{genre}</Badge>
-            ))}
-            {/* Average rating from all platforms */}
-            {averageRating && (
-              <Badge variant="rating">{averageRating}</Badge>
-            )}
+            {/* Movie metadata badges */}
+            <MovieBadges
+              variant="list"
+              mediaType={movie?.mediaType}
+              releaseDate={movie?.releaseDate}
+              runtime={movie?.runtime}
+              numberOfSeasons={movie?.numberOfSeasons}
+              numberOfEpisodes={movie?.numberOfEpisodes}
+              genres={genres}
+              averageRating={averageRating}
+              showMediaType={showMediaTypeBadge}
+            />
             {/* Watching badge - always shown */}
             {status === MOVIE_STATUS.WATCHING && (
               <Badge variant="watching">
