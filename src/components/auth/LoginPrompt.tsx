@@ -2,6 +2,14 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+import {
+  Film02Icon,
+  PencilEdit01Icon,
+  StarIcon,
+  Notification01Icon,
+  ArrowReloadHorizontalIcon,
+} from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { H4, Muted, Small } from '@/components/ui/typography';
 
@@ -44,7 +52,9 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
             className="fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl bg-card p-6 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2"
           >
             {/* Icon */}
-            <div className="mb-4 text-center text-5xl">🎬</div>
+            <div className="mb-4 flex justify-center text-primary">
+              <HugeiconsIcon icon={Film02Icon} size={48} />
+            </div>
 
             {/* Title */}
             <H4 className="mb-2 text-center text-foreground">
@@ -62,19 +72,19 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
             {/* Features list */}
             <div className="mb-6 space-y-3">
               <Feature
-                emoji="📝"
+                icon={PencilEdit01Icon}
                 text={t('featureWatchlist', { defaultValue: 'Save movies to your watchlist' })}
               />
               <Feature
-                emoji="⭐️"
+                icon={StarIcon}
                 text={t('featureRating', { defaultValue: 'Rate movies you watched' })}
               />
               <Feature
-                emoji="🔔"
+                icon={Notification01Icon}
                 text={t('featureReminders', { defaultValue: 'Get viewing reminders' })}
               />
               <Feature
-                emoji="🔄"
+                icon={ArrowReloadHorizontalIcon}
                 text={t('featureSync', { defaultValue: 'Sync across all devices' })}
               />
             </div>
@@ -99,10 +109,10 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
   );
 }
 
-function Feature({ emoji, text }: { emoji: string; text: string }) {
+function Feature({ icon, text }: { icon: IconSvgElement; text: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-lg">{emoji}</span>
+      <HugeiconsIcon icon={icon} size={20} className="text-primary" />
       <Small className="text-muted-foreground font-normal">{text}</Small>
     </div>
   );

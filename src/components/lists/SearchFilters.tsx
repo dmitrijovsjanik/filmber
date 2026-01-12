@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpDown, SlidersHorizontal, Check } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SortByUp01Icon, PreferenceHorizontalIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -116,7 +117,7 @@ export function SearchFilters({
             disabled={disabled}
             className="gap-2 h-9 px-3"
           >
-            <ArrowUpDown className="h-4 w-4" />
+            <HugeiconsIcon icon={SortByUp01Icon} size={16} />
             {getSortLabel(filters.sortBy)}
           </Button>
         </SheetTrigger>
@@ -136,7 +137,7 @@ export function SearchFilters({
                   {getSortLabel(option)}
                 </span>
                 {filters.sortBy === option && (
-                  <Check className="h-4 w-4 text-primary" />
+                  <HugeiconsIcon icon={Tick02Icon} size={16} className="text-primary" />
                 )}
               </Button>
             ))}
@@ -153,7 +154,7 @@ export function SearchFilters({
             disabled={disabled}
             className="gap-2 h-9 px-3"
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <HugeiconsIcon icon={PreferenceHorizontalIcon} size={16} />
             {t('filters')}
             {activeFiltersCount > 0 && (
               <Badge variant="default" className="ml-1 h-5 min-w-5 p-0 justify-center text-xs">

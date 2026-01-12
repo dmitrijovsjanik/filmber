@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { translateGenres } from '@/lib/genres';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreHorizontalIcon } from '@hugeicons/core-free-icons';
+import { MoreHorizontalIcon, Film02Icon } from '@hugeicons/core-free-icons';
 import { RatingBadge as UserRatingBadge } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
 import { WatchTimer, useWatchProgress } from './WatchTimer';
@@ -158,8 +158,8 @@ export function MovieListItem({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl">
-              🎬
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <HugeiconsIcon icon={Film02Icon} size={32} />
             </div>
           )}
         </div>

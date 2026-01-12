@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { cn } from '@/lib/utils';
 
 interface MainContentProps {
@@ -12,29 +13,12 @@ interface MainContentProps {
 export function MainContent({ children }: MainContentProps) {
   const pathname = usePathname();
   const { isAuthenticated, isInitialized } = useAuth();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const isKeyboardVisible = useKeyboardVisible();
 
   // Check if navbar should be hidden (same logic as BottomNav)
   const hideOnPaths = ['/swipe', '/room/'];
   const shouldHideNavbar = hideOnPaths.some((path) => pathname.includes(path));
   const showNavbar = isInitialized && isAuthenticated && !shouldHideNavbar;
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-
-    const handleResize = () => {
-      // If viewport height is significantly less than window height, keyboard is likely open
-      const keyboardThreshold = 150;
-      const heightDiff = window.innerHeight - viewport.height;
-      setIsKeyboardVisible(heightDiff > keyboardThreshold);
-    };
-
-    viewport.addEventListener('resize', handleResize);
-    handleResize();
-
-    return () => viewport.removeEventListener('resize', handleResize);
-  }, []);
 
   // Only add navbar padding if navbar is shown and keyboard is hidden
   const needsNavbarPadding = showNavbar && !isKeyboardVisible;

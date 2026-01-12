@@ -1,38 +1,13 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Home01Icon, Film02Icon, User03Icon } from '@hugeicons/core-free-icons';
 import { useTriggerClearSearch } from '@/stores/searchStore';
-
-// Hook to detect virtual keyboard visibility
-function useKeyboardVisible() {
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    // Use visualViewport API for reliable keyboard detection
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-
-    const handleResize = () => {
-      // If viewport height is significantly less than window height, keyboard is likely open
-      const keyboardThreshold = 150; // pixels
-      const heightDiff = window.innerHeight - viewport.height;
-      setIsKeyboardVisible(heightDiff > keyboardThreshold);
-    };
-
-    viewport.addEventListener('resize', handleResize);
-    handleResize(); // Check initial state
-
-    return () => viewport.removeEventListener('resize', handleResize);
-  }, []);
-
-  return isKeyboardVisible;
-}
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 
 interface NavItem {
   href: string;

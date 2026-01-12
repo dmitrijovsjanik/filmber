@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading02Icon, CheckmarkCircle02Icon, Playlist01Icon, Tick02Icon, Add01Icon } from '@hugeicons/core-free-icons';
 import { useAuthToken, useIsAuthenticated } from '@/stores/authStore';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 
@@ -97,13 +99,13 @@ export function AddToListButton({
         whileTap={{ scale: 0.95 }}
       >
         {isLoading ? (
-          <span className="animate-spin">⏳</span>
+          <HugeiconsIcon icon={Loading02Icon} size={20} className="animate-spin" />
         ) : status === MOVIE_STATUS.WATCHED ? (
-          '✅'
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} />
         ) : status === MOVIE_STATUS.WANT_TO_WATCH ? (
-          '📋'
+          <HugeiconsIcon icon={Playlist01Icon} size={20} />
         ) : (
-          '+'
+          <HugeiconsIcon icon={Add01Icon} size={20} />
         )}
       </motion.button>
 
@@ -140,10 +142,10 @@ export function AddToListButton({
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <span>📋</span>
+                <HugeiconsIcon icon={Playlist01Icon} size={16} />
                 <span>{t('wantToWatch', { defaultValue: 'Want to watch' })}</span>
                 {status === MOVIE_STATUS.WANT_TO_WATCH && (
-                  <span className="ml-auto">✓</span>
+                  <HugeiconsIcon icon={Tick02Icon} size={16} className="ml-auto" />
                 )}
               </button>
 
@@ -155,9 +157,11 @@ export function AddToListButton({
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <span>✅</span>
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} />
                 <span>{t('watched', { defaultValue: 'Watched' })}</span>
-                {status === MOVIE_STATUS.WATCHED && <span className="ml-auto">✓</span>}
+                {status === MOVIE_STATUS.WATCHED && (
+                  <HugeiconsIcon icon={Tick02Icon} size={16} className="ml-auto" />
+                )}
               </button>
             </motion.div>
           </>

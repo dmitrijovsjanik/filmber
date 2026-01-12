@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, Film02Icon, CheckmarkCircle02Icon, TimeHalfPassIcon } from '@hugeicons/core-free-icons';
 import { useAuthToken, useIsAuthenticated } from '@/stores/authStore';
 import { RatingStars } from '@/components/lists/RatingStars';
 
@@ -116,9 +118,7 @@ export function WatchPromptBanner() {
           className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Dismiss"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <HugeiconsIcon icon={Cancel01Icon} size={16} />
         </button>
 
         <div className="flex items-start gap-4">
@@ -135,8 +135,9 @@ export function WatchPromptBanner() {
 
           {/* Content */}
           <div className="flex-1 pr-6">
-            <p className="mb-1 text-sm font-medium text-muted-foreground">
-              🎬 {t('didYouWatch', { defaultValue: 'Did you watch' })}
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <HugeiconsIcon icon={Film02Icon} size={16} />
+              {t('didYouWatch', { defaultValue: 'Did you watch' })}
             </p>
             <p className="mb-4 text-lg font-semibold text-foreground">{movieTitle}?</p>
 
@@ -175,15 +176,17 @@ export function WatchPromptBanner() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowRating(true)}
-                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-emerald-500"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-emerald-500"
                 >
-                  ✅ {t('yesWatched', { defaultValue: 'Yes!' })}
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} />
+                  {t('yesWatched', { defaultValue: 'Yes!' })}
                 </button>
                 <button
                   onClick={() => handleResponse('not_yet')}
-                  className="flex-1 rounded-xl bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                 >
-                  ⏳ {t('notYet', { defaultValue: 'Not yet' })}
+                  <HugeiconsIcon icon={TimeHalfPassIcon} size={16} />
+                  {t('notYet', { defaultValue: 'Not yet' })}
                 </button>
               </div>
             )}
