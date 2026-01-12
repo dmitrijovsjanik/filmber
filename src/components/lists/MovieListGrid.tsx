@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { MovieListSearchBar } from '@/components/molecules/MovieListSearchBar';
 import { MovieListItem } from './MovieListItem';
 import { ListFilter } from './ListFilter';
 import { SearchResultItem } from './SearchResultItem';
@@ -12,21 +11,8 @@ import { SearchFilters } from './SearchFilters';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
 import { ScrollFadeContainer } from '@/components/ui/ScrollFadeContainer';
-import { useAuthToken } from '@/stores/authStore';
-import { useListStore, type ListItem } from '@/stores/listStore';
-import { useDebounce } from '@/hooks/useDebounce';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { useAnalytics } from '@/hooks/useAnalytics';
-import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
-import { useClearSearchTrigger } from '@/stores/searchStore';
-import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
-
-interface FilterCounts {
-  all: number;
-  wantToWatch: number;
-  watched: number;
-  ratings: Record<number, number>;
-}
+import { useMovieListLogic } from '@/hooks/useMovieListLogic';
+import type { MovieStatus } from '@/lib/db/schema';
 
 interface MovieListGridProps {
   initialStatus?: MovieStatus | 'all';
@@ -35,615 +21,63 @@ interface MovieListGridProps {
 export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   const t = useTranslations('lists');
   const locale = useLocale();
-  const token = useAuthToken();
-  const clearSearchTrigger = useClearSearchTrigger();
-  const { trackMovieRemoved, trackListSearchUsed } = useAnalytics();
 
-  // Use listStore for caching
   const {
-    cache,
-    hasHydrated,
-    setCache,
-    updateItem,
-    removeItem: removeItemFromCache,
-    isCacheValid,
-    isCacheStale,
-    setFetching,
-  } = useListStore();
+    // State
+    items,
+    filteredItems,
+    isLoading,
+    error,
+    listCounts,
 
-  const [items, setItems] = useState<ListItem[]>([]);
-  const [isLoading, setIsLoadingLocal] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    // Filters
+    statusFilter,
+    setStatusFilter,
+    ratingFilter,
+    setRatingFilter,
+    searchQuery,
+    setSearchQuery,
+    debouncedQuery,
+    searchFilters,
+    setSearchFilters,
 
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<MovieStatus | 'all'>(initialStatus);
-  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedQuery = useDebounce(searchQuery, 400);
+    // External search
+    isExternalSearch,
+    searchResults,
+    isSearching,
 
-  // Clear search when triggered from nav
-  useEffect(() => {
-    if (clearSearchTrigger > 0) {
-      setSearchQuery('');
-    }
-  }, [clearSearchTrigger]);
-
-  // Counts for list filters
-  const [listCounts, setListCounts] = useState<FilterCounts>({
-    all: 0,
-    wantToWatch: 0,
-    watched: 0,
-    ratings: { 1: 0, 2: 0, 3: 0 },
-  });
-
-  // External search state
-  const [isExternalSearch, setIsExternalSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [totalResults, setTotalResults] = useState(0);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
-
-  // Pagination state for infinite scroll
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-
-  // Expanded search state
-  const [expandedResults, setExpandedResults] = useState<SearchResult[]>([]);
-  const [isLoadingExpanded, setIsLoadingExpanded] = useState(false);
-  const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
-  const [showExpandedSection, setShowExpandedSection] = useState(false);
-
-  // Search filters state
-  const [searchFilters, setSearchFilters] = useState<SearchFiltersType>({
-    genres: [],
-    yearFrom: null,
-    yearTo: null,
-    ratingMin: null,
-    sortBy: 'relevance',
-    mediaType: 'all',
-  });
-
-  // Apply filters and sorting to local items
-  const filteredItems = useMemo(() => {
-    let result = [...items];
-
-    // Filter by status (from ListFilter tabs)
-    // Note: "watching" status movies are shown in all tabs (active timer)
-    if (statusFilter !== 'all') {
-      result = result.filter((item) =>
-        item.status === statusFilter || item.status === MOVIE_STATUS.WATCHING
-      );
-    }
-
-    // Filter by rating (from ListFilter tabs, only for watched)
-    if (ratingFilter !== null) {
-      result = result.filter((item) => item.rating === ratingFilter);
-    }
-
-    // Filter by genres
-    if (searchFilters.genres.length > 0) {
-      result = result.filter((item) => {
-        if (!item.movie?.genres) return false;
-        try {
-          const movieGenres: { id: number }[] = JSON.parse(item.movie.genres);
-          return searchFilters.genres.some((gId) =>
-            movieGenres.some((g) => g.id === gId)
-          );
-        } catch {
-          return false;
-        }
-      });
-    }
-
-    // Filter by year range
-    if (searchFilters.yearFrom) {
-      result = result.filter((item) => {
-        if (!item.movie?.releaseDate) return false;
-        const year = parseInt(item.movie.releaseDate.substring(0, 4));
-        return year >= searchFilters.yearFrom!;
-      });
-    }
-
-    if (searchFilters.yearTo) {
-      result = result.filter((item) => {
-        if (!item.movie?.releaseDate) return false;
-        const year = parseInt(item.movie.releaseDate.substring(0, 4));
-        return year <= searchFilters.yearTo!;
-      });
-    }
-
-    // Filter by minimum rating
-    if (searchFilters.ratingMin) {
-      result = result.filter((item) => {
-        if (!item.movie?.voteAverage) return false;
-        const rating = parseFloat(item.movie.voteAverage);
-        return rating >= searchFilters.ratingMin!;
-      });
-    }
-
-    // Sort: watching movies always first, then apply selected sort
-    result.sort((a, b) => {
-      // Watching status takes priority
-      const aIsWatching = a.status === MOVIE_STATUS.WATCHING ? 1 : 0;
-      const bIsWatching = b.status === MOVIE_STATUS.WATCHING ? 1 : 0;
-      if (aIsWatching !== bIsWatching) {
-        return bIsWatching - aIsWatching;
-      }
-
-      // Then apply selected sort
-      if (searchFilters.sortBy === 'relevance') {
-        return 0;
-      }
-
-      switch (searchFilters.sortBy) {
-        case 'popularity':
-          // For local list, we don't have popularity data, so skip
-          return 0;
-        case 'rating': {
-          const ratingA = parseFloat(a.movie?.voteAverage || '0');
-          const ratingB = parseFloat(b.movie?.voteAverage || '0');
-          return ratingB - ratingA;
-        }
-        case 'date_desc': {
-          const dateA = a.movie?.releaseDate || '0000';
-          const dateB = b.movie?.releaseDate || '0000';
-          return dateB.localeCompare(dateA);
-        }
-        case 'date_asc': {
-          const dateA = a.movie?.releaseDate || '9999';
-          const dateB = b.movie?.releaseDate || '9999';
-          return dateA.localeCompare(dateB);
-        }
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  }, [items, statusFilter, ratingFilter, searchFilters]);
-
-  // Fetch user's list items from API
-  const fetchFromApi = useCallback(async (isBackground = false) => {
-    if (!token) return;
-
-    if (!isBackground) {
-      setIsLoadingLocal(true);
-    }
-    setError(null);
-
-    try {
-      // Always fetch full list for caching, filter locally
-      const response = await fetch('/api/lists', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch lists');
-      }
-
-      const data = await response.json();
-
-      // Update cache
-      setCache(data.items, data.counts || {
-        all: data.items.length,
-        wantToWatch: 0,
-        watched: 0,
-        ratings: { 1: 0, 2: 0, 3: 0 },
-      });
-
-      setItems(data.items);
-      if (data.counts) {
-        setListCounts(data.counts);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsLoadingLocal(false);
-      setFetching(false);
-    }
-  }, [token, setCache, setFetching]);
-
-  // Initialize from cache or fetch
-  useEffect(() => {
-    if (!hasHydrated || !token) return;
-    if (isExternalSearch) return;
-
-    // If we have valid cache, use it immediately
-    if (cache && isCacheValid()) {
-      setItems(cache.items);
-      setListCounts(cache.counts);
-      setIsLoadingLocal(false);
-
-      // If cache is stale, refetch in background
-      if (isCacheStale()) {
-        setFetching(true);
-        fetchFromApi(true);
-      }
-    } else {
-      // No cache or invalid, fetch fresh data
-      fetchFromApi(false);
-    }
-  }, [hasHydrated, token, isExternalSearch]);
-
-  // Refetch when filters change (but use cached data for display)
-  const fetchItems = useCallback(async () => {
-    // This is now mainly for refreshing counts after mutations
-    // The actual filtering happens locally via filteredItems
-    if (!token) return;
-    await fetchFromApi(true);
-  }, [token, fetchFromApi]);
-
-  // Build search URL with filters
-  const buildSearchUrl = useCallback(
-    (query: string, page: number) => {
-      const params = new URLSearchParams({
-        query,
-        page: String(page),
-      });
-
-      if (searchFilters.genres.length > 0) {
-        params.set('genres', searchFilters.genres.join(','));
-      }
-      if (searchFilters.yearFrom) {
-        params.set('yearFrom', String(searchFilters.yearFrom));
-      }
-      if (searchFilters.yearTo) {
-        params.set('yearTo', String(searchFilters.yearTo));
-      }
-      if (searchFilters.ratingMin) {
-        params.set('ratingMin', String(searchFilters.ratingMin));
-      }
-      if (searchFilters.sortBy !== 'relevance') {
-        params.set('sortBy', searchFilters.sortBy);
-      }
-      if (searchFilters.mediaType !== 'all') {
-        params.set('mediaType', searchFilters.mediaType);
-      }
-
-      return `/api/search?${params}`;
-    },
-    [searchFilters]
-  );
-
-  // External search effect
-  useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
-      setSearchResults([]);
-      setIsExternalSearch(false);
-      setTotalResults(0);
-      setCurrentPage(1);
-      setTotalPages(0);
-      setHasMore(false);
-      // Reset expanded search
-      setExpandedResults([]);
-      setShowExpandedSection(false);
-      setExpandedQuery(null);
-      setHasTrackedSearch(false);
-      return;
-    }
-
-    // Switch to external search mode
-    setIsExternalSearch(true);
-
-    // Track search usage once per search session
-    if (!hasTrackedSearch) {
-      trackListSearchUsed();
-      setHasTrackedSearch(true);
-    }
-
-    // Reset pagination and expanded search on new query
-    setCurrentPage(1);
-    setExpandedResults([]);
-    setShowExpandedSection(false);
-    setExpandedQuery(null);
-
-    const searchTMDB = async () => {
-      setIsSearching(true);
-
-      try {
-        const response = await fetch(buildSearchUrl(debouncedQuery, 1));
-        const data = await response.json();
-
-        setSearchResults(data.tmdb?.results || []);
-        setTotalResults(data.tmdb?.totalResults || 0);
-        setTotalPages(data.tmdb?.totalPages || 0);
-        setHasMore((data.tmdb?.page || 1) < (data.tmdb?.totalPages || 0));
-      } catch (err) {
-        console.error('Search failed:', err);
-        setSearchResults([]);
-        setTotalResults(0);
-        setHasMore(false);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    searchTMDB();
-  }, [debouncedQuery, searchFilters, buildSearchUrl]);
-
-  // Update item status - optimistic update
-  const handleStatusChange = async (tmdbId: number, newStatus: MovieStatus) => {
-    if (!token) return;
-
-    // Optimistic update - update local state and cache immediately
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, status: newStatus } : item
-      )
-    );
-    updateItem(tmdbId, { status: newStatus });
-
-    try {
-      const response = await fetch(`/api/lists/${tmdbId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        // Revert on error - refetch to get correct state
-        fetchItems();
-      }
-    } catch (err) {
-      console.error('Failed to update status:', err);
-      fetchItems(); // Revert on error
-    }
-  };
-
-  // Update item rating - optimistic update
-  const handleRatingChange = async (tmdbId: number, newRating: number) => {
-    if (!token) return;
-
-    const rating = newRating || null;
-
-    // Optimistic update
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, rating } : item
-      )
-    );
-    updateItem(tmdbId, { rating });
-
-    try {
-      const response = await fetch(`/api/lists/${tmdbId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ rating }),
-      });
-
-      if (!response.ok) {
-        fetchItems(); // Revert on error
-      }
-    } catch (err) {
-      console.error('Failed to update rating:', err);
-      fetchItems(); // Revert on error
-    }
-  };
-
-  // Remove item - optimistic update
-  const handleRemove = async (tmdbId: number) => {
-    if (!token) return;
-
-    // Optimistic update
-    trackMovieRemoved(tmdbId);
-    setItems((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-    removeItemFromCache(tmdbId);
-
-    try {
-      const response = await fetch(`/api/lists/${tmdbId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        fetchItems(); // Revert on error
-      }
-    } catch (err) {
-      console.error('Failed to remove item:', err);
-    }
-  };
-
-  // Handle adding from search results
-  const handleAddedFromSearch = () => {
-    // Refetch items to update list and counts
-    fetchItems();
-  };
-
-  // Load more results for infinite scroll
-  const loadMoreResults = useCallback(async () => {
-    if (isLoadingMore || !hasMore || !debouncedQuery) return;
-
-    setIsLoadingMore(true);
-    const nextPage = currentPage + 1;
-
-    try {
-      const response = await fetch(buildSearchUrl(debouncedQuery, nextPage));
-      const data = await response.json();
-
-      // Append new results to existing
-      setSearchResults((prev) => [...prev, ...(data.tmdb?.results || [])]);
-      setTotalResults(data.tmdb?.totalResults || 0);
-
-      setCurrentPage(nextPage);
-      setHasMore(nextPage < (data.tmdb?.totalPages || 0));
-    } catch (err) {
-      console.error('Failed to load more:', err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [isLoadingMore, hasMore, debouncedQuery, currentPage, buildSearchUrl]);
-
-  // Initialize infinite scroll hook
-  const { lastElementRef } = useInfiniteScroll({
-    loading: isLoadingMore,
+    // Pagination
     hasMore,
-    onLoadMore: loadMoreResults,
-  });
+    isLoadingMore,
+    lastElementRef,
 
-  // Check if expanded search is available (query has 2+ words)
-  const canExpandSearch = useCallback((query: string): boolean => {
-    const words = query.trim().split(/\s+/);
-    return words.length >= 2;
-  }, []);
+    // Expanded search
+    expandedResults,
+    expandedQuery,
+    showExpandedSection,
+    isLoadingExpanded,
+    canExpandSearch,
+    handleExpandedSearch,
 
-  // Get broader query (remove last word)
-  const getBroaderQuery = useCallback((query: string): string => {
-    const words = query.trim().split(/\s+/);
-    return words.slice(0, -1).join(' ');
-  }, []);
-
-  // Handle "Show More" expanded search
-  const handleExpandedSearch = useCallback(async () => {
-    if (!debouncedQuery || !canExpandSearch(debouncedQuery)) return;
-
-    setIsLoadingExpanded(true);
-    const broaderQuery = getBroaderQuery(debouncedQuery);
-    setExpandedQuery(broaderQuery);
-
-    try {
-      const response = await fetch(
-        `/api/search?query=${encodeURIComponent(broaderQuery)}&page=1`
-      );
-      const data = await response.json();
-
-      // Filter out results already in main results
-      const existingIds = new Set(searchResults.map((r) => r.tmdbId));
-      const newResults = (data.tmdb?.results || []).filter(
-        (r: SearchResult) => !existingIds.has(r.tmdbId)
-      );
-
-      setExpandedResults(newResults);
-      setShowExpandedSection(true);
-    } catch (err) {
-      console.error('Expanded search failed:', err);
-      setExpandedResults([]);
-    } finally {
-      setIsLoadingExpanded(false);
-    }
-  }, [debouncedQuery, canExpandSearch, getBroaderQuery, searchResults]);
-
-  // Handle watch complete (from timer prompt) - optimistic update
-  const handleWatchComplete = async (tmdbId: number, rating: number) => {
-    if (!token) return;
-
-    // Optimistic update
-    const updates = { status: 'watched' as MovieStatus, rating, watchStartedAt: null };
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, ...updates } : item
-      )
-    );
-    updateItem(tmdbId, updates);
-
-    try {
-      const response = await fetch(`/api/lists/${tmdbId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: 'watched',
-          rating,
-        }),
-      });
-
-      if (!response.ok) {
-        fetchItems(); // Revert on error
-      }
-    } catch (err) {
-      console.error('Failed to mark as watched:', err);
-      fetchItems(); // Revert on error
-    }
-  };
-
-  // Handle "not finished" (from timer prompt) - moves back to want_to_watch
-  const handleWatchNotYet = async (tmdbId: number) => {
-    if (!token) return;
-
-    // Optimistic update - move to want_to_watch, clear timer and rating
-    const updates = {
-      status: MOVIE_STATUS.WANT_TO_WATCH as MovieStatus,
-      rating: null,
-      watchStartedAt: null,
-    };
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, ...updates } : item
-      )
-    );
-    updateItem(tmdbId, updates);
-
-    try {
-      const response = await fetch(`/api/lists/${tmdbId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: MOVIE_STATUS.WANT_TO_WATCH,
-          rating: null,
-          watchStartedAt: null,
-        }),
-      });
-
-      if (!response.ok) {
-        fetchItems(); // Revert on error
-      }
-    } catch (err) {
-      console.error('Failed to update watch status:', err);
-      fetchItems(); // Revert on error
-    }
-  };
+    // Actions
+    handleStatusChange,
+    handleRatingChange,
+    handleRemove,
+    handleAddedFromSearch,
+    handleWatchComplete,
+    handleWatchNotYet,
+    fetchItems,
+  } = useMovieListLogic({ initialStatus });
 
   return (
     <div className="flex flex-col h-full">
       {/* Fixed header: Search + Filters */}
       <div className="flex-shrink-0 space-y-2 pb-4 bg-background">
         {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder={t('searchPlaceholder', { defaultValue: 'Search movies...' })}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            className="min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 pl-10 text-sm text-foreground placeholder-muted-foreground transition-colors focus:outline-none focus:border-primary"
-          />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            <HugeiconsIcon icon={Search01Icon} size={20} />
-          </span>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} size={20} />
-            </button>
-          )}
-        </div>
+        <MovieListSearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
 
         {/* Status/Rating filters (when viewing local list) */}
         {!isExternalSearch && (
@@ -667,158 +101,289 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
 
       {/* Scrollable content */}
       <ScrollFadeContainer innerClassName="pb-2">
-      {isExternalSearch ? (
-        // External search results
-        isSearching ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader size="lg" />
-          </div>
-        ) : searchResults.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="mb-4 text-4xl">🔍</div>
-            <p className="text-muted-foreground">
-              {t('noSearchResults', { defaultValue: 'No movies found' })}
-            </p>
-          </div>
+        {isExternalSearch ? (
+          // External search results
+          <ExternalSearchContent
+            t={t}
+            isSearching={isSearching}
+            searchResults={searchResults}
+            lastElementRef={lastElementRef}
+            handleAddedFromSearch={handleAddedFromSearch}
+            searchFilters={searchFilters}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+            debouncedQuery={debouncedQuery}
+            canExpandSearch={canExpandSearch}
+            showExpandedSection={showExpandedSection}
+            handleExpandedSearch={handleExpandedSearch}
+            isLoadingExpanded={isLoadingExpanded}
+            expandedResults={expandedResults}
+            expandedQuery={expandedQuery}
+          />
         ) : (
-          <>
-            <div className="space-y-3">
-              {searchResults.map((result, index) => (
-                <SearchResultItem
-                  key={`${result.source}-${result.tmdbId || result.imdbId}-${index}`}
-                  ref={index === searchResults.length - 1 ? lastElementRef : null}
-                  {...result}
-                  onAddedToList={handleAddedFromSearch}
-                  showMediaTypeBadge={searchFilters.mediaType === 'all'}
-                />
-              ))}
-            </div>
+          // Local list
+          <LocalListContent
+            t={t}
+            isLoading={isLoading}
+            error={error}
+            filteredItems={filteredItems}
+            items={items}
+            searchQuery={searchQuery}
+            searchFilters={searchFilters}
+            statusFilter={statusFilter}
+            ratingFilter={ratingFilter}
+            handleStatusChange={handleStatusChange}
+            handleRatingChange={handleRatingChange}
+            handleRemove={handleRemove}
+            handleWatchComplete={handleWatchComplete}
+            handleWatchNotYet={handleWatchNotYet}
+            fetchItems={fetchItems}
+          />
+        )}
+      </ScrollFadeContainer>
+    </div>
+  );
+}
 
-            {/* Loading more indicator */}
-            {isLoadingMore && (
-              <div className="flex items-center justify-center py-4">
-                <Loader size="md" />
-              </div>
-            )}
+// External search content component
+function ExternalSearchContent({
+  t,
+  isSearching,
+  searchResults,
+  lastElementRef,
+  handleAddedFromSearch,
+  searchFilters,
+  isLoadingMore,
+  hasMore,
+  debouncedQuery,
+  canExpandSearch,
+  showExpandedSection,
+  handleExpandedSearch,
+  isLoadingExpanded,
+  expandedResults,
+  expandedQuery,
+}: {
+  t: ReturnType<typeof useTranslations<'lists'>>;
+  isSearching: boolean;
+  searchResults: any[];
+  lastElementRef: (node: HTMLElement | null) => void;
+  handleAddedFromSearch: () => void;
+  searchFilters: any;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  debouncedQuery: string;
+  canExpandSearch: (query: string) => boolean;
+  showExpandedSection: boolean;
+  handleExpandedSearch: () => void;
+  isLoadingExpanded: boolean;
+  expandedResults: any[];
+  expandedQuery: string | null;
+}) {
+  if (isSearching) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader size="lg" />
+      </div>
+    );
+  }
 
-            {/* Show More button - appears when at end of results */}
-            {!isSearching &&
-              !hasMore &&
-              searchResults.length > 0 &&
-              canExpandSearch(debouncedQuery) &&
-              !showExpandedSection && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center py-6"
-                >
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t('endOfResults', { defaultValue: "That's all for this search" })}
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={handleExpandedSearch}
-                    disabled={isLoadingExpanded}
-                  >
-                    {isLoadingExpanded ? (
-                      <Loader size="sm" />
-                    ) : (
-                      t('showMore', { defaultValue: 'Show more results' })
-                    )}
-                  </Button>
-                </motion.div>
-              )}
+  if (searchResults.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <div className="mb-4 text-4xl">🔍</div>
+        <p className="text-muted-foreground">
+          {t('noSearchResults', { defaultValue: 'No movies found' })}
+        </p>
+      </div>
+    );
+  }
 
-            {/* Expanded search results section */}
-            {showExpandedSection && expandedResults.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-8"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-sm text-muted-foreground px-2">
-                    {t('maybeYouLookingFor', {
-                      defaultValue: 'Maybe you\'re looking for "{query}"',
-                      query: expandedQuery || '',
-                    })}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
+  return (
+    <>
+      <div className="space-y-3">
+        {searchResults.map((result, index) => (
+          <SearchResultItem
+            key={`${result.source}-${result.tmdbId || result.imdbId}-${index}`}
+            ref={index === searchResults.length - 1 ? lastElementRef : null}
+            {...result}
+            onAddedToList={handleAddedFromSearch}
+            showMediaTypeBadge={searchFilters.mediaType === 'all'}
+          />
+        ))}
+      </div>
 
-                <div className="space-y-3">
-                  {expandedResults.map((result, index) => (
-                    <SearchResultItem
-                      key={`expanded-${result.tmdbId || result.imdbId}-${index}`}
-                      {...result}
-                      onAddedToList={handleAddedFromSearch}
-                      showMediaTypeBadge={searchFilters.mediaType === 'all'}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Show message when expanded search found nothing */}
-            {showExpandedSection && expandedResults.length === 0 && (
-              <div className="py-6 text-center">
-                <p className="text-muted-foreground">
-                  {t('noExpandedResults', { defaultValue: 'No additional results found' })}
-                </p>
-              </div>
-            )}
-          </>
-        )
-      ) : // Local list
-      isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader size="lg" />
-        </div>
-      ) : error ? (
-        <div className="py-12 text-center text-destructive">
-          <p>{error}</p>
-          <button
-            onClick={fetchItems}
-            className="mt-4 text-primary hover:underline"
-          >
-            {t('tryAgain', { defaultValue: 'Try again' })}
-          </button>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="py-12 text-center">
-          <div className="mb-4 text-4xl">📋</div>
-          <p className="text-muted-foreground">
-            {searchQuery || searchFilters.genres.length > 0 || searchFilters.yearFrom || searchFilters.yearTo || searchFilters.ratingMin
-              ? t('noSearchResults', { defaultValue: 'No movies found' })
-              : t('emptyList', { defaultValue: 'Your list is empty' })}
-          </p>
-          {!searchQuery && items.length === 0 && (
-            <p className="mt-2 text-sm text-muted-foreground/70">
-              {t('emptyListHint', {
-                defaultValue: 'Swipe right on movies you like to add them here!',
-              })}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredItems.map((item) => (
-            <MovieListItem
-              key={item.id}
-              {...item}
-              onStatusChange={(status) => handleStatusChange(item.tmdbId, status)}
-              onRatingChange={(rating) => handleRatingChange(item.tmdbId, rating)}
-              onRemove={() => handleRemove(item.tmdbId)}
-              onWatchComplete={(rating) => handleWatchComplete(item.tmdbId, rating)}
-              onWatchNotYet={() => handleWatchNotYet(item.tmdbId)}
-              showStatusBadge={statusFilter === 'all'}
-              showRatingBadge={ratingFilter === null}
-            />
-          ))}
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <div className="flex items-center justify-center py-4">
+          <Loader size="md" />
         </div>
       )}
-      </ScrollFadeContainer>
+
+      {/* Show More button */}
+      {!isSearching &&
+        !hasMore &&
+        searchResults.length > 0 &&
+        canExpandSearch(debouncedQuery) &&
+        !showExpandedSection && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center py-6"
+          >
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('endOfResults', { defaultValue: "That's all for this search" })}
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleExpandedSearch}
+              disabled={isLoadingExpanded}
+            >
+              {isLoadingExpanded ? (
+                <Loader size="sm" />
+              ) : (
+                t('showMore', { defaultValue: 'Show more results' })
+              )}
+            </Button>
+          </motion.div>
+        )}
+
+      {/* Expanded search results section */}
+      {showExpandedSection && expandedResults.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-8"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-sm text-muted-foreground px-2">
+              {t('maybeYouLookingFor', {
+                defaultValue: 'Maybe you\'re looking for "{query}"',
+                query: expandedQuery || '',
+              })}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="space-y-3">
+            {expandedResults.map((result, index) => (
+              <SearchResultItem
+                key={`expanded-${result.tmdbId || result.imdbId}-${index}`}
+                {...result}
+                onAddedToList={handleAddedFromSearch}
+                showMediaTypeBadge={searchFilters.mediaType === 'all'}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Show message when expanded search found nothing */}
+      {showExpandedSection && expandedResults.length === 0 && (
+        <div className="py-6 text-center">
+          <p className="text-muted-foreground">
+            {t('noExpandedResults', { defaultValue: 'No additional results found' })}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Local list content component
+function LocalListContent({
+  t,
+  isLoading,
+  error,
+  filteredItems,
+  items,
+  searchQuery,
+  searchFilters,
+  statusFilter,
+  ratingFilter,
+  handleStatusChange,
+  handleRatingChange,
+  handleRemove,
+  handleWatchComplete,
+  handleWatchNotYet,
+  fetchItems,
+}: {
+  t: ReturnType<typeof useTranslations<'lists'>>;
+  isLoading: boolean;
+  error: string | null;
+  filteredItems: any[];
+  items: any[];
+  searchQuery: string;
+  searchFilters: any;
+  statusFilter: string;
+  ratingFilter: number | null;
+  handleStatusChange: (tmdbId: number, status: any) => void;
+  handleRatingChange: (tmdbId: number, rating: number) => void;
+  handleRemove: (tmdbId: number) => void;
+  handleWatchComplete: (tmdbId: number, rating: number) => void;
+  handleWatchNotYet: (tmdbId: number) => void;
+  fetchItems: () => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-destructive">
+        <p>{error}</p>
+        <button
+          onClick={fetchItems}
+          className="mt-4 text-primary hover:underline"
+        >
+          {t('tryAgain', { defaultValue: 'Try again' })}
+        </button>
+      </div>
+    );
+  }
+
+  if (filteredItems.length === 0) {
+    const hasFilters = searchQuery || searchFilters.genres.length > 0 ||
+      searchFilters.yearFrom || searchFilters.yearTo || searchFilters.ratingMin;
+
+    return (
+      <div className="py-12 text-center">
+        <div className="mb-4 text-4xl">📋</div>
+        <p className="text-muted-foreground">
+          {hasFilters
+            ? t('noSearchResults', { defaultValue: 'No movies found' })
+            : t('emptyList', { defaultValue: 'Your list is empty' })}
+        </p>
+        {!searchQuery && items.length === 0 && (
+          <p className="mt-2 text-sm text-muted-foreground/70">
+            {t('emptyListHint', {
+              defaultValue: 'Swipe right on movies you like to add them here!',
+            })}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {filteredItems.map((item) => (
+        <MovieListItem
+          key={item.id}
+          {...item}
+          onStatusChange={(status) => handleStatusChange(item.tmdbId, status)}
+          onRatingChange={(rating) => handleRatingChange(item.tmdbId, rating)}
+          onRemove={() => handleRemove(item.tmdbId)}
+          onWatchComplete={(rating) => handleWatchComplete(item.tmdbId, rating)}
+          onWatchNotYet={() => handleWatchNotYet(item.tmdbId)}
+          showStatusBadge={statusFilter === 'all'}
+          showRatingBadge={ratingFilter === null}
+        />
+      ))}
     </div>
   );
 }
