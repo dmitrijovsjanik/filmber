@@ -28,6 +28,9 @@ interface MovieData {
   imdbRating: string | null;
   kinopoiskRating?: string | null;
   rottenTomatoesRating: string | null;
+  mediaType?: 'movie' | 'tv';
+  numberOfSeasons?: number | null;
+  numberOfEpisodes?: number | null;
 }
 
 type MovieSource = 'tmdb' | 'omdb' | 'kinopoisk';
@@ -49,6 +52,7 @@ interface MovieListItemProps {
   onAddedToList?: () => void;
   showStatusBadge?: boolean;
   showRatingBadge?: boolean;
+  showMediaTypeBadge?: boolean;
   canAddToList?: boolean;
   source?: MovieSource;
 }
@@ -70,6 +74,7 @@ export function MovieListItem({
   onAddedToList,
   showStatusBadge = true,
   showRatingBadge = true,
+  showMediaTypeBadge = true,
   canAddToList = true,
   source,
 }: MovieListItemProps) {
@@ -97,8 +102,10 @@ export function MovieListItem({
 
   // Check if watch timer is complete
   const isWatchComplete = useWatchProgress(watchStartedAt, movie?.runtime || null);
-  const showTimer = watchStartedAt && status === MOVIE_STATUS.WATCHING;
-  const showPrompt = showTimer && isWatchComplete;
+  // Show timer only if watching, has start time, and timer not complete
+  const showTimer = watchStartedAt && status === MOVIE_STATUS.WATCHING && !isWatchComplete;
+  // Show prompt if watching and either no start time (bug recovery) or timer complete
+  const showPrompt = status === MOVIE_STATUS.WATCHING && (!watchStartedAt || isWatchComplete);
 
   // Calculate average rating from all available platforms
   const averageRating = (() => {
@@ -165,17 +172,34 @@ export function MovieListItem({
 
           {/* All badges in one container */}
           <div className="flex flex-wrap items-center gap-1">
+            {/* Media type badge - only when showMediaTypeBadge is true */}
+            {showMediaTypeBadge && movie?.mediaType === 'tv' && (
+              <Badge variant="tv">
+                {tMovie('tvSeries')}
+              </Badge>
+            )}
+            {showMediaTypeBadge && movie?.mediaType !== 'tv' && (
+              <Badge variant="movie">
+                {tMovie('film')}
+              </Badge>
+            )}
             {/* Year */}
             {year && (
-              <Badge variant="secondary">{year}</Badge>
+              <Badge variant="info">{year}</Badge>
             )}
-            {/* Runtime */}
-            {movie?.runtime && (
-              <Badge variant="secondary">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
-            )}
+            {/* Runtime or Seasons/Episodes */}
+            {movie?.mediaType === 'tv' && (movie?.numberOfSeasons || movie?.numberOfEpisodes) ? (
+              <Badge variant="info">
+                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
+                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
+                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
+              </Badge>
+            ) : movie?.runtime ? (
+              <Badge variant="info">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
+            ) : null}
             {/* Genres */}
             {genres.slice(0, 2).map((genre) => (
-              <Badge key={genre} variant="secondary">{genre}</Badge>
+              <Badge key={genre} variant="info">{genre}</Badge>
             ))}
             {/* Average rating from all platforms */}
             {averageRating && (
@@ -185,6 +209,12 @@ export function MovieListItem({
             {status === MOVIE_STATUS.WATCHING && (
               <Badge variant="watching">
                 {t('watching', { defaultValue: 'Watching' })}
+              </Badge>
+            )}
+            {/* Watched badge - only in "All" tab */}
+            {showStatusBadge && status === MOVIE_STATUS.WATCHED && (
+              <Badge variant="watched">
+                {t('watched', { defaultValue: 'Watched' })}
               </Badge>
             )}
             {/* Want to watch badge - only in "All" tab */}
@@ -198,7 +228,7 @@ export function MovieListItem({
           </div>
 
           {/* Watch timer (when active and not complete) */}
-          {showTimer && !isWatchComplete && (
+          {showTimer && (
             <div className="mt-1">
               <WatchTimer
                 watchStartedAt={watchStartedAt}
@@ -218,9 +248,9 @@ export function MovieListItem({
       <AnimatePresence>
         {showPrompt && (
           <WatchCompletePrompt
-            movieTitle={movie?.title || `Movie #${tmdbId}`}
+            movieTitle={displayTitle}
             onWatched={handleWatchComplete}
-            onNotYet={handleNotYet}
+            onNotFinished={handleNotYet}
             isLoading={isLoading}
           />
         )}

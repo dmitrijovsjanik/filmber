@@ -92,6 +92,11 @@ export const movies = pgTable(
     runtime: integer('runtime'),
     genres: text('genres'), // JSON array
 
+    // Media type (movie or TV series)
+    mediaType: varchar('media_type', { length: 20 }).notNull().default('movie'), // 'movie' | 'tv'
+    numberOfSeasons: integer('number_of_seasons'),
+    numberOfEpisodes: integer('number_of_episodes'),
+
     // Ratings from all sources
     tmdbRating: varchar('tmdb_rating', { length: 10 }),
     tmdbVoteCount: integer('tmdb_vote_count'),
@@ -110,6 +115,7 @@ export const movies = pgTable(
     index('movies_tmdb_idx').on(table.tmdbId),
     index('movies_imdb_idx').on(table.imdbId),
     index('movies_kinopoisk_idx').on(table.kinopoiskId),
+    index('movies_media_type_idx').on(table.mediaType),
   ]
 );
 
@@ -434,6 +440,7 @@ export const deckSettings = pgTable('deck_settings', {
   // Settings
   showWatchedMovies: boolean('show_watched_movies').default(false),
   minRatingFilter: integer('min_rating_filter'), // null = no filter, 1-3
+  mediaTypeFilter: varchar('media_type_filter', { length: 20 }).default('all'), // 'all' | 'movie' | 'tv'
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -546,8 +553,21 @@ export const MOVIE_SOURCE = {
   IMPORT: 'import',
 } as const;
 
+export const MEDIA_TYPE = {
+  MOVIE: 'movie',
+  TV: 'tv',
+} as const;
+
+export const MEDIA_TYPE_FILTER = {
+  ALL: 'all',
+  MOVIE: 'movie',
+  TV: 'tv',
+} as const;
+
 export type MovieStatus = (typeof MOVIE_STATUS)[keyof typeof MOVIE_STATUS];
 export type MovieSource = (typeof MOVIE_SOURCE)[keyof typeof MOVIE_SOURCE];
+export type MediaType = (typeof MEDIA_TYPE)[keyof typeof MEDIA_TYPE];
+export type MediaTypeFilter = (typeof MEDIA_TYPE_FILTER)[keyof typeof MEDIA_TYPE_FILTER];
 
 // ============================================
 // TYPE EXPORTS

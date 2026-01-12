@@ -43,6 +43,9 @@ interface MovieData {
   imdbRating: string | null;
   kinopoiskRating?: string | null;
   rottenTomatoesRating: string | null;
+  mediaType?: 'movie' | 'tv';
+  numberOfSeasons?: number | null;
+  numberOfEpisodes?: number | null;
 }
 
 type MovieSource = 'tmdb' | 'omdb' | 'kinopoisk';
@@ -290,17 +293,29 @@ export function MovieDetailSheet({
 
           {/* Badges - fixed */}
           <div className="mt-4 flex flex-wrap items-center gap-1.5 flex-shrink-0">
+            {/* TV Series badge */}
+            {movie?.mediaType === 'tv' && (
+              <Badge variant="tv">
+                {tMovie('tvSeries')}
+              </Badge>
+            )}
             {/* Year */}
             {year && (
-              <Badge variant="secondary">{year}</Badge>
+              <Badge variant="info">{year}</Badge>
             )}
-            {/* Runtime */}
-            {movie?.runtime && (
-              <Badge variant="secondary">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
-            )}
+            {/* Runtime or Seasons/Episodes */}
+            {movie?.mediaType === 'tv' && (movie?.numberOfSeasons || movie?.numberOfEpisodes) ? (
+              <Badge variant="info">
+                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
+                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
+                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
+              </Badge>
+            ) : movie?.runtime ? (
+              <Badge variant="info">{tMovie('runtime', { minutes: movie.runtime })}</Badge>
+            ) : null}
             {/* Genres */}
             {genres.slice(0, 3).map((genre) => (
-              <Badge key={genre} variant="secondary">{genre}</Badge>
+              <Badge key={genre} variant="info">{genre}</Badge>
             ))}
             {/* Average rating from all platforms */}
             {averageRating && (

@@ -291,6 +291,9 @@ async function getMovieById(tmdbId: number): Promise<Movie | null> {
         },
         genres: JSON.parse(cached.genres || '[]'),
         runtime: cached.runtime,
+        mediaType: 'movie',
+        numberOfSeasons: null,
+        numberOfEpisodes: null,
       };
     }
 

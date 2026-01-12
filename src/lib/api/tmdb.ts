@@ -1,4 +1,4 @@
-import type { TMDBMovie, TMDBMovieDetails } from '@/types/movie';
+import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails } from '@/types/movie';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -150,6 +150,115 @@ class TMDBClient {
     }
 
     const data = await this.fetch<TMDBResponse<TMDBMovie>>('/discover/movie', queryParams);
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+      totalPages: data.total_pages,
+    };
+  }
+
+  // ============================================
+  // TV SERIES ENDPOINTS
+  // ============================================
+
+  // Get top rated TV series
+  async getTopRatedTV(
+    language: 'en-US' | 'ru-RU' = 'en-US',
+    page = 1
+  ): Promise<TMDBTVSeries[]> {
+    const data = await this.fetch<TMDBResponse<TMDBTVSeries>>('/tv/top_rated', {
+      language,
+      page: page.toString(),
+    });
+    return data.results;
+  }
+
+  // Get popular TV series
+  async getPopularTV(
+    language: 'en-US' | 'ru-RU' = 'en-US',
+    page = 1
+  ): Promise<TMDBTVSeries[]> {
+    const data = await this.fetch<TMDBResponse<TMDBTVSeries>>('/tv/popular', {
+      language,
+      page: page.toString(),
+    });
+    return data.results;
+  }
+
+  // Get TV series details
+  async getTVSeriesDetails(
+    tvId: number,
+    language: 'en-US' | 'ru-RU' = 'en-US'
+  ): Promise<TMDBTVSeriesDetails> {
+    return this.fetch<TMDBTVSeriesDetails>(`/tv/${tvId}`, {
+      language,
+      append_to_response: 'external_ids',
+    });
+  }
+
+  // Search TV series by title
+  async searchTV(
+    query: string,
+    language: 'en-US' | 'ru-RU' = 'en-US',
+    page = 1
+  ): Promise<{ results: TMDBTVSeries[]; totalResults: number }> {
+    const data = await this.fetch<TMDBResponse<TMDBTVSeries>>('/search/tv', {
+      query,
+      language,
+      page: page.toString(),
+      include_adult: 'false',
+    });
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+    };
+  }
+
+  // Get list of TV genres
+  async getTVGenres(
+    language: 'en-US' | 'ru-RU' = 'en-US'
+  ): Promise<{ id: number; name: string }[]> {
+    const data = await this.fetch<{ genres: { id: number; name: string }[] }>(
+      '/genre/tv/list',
+      { language }
+    );
+    return data.genres;
+  }
+
+  // Discover TV series with filters
+  async discoverTV(params: {
+    genres?: number[];
+    yearFrom?: number;
+    yearTo?: number;
+    ratingMin?: number;
+    sortBy?: 'popularity.desc' | 'vote_average.desc' | 'first_air_date.desc' | 'vote_count.desc';
+    page?: number;
+    language?: 'en-US' | 'ru-RU';
+  }): Promise<{ results: TMDBTVSeries[]; totalResults: number; totalPages: number }> {
+    const queryParams: Record<string, string> = {
+      language: params.language || 'en-US',
+      page: String(params.page || 1),
+      include_adult: 'false',
+    };
+
+    if (params.genres?.length) {
+      queryParams.with_genres = params.genres.join(',');
+    }
+    if (params.yearFrom) {
+      queryParams['first_air_date.gte'] = `${params.yearFrom}-01-01`;
+    }
+    if (params.yearTo) {
+      queryParams['first_air_date.lte'] = `${params.yearTo}-12-31`;
+    }
+    if (params.ratingMin) {
+      queryParams['vote_average.gte'] = String(params.ratingMin);
+      queryParams['vote_count.gte'] = '100';
+    }
+    if (params.sortBy) {
+      queryParams.sort_by = params.sortBy;
+    }
+
+    const data = await this.fetch<TMDBResponse<TMDBTVSeries>>('/discover/tv', queryParams);
     return {
       results: data.results,
       totalResults: data.total_results,

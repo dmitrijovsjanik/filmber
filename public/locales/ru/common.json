@@ -47,7 +47,11 @@
     "rating": "Рейтинг",
     "runtime": "{minutes} мин",
     "released": "Дата выхода",
-    "similarMovies": "Похожие фильмы"
+    "similarMovies": "Похожие фильмы",
+    "film": "Фильм",
+    "tvSeries": "Сериал",
+    "seasons": "{count} сез.",
+    "episodes": "{count} эп."
   },
   "join": {
     "title": "Войти в комнату",
@@ -120,11 +124,13 @@
   },
   "prompts": {
     "didYouWatch": "Вы посмотрели",
-    "howWasIt": "Как вам фильм?",
+    "howWasIt": "Как вам?",
+    "howWasMovie": "Как вам «{title}»?",
     "save": "Сохранить",
     "back": "Назад",
     "yesWatched": "Да, посмотрел!",
-    "notYet": "Ещё нет"
+    "notYet": "Ещё нет",
+    "notFinished": "Не досмотрел"
   },
   "profile": {
     "wantToWatch": "Хочу посмотреть",
@@ -140,11 +146,15 @@
     "support": "Поддержать"
   },
   "deckSettings": {
-    "title": "Настройки рекомендаций",
+    "title": "Настройки подбора",
     "sectionPartner": "Рекомендации партнёру",
     "showWatched": "Делиться просмотренными",
     "showWatchedDescription": "Показывать партнёру ваши любимые фильмы (с оценкой 3 звезды) из списка \"Просмотрено\"",
-    "info": "Когда вы свайпаете вместе, партнёр увидит ваши любимые фильмы среди рекомендаций."
+    "info": "Когда вы свайпаете вместе, партнёр увидит ваши любимые фильмы среди рекомендаций.",
+    "mediaTypeDescription": "Что показывать в подборке",
+    "mediaTypeAll": "Все",
+    "mediaTypeMovie": "Фильмы",
+    "mediaTypeTv": "Сериалы"
   },
   "referral": {
     "title": "Пригласить друзей",
@@ -190,6 +200,10 @@
     "yearFrom": "С года",
     "yearTo": "По год",
     "minRating": "Мин. рейтинг",
-    "resultsCount": "{count} результатов"
+    "resultsCount": "{count} результатов",
+    "mediaType": "Тип",
+    "mediaTypeAll": "Все",
+    "mediaTypeMovie": "Фильмы",
+    "mediaTypeTv": "Сериалы"
   }
 }

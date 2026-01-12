@@ -2,9 +2,11 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { MediaTypeFilter } from '@/types/movie';
 
 export interface DeckSettings {
   showWatchedMovies: boolean;
+  mediaTypeFilter: MediaTypeFilter;
 }
 
 interface DeckSettingsState extends DeckSettings {
@@ -22,6 +24,7 @@ interface DeckSettingsState extends DeckSettings {
 
 const defaultSettings: DeckSettings = {
   showWatchedMovies: false,
+  mediaTypeFilter: 'all',
 };
 
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -63,6 +66,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
       const data = await response.json();
       set({
         showWatchedMovies: data.showWatchedMovies ?? false,
+        mediaTypeFilter: data.mediaTypeFilter ?? 'all',
         isLoaded: true,
         isLoading: false,
         lastFetched: Date.now(),
@@ -91,6 +95,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
         // Revert on error
         set({
           showWatchedMovies: previousState.showWatchedMovies,
+          mediaTypeFilter: previousState.mediaTypeFilter,
           isLoading: false,
         });
         throw new Error('Failed to update settings');
@@ -99,6 +104,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
       const data = await response.json();
       set({
         showWatchedMovies: data.showWatchedMovies ?? false,
+        mediaTypeFilter: data.mediaTypeFilter ?? 'all',
         isLoading: false,
         lastFetched: Date.now(),
       });
@@ -107,6 +113,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
       // Revert on error
       set({
         showWatchedMovies: previousState.showWatchedMovies,
+        mediaTypeFilter: previousState.mediaTypeFilter,
         isLoading: false,
       });
     }
@@ -122,6 +129,7 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
       name: 'filmber-deck-settings',
       partialize: (state) => ({
         showWatchedMovies: state.showWatchedMovies,
+        mediaTypeFilter: state.mediaTypeFilter,
         lastFetched: state.lastFetched,
         isLoaded: state.isLoaded,
       }),
@@ -135,6 +143,8 @@ export const useDeckSettingsStore = create<DeckSettingsState>()(
 // Selectors
 export const useShowWatchedMovies = () =>
   useDeckSettingsStore((state) => state.showWatchedMovies);
+export const useMediaTypeFilter = () =>
+  useDeckSettingsStore((state) => state.mediaTypeFilter);
 export const useDeckSettingsLoaded = () =>
   useDeckSettingsStore((state) => state.isLoaded);
 export const useDeckSettingsHydrated = () =>

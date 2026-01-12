@@ -52,10 +52,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       response,
     };
 
-    // If "not_yet", snooze for 3 days
+    // If "not_yet", update movie status back to want_to_watch
     if (response === 'not_yet') {
-      updates.snoozeUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-      updates.respondedAt = null; // Allow re-prompt after snooze
+      await db
+        .update(userMovieLists)
+        .set({
+          status: MOVIE_STATUS.WANT_TO_WATCH,
+          watchStartedAt: null,
+          updatedAt: now,
+        })
+        .where(
+          and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, prompt.tmdbId))
+        );
     }
 
     await db.update(watchPrompts).set(updates).where(eq(watchPrompts.id, id));

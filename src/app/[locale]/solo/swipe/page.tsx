@@ -10,6 +10,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
 import { useSwipeStore } from '@/stores/swipeStore';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
+import { useDeckSettingsStore } from '@/stores/deckSettingsStore';
 import type { Movie } from '@/types/movie';
 
 export default function SoloSwipePage() {
@@ -28,6 +29,7 @@ export default function SoloSwipePage() {
   } = useRoomStore();
 
   const { addSwipe, reset: resetSwipe } = useSwipeStore();
+  const { mediaTypeFilter, loadSettings, isLoaded } = useDeckSettingsStore();
 
   // Local state for current index in solo mode
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -35,6 +37,13 @@ export default function SoloSwipePage() {
   // Auth state for saving liked movies
   const isAuthenticated = useIsAuthenticated();
   const token = useAuthToken();
+
+  // Load deck settings on mount
+  useEffect(() => {
+    if (!isLoaded) {
+      loadSettings();
+    }
+  }, [isLoaded, loadSettings]);
 
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,11 +65,13 @@ export default function SoloSwipePage() {
 
   // Fetch movies
   useEffect(() => {
-    if (!moviePoolSeed) return;
+    if (!moviePoolSeed || !isLoaded) return;
 
     const fetchMovies = async () => {
       try {
-        const response = await fetch(`/api/movies?seed=${moviePoolSeed}`);
+        const response = await fetch(
+          `/api/movies?seed=${moviePoolSeed}&mediaType=${mediaTypeFilter}`
+        );
         const data = await response.json();
 
         if (!response.ok) {
@@ -76,7 +87,7 @@ export default function SoloSwipePage() {
     };
 
     fetchMovies();
-  }, [moviePoolSeed]);
+  }, [moviePoolSeed, mediaTypeFilter, isLoaded]);
 
   const setTopCardRef = useCallback((instance: MovieCardRef | null) => {
     if (instance !== null) {

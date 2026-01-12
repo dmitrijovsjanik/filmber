@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tmdb } from '@/lib/api/tmdb';
-import { omdb } from '@/lib/api/omdb';
-import { kinopoisk } from '@/lib/api/kinopoisk';
 import { db } from '@/lib/db';
 import { movies } from '@/lib/db/schema';
 import { or, ilike } from 'drizzle-orm';
 import { movieService } from '@/lib/services/movieService';
-import type { SearchResult, SortOption, KinopoiskSearchResult } from '@/types/movie';
-
-// API availability status
-interface SourceStatus {
-  tmdb: boolean;
-  omdb: boolean;
-  kinopoisk: boolean;
-}
+import type { SearchResult, SortOption, MediaTypeFilter, MediaType } from '@/types/movie';
 
 // Timeout wrapper for API calls
 async function withTimeout<T>(
@@ -26,28 +17,6 @@ async function withTimeout<T>(
   );
   const result = promise.then((data) => ({ data, timedOut: false }));
   return Promise.race([result, timeout]);
-}
-
-// Convert Kinopoisk result to SearchResult
-function kinopoiskToSearchResult(kp: KinopoiskSearchResult): SearchResult {
-  return {
-    tmdbId: null,
-    imdbId: kp.imdbId,
-    kinopoiskId: kp.kinopoiskId,
-    title: kp.nameOriginal || kp.nameEn || kp.nameRu || 'Unknown',
-    titleRu: kp.nameRu,
-    posterPath: null,
-    posterUrl: kp.posterUrlPreview || kp.posterUrl,
-    releaseDate: kp.year?.toString() || null,
-    voteAverage: kp.ratingKinopoisk?.toString() || null,
-    voteCount: null,
-    popularity: null,
-    overview: null,
-    overviewRu: null,
-    source: 'kinopoisk',
-    kinopoiskRating: kp.ratingKinopoisk?.toString(),
-    imdbRating: kp.ratingImdb?.toString(),
-  };
 }
 
 // Bayesian rating formula (IMDB-style weighted rating)
@@ -144,15 +113,20 @@ export async function GET(request: NextRequest) {
   const ratingMin = parseFloat(searchParams.get('ratingMin') || '') || null;
   const sortBy = (searchParams.get('sortBy') as SortOption) || 'relevance';
 
+  // Media type filter
+  const mediaTypeParam = searchParams.get('mediaType');
+  const validMediaTypes: MediaTypeFilter[] = ['all', 'movie', 'tv'];
+  const mediaTypeFilter: MediaTypeFilter =
+    mediaTypeParam && validMediaTypes.includes(mediaTypeParam as MediaTypeFilter)
+      ? (mediaTypeParam as MediaTypeFilter)
+      : 'all';
+
   const hasFilters = genres.length > 0 || yearFrom || yearTo || ratingMin;
 
   // If no query and no filters, return empty
   if (!query && !hasFilters) {
     return NextResponse.json({
       tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
-      omdb: { results: [], totalResults: 0 },
-      kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
-      sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
     });
   }
 
@@ -224,9 +198,6 @@ export async function GET(request: NextRequest) {
             page,
             totalPages: discoverEn.totalPages,
           },
-          omdb: { results: [], totalResults: 0 },
-          kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
-          sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
         },
         {
           headers: {
@@ -240,9 +211,6 @@ export async function GET(request: NextRequest) {
     if (query.length < 2) {
       return NextResponse.json({
         tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
-        omdb: { results: [], totalResults: 0 },
-        kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
-        sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
       });
     }
 
@@ -250,18 +218,24 @@ export async function GET(request: NextRequest) {
     const normalizedQuery = query.replace(/ё/g, 'е').replace(/Ё/g, 'Е');
     const hasYoChar = query !== normalizedQuery;
 
-    // Search in parallel: local database + TMDB + OMDB + Kinopoisk
+    // Search in parallel: local database + TMDB
     // Use timeout for TMDB to handle VPN/blocking issues
     const TMDB_TIMEOUT = 3000; // 3 seconds
 
+    // Determine which TMDB searches to perform based on mediaTypeFilter
+    const shouldSearchMovies = mediaTypeFilter === 'all' || mediaTypeFilter === 'movie';
+    const shouldSearchTV = mediaTypeFilter === 'all' || mediaTypeFilter === 'tv';
+
     const [
       localResults,
-      tmdbEnResult,
-      tmdbRuResult,
-      tmdbEnNormResult,
-      tmdbRuNormResult,
-      omdbData,
-      kinopoiskData,
+      tmdbMovieEnResult,
+      tmdbMovieRuResult,
+      tmdbMovieEnNormResult,
+      tmdbMovieRuNormResult,
+      tmdbTVEnResult,
+      tmdbTVRuResult,
+      tmdbTVEnNormResult,
+      tmdbTVRuNormResult,
     ] = await Promise.all([
       db
         .select()
@@ -274,54 +248,78 @@ export async function GET(request: NextRequest) {
         )
         .limit(20)
         .catch(() => []),
-      withTimeout(
-        tmdb.searchMovies(query, 'en-US', page),
-        TMDB_TIMEOUT,
-        { results: [], totalResults: 0 }
-      ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true })),
-      withTimeout(
-        tmdb.searchMovies(query, 'ru-RU', page),
-        TMDB_TIMEOUT,
-        { results: [], totalResults: 0 }
-      ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true })),
-      hasYoChar
+      // TMDB Movies search
+      shouldSearchMovies
+        ? withTimeout(
+            tmdb.searchMovies(query, 'en-US', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      shouldSearchMovies
+        ? withTimeout(
+            tmdb.searchMovies(query, 'ru-RU', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      shouldSearchMovies && hasYoChar
         ? withTimeout(
             tmdb.searchMovies(normalizedQuery, 'en-US', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      hasYoChar
+      shouldSearchMovies && hasYoChar
         ? withTimeout(
             tmdb.searchMovies(normalizedQuery, 'ru-RU', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      omdb.searchMovies(query).catch(() => ({ results: [], totalResults: 0 })),
-      kinopoisk.searchMovies(query, page).catch(() => ({ results: [], totalResults: 0, totalPages: 0 })),
+      // TMDB TV search
+      shouldSearchTV
+        ? withTimeout(
+            tmdb.searchTV(query, 'en-US', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      shouldSearchTV
+        ? withTimeout(
+            tmdb.searchTV(query, 'ru-RU', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      shouldSearchTV && hasYoChar
+        ? withTimeout(
+            tmdb.searchTV(normalizedQuery, 'en-US', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      shouldSearchTV && hasYoChar
+        ? withTimeout(
+            tmdb.searchTV(normalizedQuery, 'ru-RU', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
     ]);
 
     // Extract TMDB data and check availability
-    const tmdbDataEn = tmdbEnResult.data;
-    const tmdbDataRu = tmdbRuResult.data;
-    const tmdbDataEnNorm = tmdbEnNormResult.data;
-    const tmdbDataRuNorm = tmdbRuNormResult.data;
-
-    const tmdbAvailable = !tmdbEnResult.timedOut && !tmdbRuResult.timedOut &&
-      (tmdbDataEn.results.length > 0 || tmdbDataRu.results.length > 0);
-    const kinopoiskAvailable = kinopoiskData.results.length > 0;
-    const omdbAvailable = omdbData.results.length > 0;
-
-    const sourceStatus: SourceStatus = {
-      tmdb: tmdbAvailable,
-      omdb: omdbAvailable,
-      kinopoisk: kinopoiskAvailable,
-    };
+    const tmdbMovieDataEn = tmdbMovieEnResult.data;
+    const tmdbMovieDataRu = tmdbMovieRuResult.data;
+    const tmdbMovieDataEnNorm = tmdbMovieEnNormResult.data;
+    const tmdbMovieDataRuNorm = tmdbMovieRuNormResult.data;
+    const tmdbTVDataEn = tmdbTVEnResult.data;
+    const tmdbTVDataRu = tmdbTVRuResult.data;
+    const tmdbTVDataEnNorm = tmdbTVEnNormResult.data;
+    const tmdbTVDataRuNorm = tmdbTVRuNormResult.data;
 
     // Create sets for deduplication
     const localTmdbIds = new Set(localResults.filter((m) => m.tmdbId).map((m) => m.tmdbId));
-    const localKinopoiskIds = new Set(localResults.filter((m) => m.kinopoiskId).map((m) => m.kinopoiskId));
 
     // Format local results as SearchResult
     const localSearchResults: SearchResult[] = localResults.map((m) => ({
@@ -345,38 +343,97 @@ export async function GET(request: NextRequest) {
       genreIds: null,
       imdbRating: m.imdbRating,
       kinopoiskRating: m.kinopoiskRating,
+      mediaType: (m.mediaType as MediaType) || 'movie',
+      numberOfSeasons: m.numberOfSeasons,
+      numberOfEpisodes: m.numberOfEpisodes,
     }));
 
     // Merge results from all sources (EN + RU + normalized variants)
     // RU API often returns more results for Russian queries
-    const seenTmdbIds = new Set<number>();
+    const seenTmdbMovieIds = new Set<number>();
+    const seenTmdbTVIds = new Set<number>();
 
-    // Collect all unique movies from EN results first
-    const allTmdbEnResults = [...tmdbDataEn.results, ...tmdbDataEnNorm.results].filter((r) => {
-      if (seenTmdbIds.has(r.id)) return false;
-      seenTmdbIds.add(r.id);
+    // Process MOVIES
+    const allMovieEnResults = [...tmdbMovieDataEn.results, ...tmdbMovieDataEnNorm.results].filter((r) => {
+      if (seenTmdbMovieIds.has(r.id)) return false;
+      seenTmdbMovieIds.add(r.id);
       return true;
     });
-
-    // Collect all unique movies from RU results (may have additional movies not in EN)
-    const allTmdbRuResults = [...tmdbDataRu.results, ...tmdbDataRuNorm.results].filter((r) => {
-      if (seenTmdbIds.has(r.id)) return false;
-      seenTmdbIds.add(r.id);
+    const allMovieRuResults = [...tmdbMovieDataRu.results, ...tmdbMovieDataRuNorm.results].filter((r) => {
+      if (seenTmdbMovieIds.has(r.id)) return false;
+      seenTmdbMovieIds.add(r.id);
       return true;
     });
-
-    // Create map of RU data for all movies (from both EN and RU results)
-    const ruDataMap = new Map(
-      [...tmdbDataRu.results, ...tmdbDataRuNorm.results].map((r) => [r.id, { title: r.title, overview: r.overview }])
+    const movieRuDataMap = new Map(
+      [...tmdbMovieDataRu.results, ...tmdbMovieDataRuNorm.results].map((r) => [r.id, { title: r.title, overview: r.overview }])
     );
-
-    // Combine EN and RU results (RU may have movies that EN doesn't have for Russian queries)
-    const allUniqueMovies = [...allTmdbEnResults, ...allTmdbRuResults];
+    const allUniqueMovies = [...allMovieEnResults, ...allMovieRuResults];
     const newTmdbMovies = allUniqueMovies.filter((r) => !localTmdbIds.has(r.id));
 
-    // Format new TMDB results with genreIds
-    const tmdbSearchResults: SearchResult[] = newTmdbMovies.map((r) => {
-      const ruData = ruDataMap.get(r.id);
+    // Process TV SERIES
+    const allTVEnResults = [...tmdbTVDataEn.results, ...tmdbTVDataEnNorm.results].filter((r) => {
+      if (seenTmdbTVIds.has(r.id)) return false;
+      seenTmdbTVIds.add(r.id);
+      return true;
+    });
+    const allTVRuResults = [...tmdbTVDataRu.results, ...tmdbTVDataRuNorm.results].filter((r) => {
+      if (seenTmdbTVIds.has(r.id)) return false;
+      seenTmdbTVIds.add(r.id);
+      return true;
+    });
+    const tvRuDataMap = new Map(
+      [...tmdbTVDataRu.results, ...tmdbTVDataRuNorm.results].map((r) => [r.id, { name: r.name, overview: r.overview }])
+    );
+    const allUniqueTV = [...allTVEnResults, ...allTVRuResults];
+
+    // Fetch genre mappings for both movies and TV (in parallel)
+    const [movieGenresEn, movieGenresRu, tvGenresEn, tvGenresRu] = await Promise.all([
+      tmdb.getGenres('en-US').catch(() => []),
+      tmdb.getGenres('ru-RU').catch(() => []),
+      tmdb.getTVGenres('en-US').catch(() => []),
+      tmdb.getTVGenres('ru-RU').catch(() => []),
+    ]);
+
+    // Create genre ID to name mappings (prefer Russian names)
+    const movieGenreMap = new Map<number, string>();
+    movieGenresEn.forEach((g) => movieGenreMap.set(g.id, g.name));
+    movieGenresRu.forEach((g) => movieGenreMap.set(g.id, g.name)); // Override with Russian
+
+    const tvGenreMap = new Map<number, string>();
+    tvGenresEn.forEach((g) => tvGenreMap.set(g.id, g.name));
+    tvGenresRu.forEach((g) => tvGenreMap.set(g.id, g.name)); // Override with Russian
+
+    // Helper to capitalize first letter
+    const capitalize = (str: string): string => {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+
+    // Helper to convert genre IDs to JSON string of names
+    // Also splits combined genres like "Action & Adventure" and capitalizes
+    const genreIdsToNames = (ids: number[] | null, genreMap: Map<number, string>): string | null => {
+      if (!ids || ids.length === 0) return null;
+      const names: string[] = [];
+      ids.forEach((id) => {
+        const genre = genreMap.get(id);
+        if (genre) {
+          // Split combined genres (e.g., "Action & Adventure" -> ["Action", "Adventure"])
+          // Also handles Russian "боевик и приключения" -> ["боевик", "приключения"]
+          // IMPORTANT: Match " & " or " и " with spaces to avoid splitting words like "Криминал"
+          const parts = genre.split(/\s+&\s+|\s+и\s+/);
+          parts.forEach((part) => {
+            const trimmed = part.trim();
+            if (trimmed) {
+              names.push(capitalize(trimmed));
+            }
+          });
+        }
+      });
+      return names.length > 0 ? JSON.stringify(names) : null;
+    };
+
+    // Format new TMDB MOVIE results with genre names
+    const tmdbMovieSearchResults: SearchResult[] = newTmdbMovies.map((r) => {
+      const ruData = movieRuDataMap.get(r.id);
       return {
         tmdbId: r.id,
         imdbId: null,
@@ -391,10 +448,44 @@ export async function GET(request: NextRequest) {
         overviewRu: ruData?.overview || null,
         source: 'tmdb' as const,
         genreIds: r.genre_ids || null,
+        genres: genreIdsToNames(r.genre_ids, movieGenreMap),
+        mediaType: 'movie' as const,
       };
     });
 
+    // Format new TMDB TV results with genre names (seasons/episodes will be fetched after sorting)
+    const tmdbTVSearchResults: SearchResult[] = allUniqueTV.map((r) => {
+      const ruData = tvRuDataMap.get(r.id);
+      return {
+        tmdbId: r.id,
+        imdbId: null,
+        title: r.name,
+        titleRu: ruData?.name || null,
+        posterPath: r.poster_path,
+        releaseDate: r.first_air_date,
+        voteAverage: r.vote_average?.toString() || null,
+        voteCount: r.vote_count || null,
+        popularity: r.popularity || null,
+        overview: r.overview,
+        overviewRu: ruData?.overview || null,
+        source: 'tmdb' as const,
+        genreIds: r.genre_ids || null,
+        genres: genreIdsToNames(r.genre_ids, tvGenreMap),
+        mediaType: 'tv' as const,
+        numberOfSeasons: null,
+        numberOfEpisodes: null,
+      };
+    });
+
+    // Combine movie and TV results
+    const tmdbSearchResults: SearchResult[] = [...tmdbMovieSearchResults, ...tmdbTVSearchResults];
+
     let allTmdbResults = [...localSearchResults, ...tmdbSearchResults];
+
+    // Apply mediaType filter (filter out results that don't match)
+    if (mediaTypeFilter !== 'all') {
+      allTmdbResults = allTmdbResults.filter((m) => m.mediaType === mediaTypeFilter);
+    }
 
     // Apply client-side filters
     if (genres.length > 0) {
@@ -531,7 +622,45 @@ export async function GET(request: NextRequest) {
       date_asc: (a, b) => getYear(a) - getYear(b),
     };
 
-    const combinedTmdbResults = allTmdbResults.sort(sortFunctions[sortBy]);
+    let combinedTmdbResults = allTmdbResults.sort(sortFunctions[sortBy]);
+
+    // Fetch TV details for seasons/episodes AFTER sorting (for top 15 TV results)
+    const tvResultsNeedingDetails = combinedTmdbResults
+      .filter((r) => r.mediaType === 'tv' && r.numberOfSeasons === null && r.tmdbId)
+      .slice(0, 15);
+
+    if (tvResultsNeedingDetails.length > 0) {
+      const tvDetailsResults = await Promise.all(
+        tvResultsNeedingDetails.map((r) =>
+          tmdb.getTVSeriesDetails(r.tmdbId!, 'en-US')
+            .then((details) => ({ tmdbId: r.tmdbId, details }))
+            .catch(() => null)
+        )
+      );
+
+      const tvDetailsMap = new Map<number, { numberOfSeasons: number; numberOfEpisodes: number }>();
+      tvDetailsResults.forEach((result) => {
+        if (result && result.details && result.tmdbId) {
+          tvDetailsMap.set(result.tmdbId, {
+            numberOfSeasons: result.details.number_of_seasons,
+            numberOfEpisodes: result.details.number_of_episodes,
+          });
+        }
+      });
+
+      // Update results with TV details
+      combinedTmdbResults = combinedTmdbResults.map((r) => {
+        if (r.mediaType === 'tv' && r.tmdbId && tvDetailsMap.has(r.tmdbId)) {
+          const details = tvDetailsMap.get(r.tmdbId)!;
+          return {
+            ...r,
+            numberOfSeasons: details.numberOfSeasons,
+            numberOfEpisodes: details.numberOfEpisodes,
+          };
+        }
+        return r;
+      });
+    }
 
     // Cache new movies in background using movieService
     if (newTmdbMovies.length > 0) {
@@ -542,47 +671,18 @@ export async function GET(request: NextRequest) {
       ).catch((err) => console.error('Failed to cache search results:', err));
     }
 
-    // Format OMDB results
-    const omdbResults: SearchResult[] = omdbData.results.map((r) => ({
-      tmdbId: null,
-      imdbId: r.imdbID,
-      title: r.Title,
-      titleRu: null,
-      posterPath: r.Poster !== 'N/A' ? r.Poster : null,
-      releaseDate: r.Year,
-      voteAverage: null,
-      overview: null,
-      overviewRu: null,
-      source: 'omdb' as const,
-    }));
-
-    // Format Kinopoisk results (exclude already found by local or imdbId match)
-    const kinopoiskResults: SearchResult[] = kinopoiskData.results
-      .filter((kp) => !localKinopoiskIds.has(kp.kinopoiskId))
-      .map(kinopoiskToSearchResult);
-
-    // Note: Kinopoisk API returns total count including TV series,
-    // but we filter to only show movies. Estimate ~40% are movies.
-    const estimatedKinopoiskMovies = Math.round(kinopoiskData.totalResults * 0.4);
-
-    const totalPages = Math.ceil(tmdbDataEn.totalResults / 20);
+    // Calculate total results from both movies and TV
+    const tmdbTotalResults = tmdbMovieDataEn.totalResults + tmdbTVDataEn.totalResults;
+    const totalPages = Math.ceil(tmdbTotalResults / 20);
 
     return NextResponse.json(
       {
         tmdb: {
           results: combinedTmdbResults,
-          totalResults: tmdbDataEn.totalResults,
+          totalResults: tmdbTotalResults,
           page,
           totalPages,
         },
-        omdb: { results: omdbResults, totalResults: omdbData.totalResults },
-        kinopoisk: {
-          results: kinopoiskResults,
-          // Use estimated movie count instead of API's total (which includes TV series)
-          totalResults: kinopoiskResults.length > 0 ? estimatedKinopoiskMovies : 0,
-          totalPages: kinopoiskData.totalPages,
-        },
-        sourceStatus,
       },
       {
         headers: {
@@ -594,9 +694,6 @@ export async function GET(request: NextRequest) {
     console.error('Search error:', error);
     return NextResponse.json({
       tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
-      omdb: { results: [], totalResults: 0 },
-      kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
-      sourceStatus: { tmdb: false, omdb: false, kinopoisk: false },
     });
   }
 }

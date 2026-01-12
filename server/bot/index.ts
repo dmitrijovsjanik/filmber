@@ -360,6 +360,14 @@ export async function setWebhook(url: string): Promise<void> {
   await bot.api.setWebhook(url, {
     secret_token: WEBHOOK_SECRET,
   });
+
+  // Set bot menu commands
+  await bot.api.setMyCommands([
+    { command: 'start', description: 'Открыть Filmber / Open Filmber' },
+    { command: 'help', description: 'Помощь / Help' },
+    { command: 'bug', description: 'Сообщить об ошибке / Report a bug' },
+  ]);
+
   console.log(`> Telegram webhook set to ${url}`);
 }
 

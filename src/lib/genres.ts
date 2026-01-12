@@ -2,7 +2,7 @@
 // These are the standard TMDB movie genres with Russian translations
 
 export const genreTranslations: Record<string, string> = {
-  // EN -> RU
+  // Movie genres (EN -> RU)
   'Action': 'Боевик',
   'Adventure': 'Приключения',
   'Animation': 'Мультфильм',
@@ -22,6 +22,15 @@ export const genreTranslations: Record<string, string> = {
   'Thriller': 'Триллер',
   'War': 'Военный',
   'Western': 'Вестерн',
+  // TV series genres (EN -> RU)
+  'Action & Adventure': 'Боевик',
+  'Sci-Fi & Fantasy': 'Фантастика',
+  'War & Politics': 'Военный',
+  'Kids': 'Детский',
+  'News': 'Новости',
+  'Reality': 'Реалити',
+  'Soap': 'Мыльная опера',
+  'Talk': 'Ток-шоу',
 };
 
 export function translateGenre(genre: string, locale: string): string {

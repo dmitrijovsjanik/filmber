@@ -1,8 +1,9 @@
 'use client';
 
-import { useImperativeHandle, forwardRef, useEffect, useState, useRef } from 'react';
+import { useImperativeHandle, forwardRef, useState, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { Badge } from '@/components/ui/badge';
 import { H3, H4, Small } from '@/components/ui/typography';
@@ -26,7 +27,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   { movie, onSwipe, isTop = false, locale = 'en' },
   ref
 ) {
-
+  const t = useTranslations('movie');
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
@@ -40,6 +41,26 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const overview =
     locale === 'ru' && movie.overviewRu ? movie.overviewRu : movie.overview;
   const genres = translateGenres(movie.genres, locale);
+
+  // Calculate average rating from all available platforms
+  const averageRating = (() => {
+    const ratings: number[] = [];
+    if (movie.ratings.tmdb && movie.ratings.tmdb !== '0') {
+      const val = parseFloat(movie.ratings.tmdb);
+      if (!isNaN(val)) ratings.push(val);
+    }
+    if (movie.ratings.imdb) {
+      const val = parseFloat(movie.ratings.imdb);
+      if (!isNaN(val)) ratings.push(val);
+    }
+    if (movie.ratings.rottenTomatoes) {
+      const val = parseFloat(movie.ratings.rottenTomatoes);
+      if (!isNaN(val)) ratings.push(val);
+    }
+    if (ratings.length === 0) return null;
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    return avg.toFixed(1);
+  })();
 
   // Use ref to always have latest onSwipe callback - update synchronously on every render
   const onSwipeRef = useRef(onSwipe);
@@ -124,27 +145,34 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
               {/* All badges in one container */}
               <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0 items-center">
+                {movie.mediaType === 'tv' && (
+                  <Badge variant="cardTv">
+                    {t('tvSeries')}
+                  </Badge>
+                )}
                 {movie.releaseDate && (
-                  <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
+                  <Badge variant="cardSecondary">
                     {new Date(movie.releaseDate).getFullYear()}
                   </Badge>
                 )}
-                {movie.runtime && (
-                  <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
-                    {movie.runtime} {locale === 'ru' ? 'мин' : 'min'}
+                {movie.mediaType === 'tv' && (movie.numberOfSeasons || movie.numberOfEpisodes) ? (
+                  <Badge variant="cardSecondary">
+                    {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
+                    {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
+                    {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
                   </Badge>
-                )}
+                ) : movie.runtime ? (
+                  <Badge variant="cardSecondary">
+                    {t('runtime', { minutes: movie.runtime })}
+                  </Badge>
+                ) : null}
                 {genres.slice(0, 2).map((genre) => (
-                  <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
+                  <Badge key={genre} variant="cardSecondary">
                     {genre}
                   </Badge>
                 ))}
-                <Badge variant="tmdb">TMDB {movie.ratings.tmdb}</Badge>
-                {movie.ratings.imdb && (
-                  <Badge variant="imdb">IMDb {movie.ratings.imdb}</Badge>
-                )}
-                {movie.ratings.rottenTomatoes && (
-                  <Badge variant="rt">RT {movie.ratings.rottenTomatoes}</Badge>
+                {averageRating && (
+                  <Badge variant="rating">{averageRating}</Badge>
                 )}
               </div>
 
@@ -179,27 +207,34 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
           {/* All badges in one container */}
           <div className="flex flex-wrap gap-1.5 mb-3 items-center">
+            {movie.mediaType === 'tv' && (
+              <Badge variant="cardTv">
+                {t('tvSeries')}
+              </Badge>
+            )}
             {movie.releaseDate && (
-              <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
+              <Badge variant="cardSecondary">
                 {new Date(movie.releaseDate).getFullYear()}
               </Badge>
             )}
-            {movie.runtime && (
-              <Badge className="bg-white/20 text-white border-transparent hover:bg-white/30">
-                {movie.runtime} {locale === 'ru' ? 'мин' : 'min'}
+            {movie.mediaType === 'tv' && (movie.numberOfSeasons || movie.numberOfEpisodes) ? (
+              <Badge variant="cardSecondary">
+                {movie.numberOfSeasons ? `${movie.numberOfSeasons}s` : ''}
+                {movie.numberOfSeasons && movie.numberOfEpisodes ? ' · ' : ''}
+                {movie.numberOfEpisodes ? `${movie.numberOfEpisodes}ep` : ''}
               </Badge>
-            )}
+            ) : movie.runtime ? (
+              <Badge variant="cardSecondary">
+                {t('runtime', { minutes: movie.runtime })}
+              </Badge>
+            ) : null}
             {genres.slice(0, 2).map((genre) => (
-              <Badge key={genre} className="bg-white/20 text-white border-transparent hover:bg-white/30">
+              <Badge key={genre} variant="cardSecondary">
                 {genre}
               </Badge>
             ))}
-            <Badge variant="tmdb">TMDB {movie.ratings.tmdb}</Badge>
-            {movie.ratings.imdb && (
-              <Badge variant="imdb">IMDb {movie.ratings.imdb}</Badge>
-            )}
-            {movie.ratings.rottenTomatoes && (
-              <Badge variant="rt">RT {movie.ratings.rottenTomatoes}</Badge>
+            {averageRating && (
+              <Badge variant="rating">{averageRating}</Badge>
             )}
           </div>
 

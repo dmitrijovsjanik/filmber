@@ -108,12 +108,23 @@ export function WatchPromptBanner() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="mb-4 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-900/50 to-blue-900/50 p-4"
+        className="relative mb-4 overflow-hidden rounded-2xl border border-emerald-500/30 bg-card p-4 shadow-lg shadow-emerald-500/10"
       >
-        <div className="flex items-start gap-3">
+        {/* Dismiss button */}
+        <button
+          onClick={() => handleResponse('dismissed')}
+          className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="Dismiss"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="flex items-start gap-4">
           {/* Poster thumbnail */}
           {posterUrl && (
-            <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-gray-700">
+            <div className="h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-muted shadow-md">
               <img
                 src={posterUrl}
                 alt={movieTitle}
@@ -123,16 +134,16 @@ export function WatchPromptBanner() {
           )}
 
           {/* Content */}
-          <div className="flex-1">
-            <p className="mb-1 text-sm text-gray-300">
-              {t('didYouWatch', { defaultValue: 'Did you watch' })}
+          <div className="flex-1 pr-6">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">
+              🎬 {t('didYouWatch', { defaultValue: 'Did you watch' })}
             </p>
-            <p className="mb-3 font-semibold text-white">{movieTitle}?</p>
+            <p className="mb-4 text-lg font-semibold text-foreground">{movieTitle}?</p>
 
             {showRating ? (
               // Rating selection
-              <div className="space-y-3">
-                <p className="text-sm text-gray-400">
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
                   {t('howWasIt', { defaultValue: 'How was it?' })}
                 </p>
                 <RatingStars
@@ -143,7 +154,8 @@ export function WatchPromptBanner() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleResponse('watched')}
-                    className="flex-1 rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                    disabled={!selectedRating}
+                    className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {t('save', { defaultValue: 'Save' })}
                   </button>
@@ -152,7 +164,7 @@ export function WatchPromptBanner() {
                       setShowRating(false);
                       setSelectedRating(null);
                     }}
-                    className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-600"
+                    className="rounded-xl bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                   >
                     {t('back', { defaultValue: 'Back' })}
                   </button>
@@ -160,24 +172,18 @@ export function WatchPromptBanner() {
               </div>
             ) : (
               // Initial buttons
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setShowRating(true)}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-emerald-500"
                 >
-                  ✅ {t('yesWatched', { defaultValue: 'Yes, watched!' })}
+                  ✅ {t('yesWatched', { defaultValue: 'Yes!' })}
                 </button>
                 <button
                   onClick={() => handleResponse('not_yet')}
-                  className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-600"
+                  className="flex-1 rounded-xl bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                 >
                   ⏳ {t('notYet', { defaultValue: 'Not yet' })}
-                </button>
-                <button
-                  onClick={() => handleResponse('dismissed')}
-                  className="rounded-lg px-2 py-2 text-sm text-gray-500 transition-colors hover:text-gray-400"
-                >
-                  ✕
                 </button>
               </div>
             )}
@@ -186,12 +192,12 @@ export function WatchPromptBanner() {
 
         {/* Progress dots */}
         {prompts.length > 1 && (
-          <div className="mt-3 flex justify-center gap-1">
+          <div className="mt-4 flex justify-center gap-1.5">
             {prompts.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 w-1.5 rounded-full ${
-                  i === currentIndex ? 'bg-white' : 'bg-white/30'
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  i === currentIndex ? 'bg-emerald-500' : 'bg-muted-foreground/30'
                 }`}
               />
             ))}

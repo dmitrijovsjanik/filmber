@@ -15,7 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import type { SearchFilters as Filters, SortOption } from '@/types/movie';
+import type { SearchFilters as Filters, SortOption, MediaTypeFilter } from '@/types/movie';
 
 interface Genre {
   id: number;
@@ -84,8 +84,9 @@ export function SearchFilters({
       yearTo: null,
       ratingMin: null,
       sortBy: filters.sortBy,
+      mediaType: filters.mediaType,
     });
-  }, [filters.sortBy, onFiltersChange]);
+  }, [filters.sortBy, filters.mediaType, onFiltersChange]);
 
   const activeFiltersCount =
     filters.genres.length +
@@ -179,6 +180,34 @@ export function SearchFilters({
           </SheetHeader>
 
           <div className="space-y-6">
+            {/* Media type filter */}
+            <div>
+              <label className="text-sm font-medium mb-3 block">
+                {t('mediaType')}
+              </label>
+              <ToggleGroup
+                type="single"
+                value={filters.mediaType}
+                onValueChange={(value) => {
+                  if (value) {
+                    onFiltersChange({ ...filters, mediaType: value as MediaTypeFilter });
+                  }
+                }}
+                className="justify-start"
+                disabled={disabled}
+              >
+                <ToggleGroupItem value="all" className="px-4">
+                  {t('mediaTypeAll')}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="movie" className="px-4">
+                  {t('mediaTypeMovie')}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="tv" className="px-4">
+                  {t('mediaTypeTv')}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
             {/* Genre toggles */}
             <div>
               <label className="text-sm font-medium mb-3 block">

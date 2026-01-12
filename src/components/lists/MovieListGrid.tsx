@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
-import { toast } from 'sonner';
 import { MovieListItem } from './MovieListItem';
 import { ListFilter } from './ListFilter';
-import { SearchServiceTabs, type SearchService } from './SearchServiceTabs';
 import { SearchResultItem } from './SearchResultItem';
 import { SearchFilters } from './SearchFilters';
 import { Loader } from '@/components/ui/Loader';
@@ -22,12 +20,6 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useClearSearchTrigger } from '@/stores/searchStore';
 import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
-
-interface SourceStatus {
-  tmdb: boolean;
-  omdb: boolean;
-  kinopoisk: boolean;
-}
 
 interface FilterCounts {
   all: number;
@@ -85,27 +77,11 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   });
 
   // External search state
-  const [searchMode, setSearchMode] = useState<'local' | SearchService>('local');
-  const [searchResults, setSearchResults] = useState<{
-    tmdb: SearchResult[];
-    omdb: SearchResult[];
-    kinopoisk: SearchResult[];
-    tmdbCount: number;
-    omdbCount: number;
-    kinopoiskCount: number;
-    sourceStatus: SourceStatus;
-  }>({
-    tmdb: [],
-    omdb: [],
-    kinopoisk: [],
-    tmdbCount: 0,
-    omdbCount: 0,
-    kinopoiskCount: 0,
-    sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
-  });
+  const [isExternalSearch, setIsExternalSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
-  const hasShownTmdbWarning = useRef(false);
 
   // Pagination state for infinite scroll
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,6 +102,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     yearTo: null,
     ratingMin: null,
     sortBy: 'relevance',
+    mediaType: 'all',
   });
 
   // Apply filters and sorting to local items
@@ -273,7 +250,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   // Initialize from cache or fetch
   useEffect(() => {
     if (!hasHydrated || !token) return;
-    if (searchMode !== 'local') return;
+    if (isExternalSearch) return;
 
     // If we have valid cache, use it immediately
     if (cache && isCacheValid()) {
@@ -290,7 +267,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       // No cache or invalid, fetch fresh data
       fetchFromApi(false);
     }
-  }, [hasHydrated, token, searchMode]);
+  }, [hasHydrated, token, isExternalSearch]);
 
   // Refetch when filters change (but use cached data for display)
   const fetchItems = useCallback(async () => {
@@ -323,6 +300,9 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       if (searchFilters.sortBy !== 'relevance') {
         params.set('sortBy', searchFilters.sortBy);
       }
+      if (searchFilters.mediaType !== 'all') {
+        params.set('mediaType', searchFilters.mediaType);
+      }
 
       return `/api/search?${params}`;
     },
@@ -332,16 +312,9 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   // External search effect
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
-      setSearchResults({
-        tmdb: [],
-        omdb: [],
-        kinopoisk: [],
-        tmdbCount: 0,
-        omdbCount: 0,
-        kinopoiskCount: 0,
-        sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
-      });
-      setSearchMode('local');
+      setSearchResults([]);
+      setIsExternalSearch(false);
+      setTotalResults(0);
       setCurrentPage(1);
       setTotalPages(0);
       setHasMore(false);
@@ -350,14 +323,11 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       setShowExpandedSection(false);
       setExpandedQuery(null);
       setHasTrackedSearch(false);
-      hasShownTmdbWarning.current = false;
       return;
     }
 
     // Switch to external search mode
-    if (searchMode === 'local') {
-      setSearchMode('tmdb');
-    }
+    setIsExternalSearch(true);
 
     // Track search usage once per search session
     if (!hasTrackedSearch) {
@@ -371,52 +341,28 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     setShowExpandedSection(false);
     setExpandedQuery(null);
 
-    const searchExternalServices = async () => {
+    const searchTMDB = async () => {
       setIsSearching(true);
 
       try {
         const response = await fetch(buildSearchUrl(debouncedQuery, 1));
         const data = await response.json();
 
-        const sourceStatus = data.sourceStatus || { tmdb: true, omdb: true, kinopoisk: true };
-
-        setSearchResults({
-          tmdb: data.tmdb?.results || [],
-          omdb: data.omdb?.results || [],
-          kinopoisk: data.kinopoisk?.results || [],
-          tmdbCount: data.tmdb?.totalResults || 0,
-          omdbCount: data.omdb?.totalResults || 0,
-          kinopoiskCount: data.kinopoisk?.totalResults || 0,
-          sourceStatus,
-        });
+        setSearchResults(data.tmdb?.results || []);
+        setTotalResults(data.tmdb?.totalResults || 0);
         setTotalPages(data.tmdb?.totalPages || 0);
         setHasMore((data.tmdb?.page || 1) < (data.tmdb?.totalPages || 0));
-
-        // Show toast warning if TMDB is unavailable
-        if (!sourceStatus.tmdb && !hasShownTmdbWarning.current) {
-          hasShownTmdbWarning.current = true;
-          toast.warning(t('tmdbUnavailable', {
-            defaultValue: 'TMDB unavailable, using alternative sources',
-          }));
-        }
       } catch (err) {
         console.error('Search failed:', err);
-        setSearchResults({
-          tmdb: [],
-          omdb: [],
-          kinopoisk: [],
-          tmdbCount: 0,
-          omdbCount: 0,
-          kinopoiskCount: 0,
-          sourceStatus: { tmdb: false, omdb: false, kinopoisk: false },
-        });
+        setSearchResults([]);
+        setTotalResults(0);
         setHasMore(false);
       } finally {
         setIsSearching(false);
       }
     };
 
-    searchExternalServices();
+    searchTMDB();
   }, [debouncedQuery, searchFilters, buildSearchUrl]);
 
   // Update item status - optimistic update
@@ -527,11 +473,8 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       const data = await response.json();
 
       // Append new results to existing
-      setSearchResults((prev) => ({
-        ...prev,
-        tmdb: [...prev.tmdb, ...(data.tmdb?.results || [])],
-        tmdbCount: data.tmdb?.totalResults || prev.tmdbCount,
-      }));
+      setSearchResults((prev) => [...prev, ...(data.tmdb?.results || [])]);
+      setTotalResults(data.tmdb?.totalResults || 0);
 
       setCurrentPage(nextPage);
       setHasMore(nextPage < (data.tmdb?.totalPages || 0));
@@ -576,7 +519,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       const data = await response.json();
 
       // Filter out results already in main results
-      const existingIds = new Set(searchResults.tmdb.map((r) => r.tmdbId));
+      const existingIds = new Set(searchResults.map((r) => r.tmdbId));
       const newResults = (data.tmdb?.results || []).filter(
         (r: SearchResult) => !existingIds.has(r.tmdbId)
       );
@@ -589,7 +532,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     } finally {
       setIsLoadingExpanded(false);
     }
-  }, [debouncedQuery, canExpandSearch, getBroaderQuery, searchResults.tmdb]);
+  }, [debouncedQuery, canExpandSearch, getBroaderQuery, searchResults]);
 
   // Handle watch complete (from timer prompt) - optimistic update
   const handleWatchComplete = async (tmdbId: number, rating: number) => {
@@ -626,20 +569,24 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
     }
   };
 
-  // Handle "not yet" (from timer prompt) - optimistic update
+  // Handle "not finished" (from timer prompt) - moves back to want_to_watch
   const handleWatchNotYet = async (tmdbId: number) => {
     if (!token) return;
 
-    // Optimistic update
+    // Optimistic update - move to want_to_watch, clear timer and rating
+    const updates = {
+      status: MOVIE_STATUS.WANT_TO_WATCH as MovieStatus,
+      rating: null,
+      watchStartedAt: null,
+    };
     setItems((prev) =>
       prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, watchStartedAt: null } : item
+        item.tmdbId === tmdbId ? { ...item, ...updates } : item
       )
     );
-    updateItem(tmdbId, { watchStartedAt: null });
+    updateItem(tmdbId, updates);
 
     try {
-      // Clear watchStartedAt so prompt doesn't show again
       const response = await fetch(`/api/lists/${tmdbId}`, {
         method: 'PATCH',
         headers: {
@@ -647,6 +594,8 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          status: MOVIE_STATUS.WANT_TO_WATCH,
+          rating: null,
           watchStartedAt: null,
         }),
       });
@@ -659,16 +608,6 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       fetchItems(); // Revert on error
     }
   };
-
-  // Get current search results based on selected service
-  const currentSearchResults =
-    searchMode === 'tmdb'
-      ? searchResults.tmdb
-      : searchMode === 'kinopoisk'
-        ? searchResults.kinopoisk
-        : searchResults.omdb;
-
-  const isExternalSearch = searchMode === 'tmdb' || searchMode === 'omdb' || searchMode === 'kinopoisk';
 
   return (
     <div className="flex flex-col h-full">
@@ -706,19 +645,6 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           )}
         </div>
 
-        {/* Service tabs (when doing external search) */}
-        {isExternalSearch && (
-          <SearchServiceTabs
-            activeService={searchMode as SearchService}
-            tmdbCount={searchResults.tmdbCount}
-            omdbCount={searchResults.omdbCount}
-            kinopoiskCount={searchResults.kinopoiskCount}
-            onServiceChange={(service) => setSearchMode(service)}
-            isSearching={isSearching}
-            sourceStatus={searchResults.sourceStatus}
-          />
-        )}
-
         {/* Status/Rating filters (when viewing local list) */}
         {!isExternalSearch && (
           <ListFilter
@@ -747,7 +673,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           <div className="flex items-center justify-center py-12">
             <Loader size="lg" />
           </div>
-        ) : currentSearchResults.length === 0 ? (
+        ) : searchResults.length === 0 ? (
           <div className="py-12 text-center">
             <div className="mb-4 text-4xl">🔍</div>
             <p className="text-muted-foreground">
@@ -756,18 +682,17 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           </div>
         ) : (
           <>
-            <motion.div layout className="space-y-3">
-              <AnimatePresence>
-                {currentSearchResults.map((result, index) => (
-                  <SearchResultItem
-                    key={`${result.source}-${result.tmdbId || result.imdbId}-${index}`}
-                    ref={index === currentSearchResults.length - 1 ? lastElementRef : null}
-                    {...result}
-                    onAddedToList={handleAddedFromSearch}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <div className="space-y-3">
+              {searchResults.map((result, index) => (
+                <SearchResultItem
+                  key={`${result.source}-${result.tmdbId || result.imdbId}-${index}`}
+                  ref={index === searchResults.length - 1 ? lastElementRef : null}
+                  {...result}
+                  onAddedToList={handleAddedFromSearch}
+                  showMediaTypeBadge={searchFilters.mediaType === 'all'}
+                />
+              ))}
+            </div>
 
             {/* Loading more indicator */}
             {isLoadingMore && (
@@ -779,7 +704,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
             {/* Show More button - appears when at end of results */}
             {!isSearching &&
               !hasMore &&
-              currentSearchResults.length > 0 &&
+              searchResults.length > 0 &&
               canExpandSearch(debouncedQuery) &&
               !showExpandedSection && (
                 <motion.div
@@ -822,17 +747,16 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
 
-                <motion.div layout className="space-y-3">
-                  <AnimatePresence>
-                    {expandedResults.map((result, index) => (
-                      <SearchResultItem
-                        key={`expanded-${result.tmdbId || result.imdbId}-${index}`}
-                        {...result}
-                        onAddedToList={handleAddedFromSearch}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+                <div className="space-y-3">
+                  {expandedResults.map((result, index) => (
+                    <SearchResultItem
+                      key={`expanded-${result.tmdbId || result.imdbId}-${index}`}
+                      {...result}
+                      onAddedToList={handleAddedFromSearch}
+                      showMediaTypeBadge={searchFilters.mediaType === 'all'}
+                    />
+                  ))}
+                </div>
               </motion.div>
             )}
 

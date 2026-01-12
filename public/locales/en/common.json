@@ -47,7 +47,11 @@
     "rating": "Rating",
     "runtime": "{minutes} min",
     "released": "Released",
-    "similarMovies": "Similar movies"
+    "similarMovies": "Similar movies",
+    "film": "Film",
+    "tvSeries": "TV Series",
+    "seasons": "{count} seasons",
+    "episodes": "{count} ep."
   },
   "join": {
     "title": "Join Room",
@@ -121,10 +125,12 @@
   "prompts": {
     "didYouWatch": "Did you watch",
     "howWasIt": "How was it?",
+    "howWasMovie": "How was \"{title}\"?",
     "save": "Save",
     "back": "Back",
     "yesWatched": "Yes, watched!",
-    "notYet": "Not yet"
+    "notYet": "Not yet",
+    "notFinished": "Didn't finish"
   },
   "profile": {
     "wantToWatch": "Want to Watch",
@@ -140,11 +146,15 @@
     "support": "Support"
   },
   "deckSettings": {
-    "title": "Recommendations",
+    "title": "Swipe Settings",
     "sectionPartner": "Partner Recommendations",
     "showWatched": "Share watched movies",
     "showWatchedDescription": "Show your favorite movies (rated 3 stars) from your \"Watched\" list to your partner",
-    "info": "When swiping together, your partner will see your favorite movies among recommendations."
+    "info": "When swiping together, your partner will see your favorite movies among recommendations.",
+    "mediaTypeDescription": "What to show in swipe deck",
+    "mediaTypeAll": "All",
+    "mediaTypeMovie": "Movies",
+    "mediaTypeTv": "TV Series"
   },
   "referral": {
     "title": "Invite Friends",
@@ -190,6 +200,10 @@
     "yearFrom": "From year",
     "yearTo": "To year",
     "minRating": "Min rating",
-    "resultsCount": "{count} results"
+    "resultsCount": "{count} results",
+    "mediaType": "Type",
+    "mediaTypeAll": "All",
+    "mediaTypeMovie": "Movies",
+    "mediaTypeTv": "TV Series"
   }
 }

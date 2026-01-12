@@ -7,6 +7,7 @@ import type { SearchResult } from '@/types/movie';
 
 interface SearchResultItemProps extends SearchResult {
   onAddedToList?: () => void;
+  showMediaTypeBadge?: boolean;
 }
 
 export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps>(
@@ -28,7 +29,11 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
       imdbRating,
       kinopoiskRating,
       source,
+      mediaType,
+      numberOfSeasons,
+      numberOfEpisodes,
       onAddedToList,
+      showMediaTypeBadge = true,
     },
     ref
   ) {
@@ -51,6 +56,9 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
       imdbRating: imdbRating || null,
       kinopoiskRating: kinopoiskRating || null,
       rottenTomatoesRating: null,
+      mediaType: mediaType || 'movie',
+      numberOfSeasons: numberOfSeasons || null,
+      numberOfEpisodes: numberOfEpisodes || null,
     };
 
     // For non-TMDB results, we need to pass additional info
@@ -68,6 +76,7 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
           onAddedToList={onAddedToList}
           showStatusBadge={!!isInList}
           showRatingBadge={!!isInList}
+          showMediaTypeBadge={showMediaTypeBadge}
           canAddToList={canAddToList}
           source={source}
         />

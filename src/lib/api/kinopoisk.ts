@@ -2,9 +2,33 @@ import type {
   KinopoiskFilm,
   KinopoiskSearchResult,
   KinopoiskSearchResponse,
+  MediaType,
+  MediaTypeFilter,
 } from '@/types/movie';
 
 const KINOPOISK_BASE_URL = 'https://kinopoiskapiunofficial.tech/api';
+
+// Kinopoisk type to our MediaType mapping
+type KinopoiskType = 'FILM' | 'TV_SERIES' | 'TV_SHOW' | 'MINI_SERIES' | 'VIDEO';
+
+function mapKinopoiskTypeToMediaType(type: KinopoiskType): MediaType {
+  return type === 'FILM' ? 'movie' : 'tv';
+}
+
+function filterByMediaType<T extends { type: KinopoiskType }>(
+  items: T[],
+  mediaType: MediaTypeFilter
+): T[] {
+  if (mediaType === 'all') {
+    // Include movies and all TV types, exclude VIDEO
+    return items.filter((f) => f.type !== 'VIDEO');
+  }
+  if (mediaType === 'movie') {
+    return items.filter((f) => f.type === 'FILM');
+  }
+  // tv - include all TV types
+  return items.filter((f) => ['TV_SERIES', 'TV_SHOW', 'MINI_SERIES'].includes(f.type));
+}
 
 class KinopoiskClient {
   // Read API key lazily at request time to ensure env vars are loaded
@@ -34,12 +58,13 @@ class KinopoiskClient {
   }
 
   /**
-   * Search movies by keyword
+   * Search movies/TV series by keyword
    * GET /api/v2.1/films/search-by-keyword
    */
   async searchMovies(
     query: string,
-    page = 1
+    page = 1,
+    mediaType: MediaTypeFilter = 'all'
   ): Promise<{ results: KinopoiskSearchResult[]; totalResults: number; totalPages: number }> {
     if (!this.apiKey) {
       return { results: [], totalResults: 0, totalPages: 0 };
@@ -51,11 +76,11 @@ class KinopoiskClient {
         `/v2.1/films/search-by-keyword?keyword=${encodedQuery}&page=${page}`
       );
 
-      // Filter only movies (exclude TV series)
-      const movies = data.films.filter((f) => f.type === 'FILM');
+      // Filter by media type
+      const filtered = filterByMediaType(data.films, mediaType);
 
       return {
-        results: movies,
+        results: filtered,
         totalResults: data.searchFilmsCountResult,
         totalPages: data.pagesCount,
       };
@@ -86,7 +111,7 @@ class KinopoiskClient {
    * Get top rated movies
    * GET /api/v2.2/films/top?type=TOP_250_BEST_FILMS
    */
-  async getTopRated(page = 1): Promise<KinopoiskSearchResult[]> {
+  async getTopRated(page = 1, mediaType: MediaTypeFilter = 'all'): Promise<KinopoiskSearchResult[]> {
     if (!this.apiKey) {
       return [];
     }
@@ -95,7 +120,7 @@ class KinopoiskClient {
       const data = await this.fetch<{ films: KinopoiskSearchResult[] }>(
         `/v2.2/films/top?type=TOP_250_BEST_FILMS&page=${page}`
       );
-      return data.films.filter((f) => f.type === 'FILM');
+      return filterByMediaType(data.films, mediaType);
     } catch (error) {
       console.error('Kinopoisk top rated error:', error);
       return [];
@@ -106,7 +131,7 @@ class KinopoiskClient {
    * Get popular movies (top 100)
    * GET /api/v2.2/films/top?type=TOP_100_POPULAR_FILMS
    */
-  async getPopular(page = 1): Promise<KinopoiskSearchResult[]> {
+  async getPopular(page = 1, mediaType: MediaTypeFilter = 'all'): Promise<KinopoiskSearchResult[]> {
     if (!this.apiKey) {
       return [];
     }
@@ -115,7 +140,7 @@ class KinopoiskClient {
       const data = await this.fetch<{ films: KinopoiskSearchResult[] }>(
         `/v2.2/films/top?type=TOP_100_POPULAR_FILMS&page=${page}`
       );
-      return data.films.filter((f) => f.type === 'FILM');
+      return filterByMediaType(data.films, mediaType);
     } catch (error) {
       console.error('Kinopoisk popular error:', error);
       return [];
@@ -123,7 +148,7 @@ class KinopoiskClient {
   }
 
   /**
-   * Discover movies with filters
+   * Discover movies/TV series with filters
    * GET /api/v2.2/films
    */
   async discoverMovies(params: {
@@ -133,14 +158,23 @@ class KinopoiskClient {
     ratingFrom?: number;
     order?: 'RATING' | 'NUM_VOTE' | 'YEAR';
     page?: number;
+    mediaType?: MediaTypeFilter;
   }): Promise<{ results: KinopoiskSearchResult[]; totalResults: number; totalPages: number }> {
     if (!this.apiKey) {
       return { results: [], totalResults: 0, totalPages: 0 };
     }
 
+    const mediaTypeFilter = params.mediaType || 'all';
+
     try {
       const queryParams = new URLSearchParams();
-      queryParams.set('type', 'FILM');
+      // Set Kinopoisk type based on mediaType filter
+      if (mediaTypeFilter === 'movie') {
+        queryParams.set('type', 'FILM');
+      } else if (mediaTypeFilter === 'tv') {
+        queryParams.set('type', 'TV_SERIES');
+      }
+      // For 'all', don't set type to get all content
       queryParams.set('page', String(params.page || 1));
 
       if (params.genres?.length) {
@@ -166,7 +200,7 @@ class KinopoiskClient {
       }>(`/v2.2/films?${queryParams.toString()}`);
 
       return {
-        results: data.items.filter((f) => f.type === 'FILM'),
+        results: filterByMediaType(data.items, mediaTypeFilter),
         totalResults: data.total,
         totalPages: data.totalPages,
       };
@@ -213,4 +247,4 @@ class KinopoiskClient {
 }
 
 export const kinopoisk = new KinopoiskClient();
-export { KinopoiskClient };
+export { KinopoiskClient, mapKinopoiskTypeToMediaType };

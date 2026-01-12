@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateMoviePool } from '@/lib/api/moviePool';
+import type { MediaTypeFilter } from '@/types/movie';
 
 // Get movie pool for a room
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const seed = parseInt(searchParams.get('seed') || '0', 10);
+    const mediaTypeParam = searchParams.get('mediaType');
+
+    // Validate mediaType parameter
+    const validMediaTypes: MediaTypeFilter[] = ['all', 'movie', 'tv'];
+    const mediaTypeFilter: MediaTypeFilter =
+      mediaTypeParam && validMediaTypes.includes(mediaTypeParam as MediaTypeFilter)
+        ? (mediaTypeParam as MediaTypeFilter)
+        : 'all';
 
     if (!seed) {
       return NextResponse.json(
@@ -14,7 +23,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const movies = await generateMoviePool(seed);
+    const movies = await generateMoviePool(seed, mediaTypeFilter);
 
     return NextResponse.json(
       { movies },

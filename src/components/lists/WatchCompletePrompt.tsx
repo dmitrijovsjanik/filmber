@@ -1,29 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
 
 interface WatchCompletePromptProps {
   movieTitle: string;
   onWatched: (rating: number) => void;
-  onNotYet: () => void;
+  onNotFinished: () => void;
   isLoading?: boolean;
 }
 
 export function WatchCompletePrompt({
   movieTitle,
   onWatched,
-  onNotYet,
+  onNotFinished,
   isLoading = false,
 }: WatchCompletePromptProps) {
   const t = useTranslations('prompts');
-  const [showRating, setShowRating] = useState(false);
-
-  const handleYesClick = () => {
-    setShowRating(true);
-  };
+  const tLists = useTranslations('lists');
 
   const handleRatingSelect = (rating: number) => {
     if (rating > 0) {
@@ -36,45 +33,36 @@ export function WatchCompletePrompt({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="overflow-hidden border-t border-gray-700 bg-gradient-to-r from-emerald-900/20 to-transparent"
+      className="overflow-hidden"
     >
-      <div className="p-3">
-        {!showRating ? (
-          <>
-            <p className="mb-3 text-sm text-gray-300">
-              {t('didYouWatch')} <span className="font-medium text-white">{movieTitle}</span>?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleYesClick}
-                disabled={isLoading}
-                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-              >
-                {t('yesWatched')}
-              </button>
-              <button
-                onClick={onNotYet}
-                disabled={isLoading}
-                className="flex-1 rounded-lg bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:opacity-50"
-              >
-                {t('notYet')}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mb-3 text-sm text-gray-300">{t('howWasIt')}</p>
-            <div className="flex justify-center">
-              <RatingStars
-                rating={0}
-                onChange={handleRatingSelect}
-                size="lg"
-                readonly={isLoading}
-              />
-            </div>
-          </>
-        )}
-      </div>
+      <Card className="mt-2 border border-border bg-card">
+        <CardContent className="p-3 space-y-2">
+          {/* Header with movie title */}
+          <p className="text-sm text-center text-muted-foreground">
+            {t('howWasMovie', { title: movieTitle, defaultValue: `How was "${movieTitle}"?` })}
+          </p>
+
+          <div className="flex items-center justify-center gap-4">
+            {/* Want to watch button */}
+            <Button
+              variant="secondary"
+              onClick={onNotFinished}
+              disabled={isLoading}
+              className="h-10"
+            >
+              {tLists('wantToWatch', { defaultValue: 'Want to watch' })}
+            </Button>
+
+            {/* Rating stars */}
+            <RatingStars
+              rating={0}
+              onChange={handleRatingSelect}
+              size="md"
+              readonly={isLoading}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }

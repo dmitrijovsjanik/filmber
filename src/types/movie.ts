@@ -1,3 +1,7 @@
+// Media type for movies and TV series
+export type MediaType = 'movie' | 'tv';
+export type MediaTypeFilter = 'all' | 'movie' | 'tv';
+
 export interface MovieRatings {
   tmdb: string;
   imdb: string | null;
@@ -76,6 +80,11 @@ export interface UnifiedMovie {
   releaseDate: string | null;
   runtime: number | null;
   genres: string | null;
+  // Media type (movie or TV series)
+  mediaType: MediaType;
+  numberOfSeasons: number | null;
+  numberOfEpisodes: number | null;
+  // Ratings and metadata
   ratings: MovieRatings;
   primarySource: MovieSource;
   cachedAt: Date;
@@ -93,6 +102,10 @@ export interface Movie {
   ratings: MovieRatings;
   genres: string[];
   runtime: number | null;
+  // Media type (movie or TV series)
+  mediaType: MediaType;
+  numberOfSeasons: number | null;
+  numberOfEpisodes: number | null;
 }
 
 export interface TMDBMovie {
@@ -112,6 +125,36 @@ export interface TMDBMovieDetails extends TMDBMovie {
   imdb_id: string | null;
   runtime: number;
   genres: { id: number; name: string }[];
+}
+
+// ============================================
+// TMDB TV SERIES TYPES
+// ============================================
+
+export interface TMDBTVSeries {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  vote_average: number;
+  vote_count: number;
+  popularity: number;
+  genre_ids: number[];
+  origin_country: string[];
+}
+
+export interface TMDBTVSeriesDetails extends TMDBTVSeries {
+  external_ids?: {
+    imdb_id: string | null;
+  };
+  number_of_seasons: number;
+  number_of_episodes: number;
+  episode_run_time: number[];
+  genres: { id: number; name: string }[];
+  status: string;
+  type: string;
 }
 
 export interface OMDBRating {
@@ -167,6 +210,10 @@ export interface SearchResult {
   // Ratings from various sources
   imdbRating?: string | null;
   kinopoiskRating?: string | null;
+  // Media type (movie or TV series)
+  mediaType?: MediaType;
+  numberOfSeasons?: number | null;
+  numberOfEpisodes?: number | null;
 }
 
 export type SortOption = 'relevance' | 'popularity' | 'rating' | 'date_desc' | 'date_asc';
@@ -177,4 +224,5 @@ export interface SearchFilters {
   yearTo: number | null;
   ratingMin: number | null;
   sortBy: SortOption;
+  mediaType: MediaTypeFilter;
 }

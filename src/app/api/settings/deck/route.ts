@@ -22,12 +22,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         showWatchedMovies: false,
         minRatingFilter: null,
+        mediaTypeFilter: 'all',
       });
     }
 
     return NextResponse.json({
       showWatchedMovies: settings.showWatchedMovies,
       minRatingFilter: settings.minRatingFilter,
+      mediaTypeFilter: settings.mediaTypeFilter ?? 'all',
     });
   } catch (error) {
     console.error('Failed to get deck settings:', error);
@@ -47,7 +49,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { showWatchedMovies, minRatingFilter } = body;
+    const { showWatchedMovies, minRatingFilter, mediaTypeFilter } = body;
 
     // Validate minRatingFilter
     if (
@@ -61,9 +63,21 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Validate mediaTypeFilter
+    if (
+      mediaTypeFilter !== undefined &&
+      !['all', 'movie', 'tv'].includes(mediaTypeFilter)
+    ) {
+      return NextResponse.json(
+        { error: 'mediaTypeFilter must be "all", "movie", or "tv"' },
+        { status: 400 }
+      );
+    }
+
     const updateData: {
       showWatchedMovies?: boolean;
       minRatingFilter?: number | null;
+      mediaTypeFilter?: string;
       updatedAt: Date;
     } = {
       updatedAt: new Date(),
@@ -75,6 +89,10 @@ export async function PATCH(request: NextRequest) {
 
     if (minRatingFilter !== undefined) {
       updateData.minRatingFilter = minRatingFilter;
+    }
+
+    if (mediaTypeFilter !== undefined) {
+      updateData.mediaTypeFilter = mediaTypeFilter;
     }
 
     // Upsert settings
@@ -93,6 +111,7 @@ export async function PATCH(request: NextRequest) {
         userId: user.id,
         showWatchedMovies: showWatchedMovies ?? false,
         minRatingFilter: minRatingFilter ?? null,
+        mediaTypeFilter: mediaTypeFilter ?? 'all',
       });
     }
 
@@ -105,6 +124,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       showWatchedMovies: updated?.showWatchedMovies ?? false,
       minRatingFilter: updated?.minRatingFilter ?? null,
+      mediaTypeFilter: updated?.mediaTypeFilter ?? 'all',
     });
   } catch (error) {
     console.error('Failed to update deck settings:', error);

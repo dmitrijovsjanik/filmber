@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Settings01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { H1, Lead, Muted } from '@/components/ui/typography';
+import { DeckSettingsSheet } from '@/components/deck/DeckSettingsSheet';
 import { useRoomStore } from '@/stores/roomStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +38,7 @@ export default function HomePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const joinAttemptedRef = useRef(false);
 
   // Auto-join room from startapp parameter
@@ -231,14 +235,22 @@ export default function HomePage() {
 
         {/* Mode selector and action button */}
         <div className="w-full space-y-6">
-          {/* Mode selector */}
-          <div className="flex justify-center">
+          {/* Mode selector with settings button */}
+          <div className="flex justify-center items-center gap-2">
             <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
               <TabsList className="grid grid-cols-2 auto-cols-max">
                 <TabsTrigger value="pair">{t('home.modePair')}</TabsTrigger>
                 <TabsTrigger value="solo">{t('home.modeSolo')}</TabsTrigger>
               </TabsList>
             </Tabs>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              className="h-9 w-9 shrink-0"
+            >
+              <HugeiconsIcon icon={Settings01Icon} size={20} />
+            </Button>
           </div>
 
           {/* Pick movie button */}
@@ -266,6 +278,9 @@ export default function HomePage() {
           <Muted>{t('footer.madeWith')}</Muted>
         </footer>
       </div>
+
+      {/* Deck Settings Sheet */}
+      <DeckSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }
