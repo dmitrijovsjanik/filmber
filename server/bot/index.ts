@@ -16,6 +16,10 @@ export interface BotContext extends Context {}
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBAPP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID;
+
+// State for users awaiting bug report input
+const awaitingBugReport = new Set<number>();
 
 // Singleton bot instance
 let botInstance: Bot<BotContext> | null = null;
@@ -57,6 +61,7 @@ function createBot(token: string): Bot<BotContext> {
 
 /start - Открыть приложение для подбора фильмов
 /help - Показать эту справку
+/bug - Сообщить об ошибке
 
 *Как это работает:*
 1. Открой Mini App через кнопку
@@ -69,6 +74,7 @@ function createBot(token: string): Bot<BotContext> {
 
 /start - Open the movie matching app
 /help - Show this help message
+/bug - Report an issue
 
 *How it works:*
 1. Open the Mini App via the button
@@ -79,6 +85,50 @@ function createBot(token: string): Bot<BotContext> {
 For the full experience, use the Mini App!`;
 
     await ctx.reply(helpText, { parse_mode: 'Markdown' });
+  });
+
+  // /bug command - report an issue
+  bot.command('bug', async (ctx) => {
+    const isRussian = ctx.from?.language_code === 'ru';
+    const telegramId = ctx.from?.id;
+
+    if (telegramId) {
+      awaitingBugReport.add(telegramId);
+    }
+
+    await ctx.reply(
+      isRussian
+        ? '🐛 Опишите проблему, с которой вы столкнулись:'
+        : '🐛 Please describe the issue you encountered:'
+    );
+  });
+
+  // Handle text messages (for bug reports)
+  bot.on('message:text', async (ctx) => {
+    const telegramId = ctx.from?.id;
+
+    if (telegramId && awaitingBugReport.has(telegramId)) {
+      awaitingBugReport.delete(telegramId);
+
+      const isRussian = ctx.from?.language_code === 'ru';
+
+      // Send to admin
+      if (ADMIN_TELEGRAM_ID) {
+        const reportMessage = `🐛 Bug Report\n\nFrom: ${ctx.from?.first_name} (@${ctx.from?.username || 'no username'})\nID: ${telegramId}\n\n${ctx.message.text}`;
+
+        try {
+          await ctx.api.sendMessage(ADMIN_TELEGRAM_ID, reportMessage);
+        } catch (error) {
+          console.error('Failed to send bug report to admin:', error);
+        }
+      }
+
+      await ctx.reply(
+        isRussian
+          ? '✅ Спасибо! Ваше сообщение отправлено разработчику.'
+          : '✅ Thank you! Your message has been sent to the developer.'
+      );
+    }
   });
 
   // Callback query: User clicked "Yes, watched!"
