@@ -126,9 +126,11 @@ jobs:
 
             # Перезапуск PM2 (graceful reload)
             cd "${APP_DIR}/current"
-            if pm2 describe filmber > /dev/null 2>&1; then
-              echo "Reloading existing PM2 process..."
-              pm2 reload filmber --update-env
+            # Find process by partial name match to avoid GitHub secret masking
+            PM2_ID=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name | contains("film")) | .pm_id' | head -1)
+            if [ -n "$PM2_ID" ]; then
+              echo "Reloading existing PM2 process (ID: $PM2_ID)..."
+              pm2 reload "$PM2_ID" --update-env
             else
               echo "Starting new PM2 process..."
               pm2 start ecosystem.config.js --env production
@@ -150,14 +152,17 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             sleep 5
-            if pm2 show filmber | grep -q "online"; then
-              echo "Health check passed!"
+            # Check via HTTP endpoint instead of PM2 name (avoid secret masking)
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Health check passed! (HTTP $HTTP_CODE)"
             else
-              echo "Health check failed!"
+              echo "Health check failed! (HTTP $HTTP_CODE)"
+              pm2 list
               exit 1
             fi
 
-      - name: Notify on failure
+      - name: Rollback on failure
         if: failure()
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -172,6 +177,12 @@ jobs:
             if [ -n "$PREV_RELEASE" ]; then
               ln -sfn "${APP_DIR}/releases/${PREV_RELEASE}" "${APP_DIR}/current"
               cd "${APP_DIR}/current"
-              pm2 reload filmber --update-env || pm2 start ecosystem.config.js --env production
+              # Use pm2 list to find process and reload by ID
+              PM2_ID=$(pm2 jlist | jq -r '.[] | select(.name | contains("film")) | .pm_id' | head -1)
+              if [ -n "$PM2_ID" ]; then
+                pm2 reload "$PM2_ID" --update-env
+              else
+                pm2 start ecosystem.config.js --env production
+              fi
               echo "Rolled back to ${PREV_RELEASE}"
             fi
