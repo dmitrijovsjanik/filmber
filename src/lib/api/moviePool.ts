@@ -134,6 +134,7 @@ function formatCachedMovie(cached: MovieCacheEntry): Movie {
     ratings: {
       tmdb: cached.voteAverage || '0',
       imdb: cached.imdbRating,
+      kinopoisk: null,
       rottenTomatoes: cached.rottenTomatoesRating,
       metacritic: cached.metacriticRating,
     },
@@ -166,6 +167,7 @@ export async function getSimpleMoviePool(seed: number): Promise<Movie[]> {
     ratings: {
       tmdb: movie.vote_average.toString(),
       imdb: null,
+      kinopoisk: null,
       rottenTomatoes: null,
       metacritic: null,
     },

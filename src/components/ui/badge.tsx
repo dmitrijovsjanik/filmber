@@ -23,6 +23,7 @@ const badgeVariants = cva(
         tmdb: "border-transparent bg-emerald-500 text-white",
         imdb: "border-transparent bg-yellow-500 text-white",
         rt: "border-transparent bg-red-500 text-white",
+        kinopoisk: "border-transparent bg-orange-500 text-white",
       },
     },
     defaultVariants: {

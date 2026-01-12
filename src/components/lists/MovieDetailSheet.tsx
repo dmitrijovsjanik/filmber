@@ -32,6 +32,7 @@ interface MovieData {
   title: string;
   titleRu: string | null;
   posterPath: string | null;
+  posterUrl?: string | null; // Direct URL (for Kinopoisk)
   releaseDate: string | null;
   voteAverage: string | null;
   genres: string | null;
@@ -39,13 +40,18 @@ interface MovieData {
   overview: string | null;
   overviewRu: string | null;
   imdbRating: string | null;
+  kinopoiskRating?: string | null;
   rottenTomatoesRating: string | null;
 }
+
+type MovieSource = 'tmdb' | 'omdb' | 'kinopoisk';
 
 interface MovieDetailSheetProps {
   isOpen: boolean;
   onClose: () => void;
   tmdbId: number;
+  imdbId?: string | null;
+  kinopoiskId?: number | null;
   status?: MovieStatus | null;
   rating?: number | null;
   movie: MovieData | null;
@@ -53,12 +59,16 @@ interface MovieDetailSheetProps {
   onRatingChange?: (rating: number) => void;
   onRemove?: () => void;
   onAddedToList?: () => void;
+  canAddToList?: boolean;
+  source?: MovieSource;
 }
 
 export function MovieDetailSheet({
   isOpen,
   onClose,
   tmdbId,
+  imdbId,
+  kinopoiskId,
   status = null,
   rating = null,
   movie,
@@ -66,6 +76,8 @@ export function MovieDetailSheet({
   onRatingChange,
   onRemove,
   onAddedToList,
+  canAddToList = true,
+  source = 'tmdb',
 }: MovieDetailSheetProps) {
   const t = useTranslations('lists');
   const tCommon = useTranslations('common');
@@ -110,7 +122,9 @@ export function MovieDetailSheet({
 
   const posterUrl = movie?.posterPath
     ? `https://image.tmdb.org/t/p/w200${movie.posterPath}`
-    : null;
+    : movie?.posterUrl
+      ? movie.posterUrl
+      : null;
 
   const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
   const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
@@ -281,6 +295,9 @@ export function MovieDetailSheet({
             {movie?.imdbRating && (
               <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
             )}
+            {movie?.kinopoiskRating && (
+              <Badge variant="kinopoisk">КП {parseFloat(movie.kinopoiskRating).toFixed(1)}</Badge>
+            )}
             {movie?.rottenTomatoesRating && (
               <Badge variant="rt">RT {parseFloat(movie.rottenTomatoesRating).toFixed(1)}</Badge>
             )}
@@ -308,8 +325,8 @@ export function MovieDetailSheet({
               </button>
             )}
 
-            {/* Want to Watch button - only for search results (no status yet) */}
-            {isSearchMode && !currentStatus && (
+            {/* Want to Watch button - only for search results (no status yet) and if can add to list */}
+            {isSearchMode && !currentStatus && canAddToList && (
               <Button
                 variant="secondary"
                 onClick={() => handleStatusClick(MOVIE_STATUS.WANT_TO_WATCH)}
@@ -320,10 +337,10 @@ export function MovieDetailSheet({
               </Button>
             )}
 
-            {/* Rating stars - always visible */}
+            {/* Rating stars - always visible, interactive only if can add to list or already in list */}
             <RatingStars
               rating={localRating}
-              onChange={handleRatingClick}
+              onChange={canAddToList || !isSearchMode ? handleRatingClick : undefined}
               size="md"
             />
 

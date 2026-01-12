@@ -24,7 +24,13 @@ export const rooms = pgTable('rooms', {
   // Associate authenticated users with slots (for personalized queue)
   userAId: uuid('user_a_id').references(() => users.id, { onDelete: 'set null' }),
   userBId: uuid('user_b_id').references(() => users.id, { onDelete: 'set null' }),
+
+  // Legacy TMDB ID for match (kept for backward compatibility)
   matchedMovieId: integer('matched_movie_id'),
+
+  // New unified movie reference (for future use)
+  unifiedMatchedMovieId: uuid('unified_matched_movie_id').references(() => movies.id, { onDelete: 'set null' }),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at'),
   moviePoolSeed: integer('movie_pool_seed').notNull(),
@@ -38,17 +44,76 @@ export const swipes = pgTable(
     roomId: uuid('room_id')
       .references(() => rooms.id, { onDelete: 'cascade' })
       .notNull(),
+
+    // Legacy TMDB ID field (kept for backward compatibility)
     movieId: integer('movie_id').notNull(),
+
+    // New unified movie reference (for future use)
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'cascade' }),
+
     userSlot: varchar('user_slot', { length: 1 }).notNull(), // 'A' or 'B'
     action: varchar('action', { length: 10 }).notNull(), // 'like' | 'skip'
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('unique_swipe_idx').on(table.roomId, table.movieId, table.userSlot),
+    index('swipe_unified_idx').on(table.roomId, table.unifiedMovieId, table.userSlot),
   ]
 );
 
-// Movie cache - cache TMDB/OMDB data
+// ============================================
+// MOVIES - Unified movie database
+// ============================================
+export const movies = pgTable(
+  'movies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // External IDs (all nullable - movie may come from any source)
+    tmdbId: integer('tmdb_id').unique(),
+    imdbId: varchar('imdb_id', { length: 20 }).unique(),
+    kinopoiskId: integer('kinopoisk_id').unique(),
+
+    // Core data
+    title: varchar('title', { length: 500 }).notNull(),
+    titleRu: varchar('title_ru', { length: 500 }),
+    titleOriginal: varchar('title_original', { length: 500 }),
+    overview: text('overview'),
+    overviewRu: text('overview_ru'),
+
+    // Media
+    posterPath: varchar('poster_path', { length: 500 }), // TMDB path
+    posterUrl: varchar('poster_url', { length: 500 }), // Direct URL (Kinopoisk)
+    backdropPath: varchar('backdrop_path', { length: 500 }),
+
+    // Metadata
+    releaseDate: varchar('release_date', { length: 20 }),
+    runtime: integer('runtime'),
+    genres: text('genres'), // JSON array
+
+    // Ratings from all sources
+    tmdbRating: varchar('tmdb_rating', { length: 10 }),
+    tmdbVoteCount: integer('tmdb_vote_count'),
+    tmdbPopularity: varchar('tmdb_popularity', { length: 20 }),
+    imdbRating: varchar('imdb_rating', { length: 10 }),
+    kinopoiskRating: varchar('kinopoisk_rating', { length: 10 }),
+    rottenTomatoesRating: varchar('rt_rating', { length: 10 }),
+    metacriticRating: varchar('metacritic_rating', { length: 10 }),
+
+    // Tracking
+    primarySource: varchar('primary_source', { length: 20 }).notNull(), // 'tmdb' | 'kinopoisk' | 'omdb'
+    cachedAt: timestamp('cached_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('movies_tmdb_idx').on(table.tmdbId),
+    index('movies_imdb_idx').on(table.imdbId),
+    index('movies_kinopoisk_idx').on(table.kinopoiskId),
+  ]
+);
+
+// Legacy movie cache - kept for migration, will be removed
+// @deprecated Use movies table instead
 export const movieCache = pgTable('movie_cache', {
   tmdbId: integer('tmdb_id').primaryKey(),
   title: varchar('title', { length: 500 }).notNull(),
@@ -70,7 +135,19 @@ export const movieCache = pgTable('movie_cache', {
   cachedAt: timestamp('cached_at').defaultNow().notNull(),
 });
 
-// Relations
+// ============================================
+// RELATIONS
+// ============================================
+
+// Movies relations
+export const moviesRelations = relations(movies, ({ many }) => ({
+  userLists: many(userMovieLists),
+  swipeHistory: many(userSwipeHistory),
+  swipes: many(swipes),
+  watchPrompts: many(watchPrompts),
+}));
+
+// Rooms relations
 export const roomsRelations = relations(rooms, ({ many, one }) => ({
   swipes: many(swipes),
   queues: many(roomQueues),
@@ -84,12 +161,20 @@ export const roomsRelations = relations(rooms, ({ many, one }) => ({
     references: [users.id],
     relationName: 'roomUserB',
   }),
+  unifiedMatchedMovie: one(movies, {
+    fields: [rooms.unifiedMatchedMovieId],
+    references: [movies.id],
+  }),
 }));
 
 export const swipesRelations = relations(swipes, ({ one }) => ({
   room: one(rooms, {
     fields: [swipes.roomId],
     references: [rooms.id],
+  }),
+  unifiedMovie: one(movies, {
+    fields: [swipes.unifiedMovieId],
+    references: [movies.id],
   }),
 }));
 
@@ -160,7 +245,12 @@ export const userMovieLists = pgTable(
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+
+    // Legacy TMDB ID (kept for backward compatibility)
     tmdbId: integer('tmdb_id').notNull(),
+
+    // New unified movie reference (for future use)
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'cascade' }),
 
     // Level 1: Watch status
     status: varchar('status', { length: 20 }).notNull(), // 'want_to_watch' | 'watched'
@@ -188,6 +278,7 @@ export const userMovieLists = pgTable(
     uniqueIndex('unique_user_movie_idx').on(table.userId, table.tmdbId),
     index('user_movie_status_idx').on(table.userId, table.status),
     index('user_movie_rating_idx').on(table.userId, table.rating),
+    index('user_movie_unified_idx').on(table.userId, table.unifiedMovieId),
   ]
 );
 
@@ -201,7 +292,13 @@ export const userSwipeHistory = pgTable(
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+
+    // Legacy TMDB ID (kept for backward compatibility)
     tmdbId: integer('tmdb_id').notNull(),
+
+    // New unified movie reference (for future use)
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'cascade' }),
+
     action: varchar('action', { length: 10 }).notNull(), // 'like' | 'skip'
 
     // Context (where did the swipe happen)
@@ -213,6 +310,7 @@ export const userSwipeHistory = pgTable(
   (table) => [
     uniqueIndex('unique_user_swipe_idx').on(table.userId, table.tmdbId),
     index('user_swipe_action_idx').on(table.userId, table.action),
+    index('user_swipe_unified_idx').on(table.userId, table.unifiedMovieId),
   ]
 );
 
@@ -255,7 +353,12 @@ export const watchPrompts = pgTable(
     userId: uuid('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+
+    // Legacy TMDB ID (kept for backward compatibility)
     tmdbId: integer('tmdb_id').notNull(),
+
+    // New unified movie reference (for future use)
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'cascade' }),
 
     // Prompt status
     promptedAt: timestamp('prompted_at').defaultNow().notNull(),
@@ -268,6 +371,7 @@ export const watchPrompts = pgTable(
   (table) => [
     uniqueIndex('unique_prompt_idx').on(table.userId, table.tmdbId),
     index('prompt_user_pending_idx').on(table.userId, table.respondedAt),
+    index('prompt_unified_idx').on(table.userId, table.unifiedMovieId),
   ]
 );
 
@@ -359,6 +463,10 @@ export const userMovieListsRelations = relations(userMovieLists, ({ one }) => ({
     fields: [userMovieLists.userId],
     references: [users.id],
   }),
+  unifiedMovie: one(movies, {
+    fields: [userMovieLists.unifiedMovieId],
+    references: [movies.id],
+  }),
 }));
 
 export const userSwipeHistoryRelations = relations(userSwipeHistory, ({ one }) => ({
@@ -369,6 +477,10 @@ export const userSwipeHistoryRelations = relations(userSwipeHistory, ({ one }) =
   room: one(rooms, {
     fields: [userSwipeHistory.roomId],
     references: [rooms.id],
+  }),
+  unifiedMovie: one(movies, {
+    fields: [userSwipeHistory.unifiedMovieId],
+    references: [movies.id],
   }),
 }));
 
@@ -383,6 +495,10 @@ export const watchPromptsRelations = relations(watchPrompts, ({ one }) => ({
   user: one(users, {
     fields: [watchPrompts.userId],
     references: [users.id],
+  }),
+  unifiedMovie: one(movies, {
+    fields: [watchPrompts.unifiedMovieId],
+    references: [movies.id],
   }),
 }));
 
@@ -436,13 +552,19 @@ export type MovieSource = (typeof MOVIE_SOURCE)[keyof typeof MOVIE_SOURCE];
 // TYPE EXPORTS
 // ============================================
 
-// Existing types
+// Movie types (unified)
+export type Movie = typeof movies.$inferSelect;
+export type NewMovie = typeof movies.$inferInsert;
+
+// Legacy movie cache types (deprecated)
+export type MovieCacheEntry = typeof movieCache.$inferSelect;
+export type NewMovieCacheEntry = typeof movieCache.$inferInsert;
+
+// Room types
 export type Room = typeof rooms.$inferSelect;
 export type NewRoom = typeof rooms.$inferInsert;
 export type Swipe = typeof swipes.$inferSelect;
 export type NewSwipe = typeof swipes.$inferInsert;
-export type MovieCacheEntry = typeof movieCache.$inferSelect;
-export type NewMovieCacheEntry = typeof movieCache.$inferInsert;
 
 // New types
 export type User = typeof users.$inferSelect;

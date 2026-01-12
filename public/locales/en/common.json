@@ -107,6 +107,8 @@
     "confirmDeleteDescription": "This will remove \"{title}\" from your list.",
     "searchTmdb": "TMDB",
     "searchOmdb": "OMDB",
+    "searchKinopoisk": "Kinopoisk",
+    "tmdbUnavailable": "TMDB is unavailable, using alternative sources",
     "noDescription": "No description available",
     "omdbOnlyHint": "IMDB ID: ",
     "endOfResults": "That's all for this search",

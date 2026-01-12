@@ -18,6 +18,7 @@ interface MovieData {
   title: string;
   titleRu: string | null;
   posterPath: string | null;
+  posterUrl?: string | null; // Direct URL (for Kinopoisk)
   releaseDate: string | null;
   voteAverage: string | null;
   genres: string | null;
@@ -25,12 +26,17 @@ interface MovieData {
   overview: string | null;
   overviewRu: string | null;
   imdbRating: string | null;
+  kinopoiskRating?: string | null;
   rottenTomatoesRating: string | null;
 }
+
+type MovieSource = 'tmdb' | 'omdb' | 'kinopoisk';
 
 interface MovieListItemProps {
   id?: string;
   tmdbId: number;
+  imdbId?: string | null;
+  kinopoiskId?: number | null;
   status?: MovieStatus | null;
   rating?: number | null;
   movie: MovieData | null;
@@ -43,11 +49,15 @@ interface MovieListItemProps {
   onAddedToList?: () => void;
   showStatusBadge?: boolean;
   showRatingBadge?: boolean;
+  canAddToList?: boolean;
+  source?: MovieSource;
 }
 
 export function MovieListItem({
   id,
   tmdbId,
+  imdbId,
+  kinopoiskId,
   status = null,
   rating = null,
   movie,
@@ -60,6 +70,8 @@ export function MovieListItem({
   onAddedToList,
   showStatusBadge = true,
   showRatingBadge = true,
+  canAddToList = true,
+  source,
 }: MovieListItemProps) {
   const t = useTranslations('lists');
   const tMovie = useTranslations('movie');
@@ -70,9 +82,12 @@ export function MovieListItem({
   // Determine if this is a search result (no status yet) or a list item
   const isSearchMode = status === null;
 
+  // Handle poster URL - prefer TMDB path, then direct URL (Kinopoisk), then placeholder
   const posterUrl = movie?.posterPath
     ? `https://image.tmdb.org/t/p/w200${movie.posterPath}`
-    : '/placeholder-poster.png';
+    : movie?.posterUrl
+      ? movie.posterUrl
+      : '/placeholder-poster.png';
 
   const year = movie?.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
 
@@ -160,6 +175,9 @@ export function MovieListItem({
             {movie?.imdbRating && (
               <Badge variant="imdb">IMDb {parseFloat(movie.imdbRating).toFixed(1)}</Badge>
             )}
+            {movie?.kinopoiskRating && (
+              <Badge variant="kinopoisk">КП {parseFloat(movie.kinopoiskRating).toFixed(1)}</Badge>
+            )}
             {/* Status badge - hide "Watched" badge (stars indicate watched) */}
             {showStatusBadge && status && status !== MOVIE_STATUS.WATCHED && (
               <Badge
@@ -212,6 +230,8 @@ export function MovieListItem({
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         tmdbId={tmdbId}
+        imdbId={imdbId}
+        kinopoiskId={kinopoiskId}
         status={status}
         rating={rating}
         movie={movie}
@@ -219,6 +239,8 @@ export function MovieListItem({
         onRatingChange={onRatingChange}
         onRemove={onRemove}
         onAddedToList={onAddedToList}
+        canAddToList={canAddToList}
+        source={source}
       />
     </motion.div>
   );

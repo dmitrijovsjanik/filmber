@@ -1,8 +1,85 @@
 export interface MovieRatings {
   tmdb: string;
   imdb: string | null;
+  kinopoisk: string | null;
   rottenTomatoes: string | null;
   metacritic: string | null;
+}
+
+// ============================================
+// KINOPOISK TYPES
+// ============================================
+
+export interface KinopoiskFilm {
+  kinopoiskId: number;
+  imdbId: string | null;
+  nameRu: string | null;
+  nameEn: string | null;
+  nameOriginal: string | null;
+  posterUrl: string | null;
+  posterUrlPreview: string | null;
+  coverUrl: string | null;
+  ratingKinopoisk: number | null;
+  ratingImdb: number | null;
+  year: number | null;
+  filmLength: number | null;
+  description: string | null;
+  shortDescription: string | null;
+  countries: { country: string }[];
+  genres: { genre: string }[];
+  type: 'FILM' | 'TV_SERIES' | 'TV_SHOW' | 'MINI_SERIES' | 'VIDEO';
+}
+
+export interface KinopoiskSearchResult {
+  kinopoiskId: number;
+  imdbId: string | null;
+  nameRu: string | null;
+  nameEn: string | null;
+  nameOriginal: string | null;
+  posterUrl: string | null;
+  posterUrlPreview: string | null;
+  ratingKinopoisk: number | null;
+  ratingImdb: number | null;
+  year: number | null;
+  filmLength: string | null;
+  countries: { country: string }[];
+  genres: { genre: string }[];
+  type: 'FILM' | 'TV_SERIES' | 'TV_SHOW' | 'MINI_SERIES' | 'VIDEO';
+}
+
+export interface KinopoiskSearchResponse {
+  keyword: string;
+  pagesCount: number;
+  searchFilmsCountResult: number;
+  films: KinopoiskSearchResult[];
+}
+
+// ============================================
+// UNIFIED MOVIE (internal database)
+// ============================================
+
+export type MovieSource = 'tmdb' | 'omdb' | 'kinopoisk';
+
+export interface UnifiedMovie {
+  id: string; // UUID
+  tmdbId: number | null;
+  imdbId: string | null;
+  kinopoiskId: number | null;
+  title: string;
+  titleRu: string | null;
+  titleOriginal: string | null;
+  overview: string | null;
+  overviewRu: string | null;
+  posterPath: string | null;
+  posterUrl: string | null;
+  backdropPath: string | null;
+  releaseDate: string | null;
+  runtime: number | null;
+  genres: string | null;
+  ratings: MovieRatings;
+  primarySource: MovieSource;
+  cachedAt: Date;
+  updatedAt: Date;
 }
 
 export interface Movie {
@@ -65,23 +142,31 @@ export interface OMDBSearchResponse {
 }
 
 export interface SearchResult {
+  // Internal movie ID (if already in our database)
+  movieId?: string | null;
+  // External IDs
   tmdbId: number | null;
   imdbId: string | null;
+  kinopoiskId?: number | null;
+  // Core data
   title: string;
   titleRu: string | null;
   posterPath: string | null;
+  posterUrl?: string | null; // Direct URL for Kinopoisk
   releaseDate: string | null;
   voteAverage: string | null;
   voteCount?: number | null;
   popularity?: number | null;
   overview: string | null;
   overviewRu: string | null;
-  source: 'tmdb' | 'omdb';
+  source: MovieSource;
   // Extended data (available for cached movies)
   runtime?: number | null;
   genres?: string | null; // JSON array string
   genreIds?: number[] | null; // For filtering
+  // Ratings from various sources
   imdbRating?: string | null;
+  kinopoiskRating?: string | null;
 }
 
 export type SortOption = 'relevance' | 'popularity' | 'rating' | 'date_desc' | 'date_asc';

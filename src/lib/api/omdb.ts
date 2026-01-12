@@ -3,10 +3,9 @@ import type { OMDBMovie, OMDBRating, OMDBSearchResult, OMDBSearchResponse } from
 const OMDB_BASE_URL = 'https://www.omdbapi.com/';
 
 class OMDBClient {
-  private apiKey: string;
-
-  constructor() {
-    this.apiKey = process.env.OMDB_API_KEY || '';
+  // Read API key lazily at request time to ensure env vars are loaded
+  private get apiKey(): string {
+    return process.env.OMDB_API_KEY || '';
   }
 
   async getByImdbId(imdbId: string): Promise<OMDBMovie | null> {
@@ -48,9 +47,20 @@ class OMDBClient {
     return mc?.Value || null;
   }
 
+  // Check if query contains Cyrillic characters
+  private hasCyrillic(str: string): boolean {
+    return /[а-яА-ЯёЁ]/.test(str);
+  }
+
   // Search movies by title
   async searchMovies(query: string): Promise<{ results: OMDBSearchResult[]; totalResults: number }> {
     if (!this.apiKey) {
+      console.warn('OMDB API key not configured');
+      return { results: [], totalResults: 0 };
+    }
+
+    // OMDB doesn't support Cyrillic queries - skip for Russian text
+    if (this.hasCyrillic(query)) {
       return { results: [], totalResults: 0 };
     }
 
@@ -67,7 +77,10 @@ class OMDBClient {
       if (!response.ok) return { results: [], totalResults: 0 };
 
       const data: OMDBSearchResponse = await response.json();
-      if (data.Response === 'False') return { results: [], totalResults: 0 };
+
+      if (data.Response === 'False') {
+        return { results: [], totalResults: 0 };
+      }
 
       return {
         results: data.Search || [],

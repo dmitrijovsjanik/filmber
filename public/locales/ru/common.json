@@ -107,6 +107,8 @@
     "confirmDeleteDescription": "Фильм «{title}» будет удалён из вашего списка.",
     "searchTmdb": "TMDB",
     "searchOmdb": "OMDB",
+    "searchKinopoisk": "Кинопоиск",
+    "tmdbUnavailable": "TMDB недоступен, используются альтернативные источники",
     "noDescription": "Описание отсутствует",
     "omdbOnlyHint": "IMDB ID: ",
     "endOfResults": "Это все результаты",

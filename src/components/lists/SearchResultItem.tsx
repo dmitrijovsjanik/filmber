@@ -13,9 +13,12 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
   function SearchResultItem(
     {
       tmdbId,
+      imdbId,
+      kinopoiskId,
       title,
       titleRu,
       posterPath,
+      posterUrl,
       releaseDate,
       voteAverage,
       overview,
@@ -23,43 +26,50 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
       runtime,
       genres,
       imdbRating,
+      kinopoiskRating,
+      source,
       onAddedToList,
     },
     ref
   ) {
-    // Skip non-TMDB results (they can't be added to list)
-    if (!tmdbId) {
-      return null;
-    }
-
-    // Check if movie is already in user's list
-    const listItem = useListItemByTmdbId(tmdbId);
+    // Check if movie is already in user's list (only if we have a tmdbId)
+    const listItem = useListItemByTmdbId(tmdbId || 0);
+    const isInList = tmdbId && listItem;
 
     // Convert SearchResult to MovieData format for MovieListItem
     const movieData = {
       title,
       titleRu,
-      posterPath,
+      posterPath: posterPath || null,
+      posterUrl: posterUrl || null,
       releaseDate,
-      voteAverage,
+      voteAverage: voteAverage || null, // TMDB rating only
       genres: genres || null,
       runtime: runtime || null,
       overview,
       overviewRu,
       imdbRating: imdbRating || null,
+      kinopoiskRating: kinopoiskRating || null,
       rottenTomatoesRating: null,
     };
+
+    // For non-TMDB results, we need to pass additional info
+    const canAddToList = !!tmdbId;
 
     return (
       <div ref={ref}>
         <MovieListItem
-          tmdbId={tmdbId}
+          tmdbId={tmdbId || 0}
+          imdbId={imdbId}
+          kinopoiskId={kinopoiskId}
           movie={movieData}
-          status={listItem?.status}
-          rating={listItem?.rating}
+          status={isInList ? listItem?.status : undefined}
+          rating={isInList ? listItem?.rating : undefined}
           onAddedToList={onAddedToList}
-          showStatusBadge={!!listItem}
-          showRatingBadge={!!listItem}
+          showStatusBadge={!!isInList}
+          showRatingBadge={!!isInList}
+          canAddToList={canAddToList}
+          source={source}
         />
       </div>
     );

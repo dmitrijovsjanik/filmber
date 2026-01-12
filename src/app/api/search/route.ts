@@ -1,11 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tmdb } from '@/lib/api/tmdb';
 import { omdb } from '@/lib/api/omdb';
+import { kinopoisk } from '@/lib/api/kinopoisk';
 import { db } from '@/lib/db';
-import { movieCache } from '@/lib/db/schema';
+import { movies } from '@/lib/db/schema';
 import { or, ilike } from 'drizzle-orm';
-import { enhanceMovieData } from '@/lib/api/moviePool';
-import type { SearchResult, SortOption } from '@/types/movie';
+import { movieService } from '@/lib/services/movieService';
+import type { SearchResult, SortOption, KinopoiskSearchResult } from '@/types/movie';
+
+// API availability status
+interface SourceStatus {
+  tmdb: boolean;
+  omdb: boolean;
+  kinopoisk: boolean;
+}
+
+// Timeout wrapper for API calls
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T
+): Promise<{ data: T; timedOut: boolean }> {
+  const timeout = new Promise<{ data: T; timedOut: boolean }>((resolve) =>
+    setTimeout(() => resolve({ data: fallback, timedOut: true }), timeoutMs)
+  );
+  const result = promise.then((data) => ({ data, timedOut: false }));
+  return Promise.race([result, timeout]);
+}
+
+// Convert Kinopoisk result to SearchResult
+function kinopoiskToSearchResult(kp: KinopoiskSearchResult): SearchResult {
+  return {
+    tmdbId: null,
+    imdbId: kp.imdbId,
+    kinopoiskId: kp.kinopoiskId,
+    title: kp.nameOriginal || kp.nameEn || kp.nameRu || 'Unknown',
+    titleRu: kp.nameRu,
+    posterPath: null,
+    posterUrl: kp.posterUrlPreview || kp.posterUrl,
+    releaseDate: kp.year?.toString() || null,
+    voteAverage: kp.ratingKinopoisk?.toString() || null,
+    voteCount: null,
+    popularity: null,
+    overview: null,
+    overviewRu: null,
+    source: 'kinopoisk',
+    kinopoiskRating: kp.ratingKinopoisk?.toString(),
+    imdbRating: kp.ratingImdb?.toString(),
+  };
+}
 
 // Bayesian rating formula (IMDB-style weighted rating)
 function bayesianRating(movie: SearchResult): number {
@@ -108,6 +151,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
       omdb: { results: [], totalResults: 0 },
+      kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
+      sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
     });
   }
 
@@ -180,6 +225,8 @@ export async function GET(request: NextRequest) {
             totalPages: discoverEn.totalPages,
           },
           omdb: { results: [], totalResults: 0 },
+          kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
+          sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
         },
         {
           headers: {
@@ -194,6 +241,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
         omdb: { results: [], totalResults: 0 },
+        kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
+        sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
       });
     }
 
@@ -201,51 +250,101 @@ export async function GET(request: NextRequest) {
     const normalizedQuery = query.replace(/ё/g, 'е').replace(/Ё/g, 'Е');
     const hasYoChar = query !== normalizedQuery;
 
-    // Search in parallel: local database + TMDB + OMDB
-    const [localResults, tmdbDataEn, tmdbDataRu, tmdbDataEnNorm, tmdbDataRuNorm, omdbData] = await Promise.all([
+    // Search in parallel: local database + TMDB + OMDB + Kinopoisk
+    // Use timeout for TMDB to handle VPN/blocking issues
+    const TMDB_TIMEOUT = 3000; // 3 seconds
+
+    const [
+      localResults,
+      tmdbEnResult,
+      tmdbRuResult,
+      tmdbEnNormResult,
+      tmdbRuNormResult,
+      omdbData,
+      kinopoiskData,
+    ] = await Promise.all([
       db
         .select()
-        .from(movieCache)
+        .from(movies)
         .where(
           or(
-            ilike(movieCache.title, `%${query}%`),
-            ilike(movieCache.titleRu, `%${query}%`)
+            ilike(movies.title, `%${query}%`),
+            ilike(movies.titleRu, `%${query}%`)
           )
         )
         .limit(20)
         .catch(() => []),
-      tmdb.searchMovies(query, 'en-US', page).catch(() => ({ results: [], totalResults: 0 })),
-      tmdb.searchMovies(query, 'ru-RU', page).catch(() => ({ results: [], totalResults: 0 })),
+      withTimeout(
+        tmdb.searchMovies(query, 'en-US', page),
+        TMDB_TIMEOUT,
+        { results: [], totalResults: 0 }
+      ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true })),
+      withTimeout(
+        tmdb.searchMovies(query, 'ru-RU', page),
+        TMDB_TIMEOUT,
+        { results: [], totalResults: 0 }
+      ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true })),
       hasYoChar
-        ? tmdb.searchMovies(normalizedQuery, 'en-US', page).catch(() => ({ results: [], totalResults: 0 }))
-        : Promise.resolve({ results: [], totalResults: 0 }),
+        ? withTimeout(
+            tmdb.searchMovies(normalizedQuery, 'en-US', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
       hasYoChar
-        ? tmdb.searchMovies(normalizedQuery, 'ru-RU', page).catch(() => ({ results: [], totalResults: 0 }))
-        : Promise.resolve({ results: [], totalResults: 0 }),
+        ? withTimeout(
+            tmdb.searchMovies(normalizedQuery, 'ru-RU', page),
+            TMDB_TIMEOUT,
+            { results: [], totalResults: 0 }
+          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
+        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
       omdb.searchMovies(query).catch(() => ({ results: [], totalResults: 0 })),
+      kinopoisk.searchMovies(query, page).catch(() => ({ results: [], totalResults: 0, totalPages: 0 })),
     ]);
 
-    // Create a set of local tmdbIds for deduplication
-    const localTmdbIds = new Set(localResults.map((m) => m.tmdbId));
+    // Extract TMDB data and check availability
+    const tmdbDataEn = tmdbEnResult.data;
+    const tmdbDataRu = tmdbRuResult.data;
+    const tmdbDataEnNorm = tmdbEnNormResult.data;
+    const tmdbDataRuNorm = tmdbRuNormResult.data;
+
+    const tmdbAvailable = !tmdbEnResult.timedOut && !tmdbRuResult.timedOut &&
+      (tmdbDataEn.results.length > 0 || tmdbDataRu.results.length > 0);
+    const kinopoiskAvailable = kinopoiskData.results.length > 0;
+    const omdbAvailable = omdbData.results.length > 0;
+
+    const sourceStatus: SourceStatus = {
+      tmdb: tmdbAvailable,
+      omdb: omdbAvailable,
+      kinopoisk: kinopoiskAvailable,
+    };
+
+    // Create sets for deduplication
+    const localTmdbIds = new Set(localResults.filter((m) => m.tmdbId).map((m) => m.tmdbId));
+    const localKinopoiskIds = new Set(localResults.filter((m) => m.kinopoiskId).map((m) => m.kinopoiskId));
 
     // Format local results as SearchResult
     const localSearchResults: SearchResult[] = localResults.map((m) => ({
+      movieId: m.id,
       tmdbId: m.tmdbId,
       imdbId: m.imdbId,
+      kinopoiskId: m.kinopoiskId,
       title: m.title,
       titleRu: m.titleRu,
       posterPath: m.posterPath,
+      posterUrl: m.posterUrl,
       releaseDate: m.releaseDate,
-      voteAverage: m.voteAverage,
-      voteCount: m.voteCount,
-      popularity: m.popularity ? parseFloat(m.popularity) : null,
+      voteAverage: m.tmdbRating,
+      voteCount: m.tmdbVoteCount,
+      popularity: m.tmdbPopularity ? parseFloat(m.tmdbPopularity) : null,
       overview: m.overview,
       overviewRu: m.overviewRu,
-      source: 'tmdb' as const,
+      source: m.primarySource as 'tmdb' | 'omdb' | 'kinopoisk',
       runtime: m.runtime,
       genres: m.genres,
-      genreIds: null, // Local cache doesn't have genre_ids
+      genreIds: null,
       imdbRating: m.imdbRating,
+      kinopoiskRating: m.kinopoiskRating,
     }));
 
     // Merge results from all sources (EN + RU + normalized variants)
@@ -434,10 +533,12 @@ export async function GET(request: NextRequest) {
 
     const combinedTmdbResults = allTmdbResults.sort(sortFunctions[sortBy]);
 
-    // Cache new movies in background
+    // Cache new movies in background using movieService
     if (newTmdbMovies.length > 0) {
       Promise.all(
-        newTmdbMovies.slice(0, 10).map((movie) => enhanceMovieData(movie.id))
+        newTmdbMovies.slice(0, 10).map((movie) =>
+          movieService.findOrCreate({ tmdbId: movie.id, source: 'tmdb' })
+        )
       ).catch((err) => console.error('Failed to cache search results:', err));
     }
 
@@ -455,6 +556,15 @@ export async function GET(request: NextRequest) {
       source: 'omdb' as const,
     }));
 
+    // Format Kinopoisk results (exclude already found by local or imdbId match)
+    const kinopoiskResults: SearchResult[] = kinopoiskData.results
+      .filter((kp) => !localKinopoiskIds.has(kp.kinopoiskId))
+      .map(kinopoiskToSearchResult);
+
+    // Note: Kinopoisk API returns total count including TV series,
+    // but we filter to only show movies. Estimate ~40% are movies.
+    const estimatedKinopoiskMovies = Math.round(kinopoiskData.totalResults * 0.4);
+
     const totalPages = Math.ceil(tmdbDataEn.totalResults / 20);
 
     return NextResponse.json(
@@ -466,6 +576,13 @@ export async function GET(request: NextRequest) {
           totalPages,
         },
         omdb: { results: omdbResults, totalResults: omdbData.totalResults },
+        kinopoisk: {
+          results: kinopoiskResults,
+          // Use estimated movie count instead of API's total (which includes TV series)
+          totalResults: kinopoiskResults.length > 0 ? estimatedKinopoiskMovies : 0,
+          totalPages: kinopoiskData.totalPages,
+        },
+        sourceStatus,
       },
       {
         headers: {
@@ -478,6 +595,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       tmdb: { results: [], totalResults: 0, page: 1, totalPages: 0 },
       omdb: { results: [], totalResults: 0 },
+      kinopoisk: { results: [], totalResults: 0, totalPages: 0 },
+      sourceStatus: { tmdb: false, omdb: false, kinopoisk: false },
     });
   }
 }

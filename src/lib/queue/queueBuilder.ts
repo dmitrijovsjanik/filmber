@@ -205,6 +205,7 @@ async function getMovieById(tmdbId: number): Promise<Movie | null> {
       ratings: {
         tmdb: cached.voteAverage || '0',
         imdb: cached.imdbRating,
+        kinopoisk: null,
         rottenTomatoes: cached.rottenTomatoesRating,
         metacritic: cached.metacriticRating,
       },

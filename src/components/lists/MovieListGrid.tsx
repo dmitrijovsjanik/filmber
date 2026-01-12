@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { toast } from 'sonner';
 import { MovieListItem } from './MovieListItem';
 import { ListFilter } from './ListFilter';
-import { SearchServiceTabs } from './SearchServiceTabs';
+import { SearchServiceTabs, type SearchService } from './SearchServiceTabs';
 import { SearchResultItem } from './SearchResultItem';
 import { SearchFilters } from './SearchFilters';
 import { Loader } from '@/components/ui/Loader';
@@ -21,6 +22,12 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useClearSearchTrigger } from '@/stores/searchStore';
 import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
+
+interface SourceStatus {
+  tmdb: boolean;
+  omdb: boolean;
+  kinopoisk: boolean;
+}
 
 interface FilterCounts {
   all: number;
@@ -78,15 +85,27 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   });
 
   // External search state
-  const [searchMode, setSearchMode] = useState<'local' | 'tmdb' | 'omdb'>('local');
+  const [searchMode, setSearchMode] = useState<'local' | SearchService>('local');
   const [searchResults, setSearchResults] = useState<{
     tmdb: SearchResult[];
     omdb: SearchResult[];
+    kinopoisk: SearchResult[];
     tmdbCount: number;
     omdbCount: number;
-  }>({ tmdb: [], omdb: [], tmdbCount: 0, omdbCount: 0 });
+    kinopoiskCount: number;
+    sourceStatus: SourceStatus;
+  }>({
+    tmdb: [],
+    omdb: [],
+    kinopoisk: [],
+    tmdbCount: 0,
+    omdbCount: 0,
+    kinopoiskCount: 0,
+    sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
+  });
   const [isSearching, setIsSearching] = useState(false);
   const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
+  const hasShownTmdbWarning = useRef(false);
 
   // Pagination state for infinite scroll
   const [currentPage, setCurrentPage] = useState(1);
@@ -287,7 +306,15 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
   // External search effect
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
-      setSearchResults({ tmdb: [], omdb: [], tmdbCount: 0, omdbCount: 0 });
+      setSearchResults({
+        tmdb: [],
+        omdb: [],
+        kinopoisk: [],
+        tmdbCount: 0,
+        omdbCount: 0,
+        kinopoiskCount: 0,
+        sourceStatus: { tmdb: true, omdb: true, kinopoisk: true },
+      });
       setSearchMode('local');
       setCurrentPage(1);
       setTotalPages(0);
@@ -297,6 +324,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       setShowExpandedSection(false);
       setExpandedQuery(null);
       setHasTrackedSearch(false);
+      hasShownTmdbWarning.current = false;
       return;
     }
 
@@ -324,17 +352,38 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         const response = await fetch(buildSearchUrl(debouncedQuery, 1));
         const data = await response.json();
 
+        const sourceStatus = data.sourceStatus || { tmdb: true, omdb: true, kinopoisk: true };
+
         setSearchResults({
           tmdb: data.tmdb?.results || [],
           omdb: data.omdb?.results || [],
+          kinopoisk: data.kinopoisk?.results || [],
           tmdbCount: data.tmdb?.totalResults || 0,
           omdbCount: data.omdb?.totalResults || 0,
+          kinopoiskCount: data.kinopoisk?.totalResults || 0,
+          sourceStatus,
         });
         setTotalPages(data.tmdb?.totalPages || 0);
         setHasMore((data.tmdb?.page || 1) < (data.tmdb?.totalPages || 0));
+
+        // Show toast warning if TMDB is unavailable
+        if (!sourceStatus.tmdb && !hasShownTmdbWarning.current) {
+          hasShownTmdbWarning.current = true;
+          toast.warning(t('tmdbUnavailable', {
+            defaultValue: 'TMDB unavailable, using alternative sources',
+          }));
+        }
       } catch (err) {
         console.error('Search failed:', err);
-        setSearchResults({ tmdb: [], omdb: [], tmdbCount: 0, omdbCount: 0 });
+        setSearchResults({
+          tmdb: [],
+          omdb: [],
+          kinopoisk: [],
+          tmdbCount: 0,
+          omdbCount: 0,
+          kinopoiskCount: 0,
+          sourceStatus: { tmdb: false, omdb: false, kinopoisk: false },
+        });
         setHasMore(false);
       } finally {
         setIsSearching(false);
@@ -587,9 +636,13 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
 
   // Get current search results based on selected service
   const currentSearchResults =
-    searchMode === 'tmdb' ? searchResults.tmdb : searchResults.omdb;
+    searchMode === 'tmdb'
+      ? searchResults.tmdb
+      : searchMode === 'kinopoisk'
+        ? searchResults.kinopoisk
+        : searchResults.omdb;
 
-  const isExternalSearch = searchMode === 'tmdb' || searchMode === 'omdb';
+  const isExternalSearch = searchMode === 'tmdb' || searchMode === 'omdb' || searchMode === 'kinopoisk';
 
   return (
     <div className="flex flex-col h-full">
@@ -630,11 +683,13 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
         {/* Service tabs (when doing external search) */}
         {isExternalSearch && (
           <SearchServiceTabs
-            activeService={searchMode as 'tmdb' | 'omdb'}
+            activeService={searchMode as SearchService}
             tmdbCount={searchResults.tmdbCount}
             omdbCount={searchResults.omdbCount}
-            onServiceChange={setSearchMode}
+            kinopoiskCount={searchResults.kinopoiskCount}
+            onServiceChange={(service) => setSearchMode(service)}
             isSearching={isSearching}
+            sourceStatus={searchResults.sourceStatus}
           />
         )}
 
