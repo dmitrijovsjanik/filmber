@@ -148,6 +148,10 @@ jobs:
             cd "${APP_DIR}/current"
             echo "Restarting PM2 process..."
             pm2 delete filmber 2>/dev/null || true
+            sleep 2
+            # Kill any process holding port 3000 to avoid EADDRINUSE
+            fuser -k 3000/tcp 2>/dev/null || true
+            sleep 1
             pm2 start ecosystem.config.js --env production
             pm2 save
 
