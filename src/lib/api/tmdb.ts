@@ -1,7 +1,24 @@
 import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails } from '@/types/movie';
+import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+
+// HTTP proxy for TMDB requests (v2ray on server)
+const TMDB_PROXY_URL = process.env.TMDB_PROXY_URL;
+
+// Custom fetch that uses proxy if configured
+async function tmdbFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  if (TMDB_PROXY_URL) {
+    const dispatcher = new ProxyAgent(TMDB_PROXY_URL);
+    const response = await proxyFetch(url, {
+      ...options,
+      dispatcher,
+    } as Parameters<typeof proxyFetch>[1]);
+    return response as unknown as Response;
+  }
+  return fetch(url, options);
+}
 
 interface TMDBResponse<T> {
   results: T[];
@@ -26,7 +43,7 @@ class TMDBClient {
       url.searchParams.set(key, value);
     });
 
-    const response = await fetch(url.toString(), {
+    const response = await tmdbFetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json',
