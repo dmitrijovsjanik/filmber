@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { watchPrompts, userMovieLists, movieCache, MOVIE_STATUS } from '@/lib/db/schema';
+import { watchPrompts, userMovieLists, movies, MOVIE_STATUS, type Movie } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, success } from '@/lib/auth/middleware';
 import { eq, and, isNull, lt, or, desc } from 'drizzle-orm';
 
@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
   const prompts = await db
     .select({
       prompt: watchPrompts,
-      movie: movieCache,
+      movie: movies,
     })
     .from(watchPrompts)
-    .leftJoin(movieCache, eq(watchPrompts.tmdbId, movieCache.tmdbId))
+    .leftJoin(movies, eq(watchPrompts.tmdbId, movies.tmdbId))
     .where(
       and(
         eq(watchPrompts.userId, user.id),
@@ -39,10 +39,10 @@ export async function GET(request: NextRequest) {
     const candidates = await db
       .select({
         list: userMovieLists,
-        movie: movieCache,
+        movie: movies,
       })
       .from(userMovieLists)
-      .leftJoin(movieCache, eq(userMovieLists.tmdbId, movieCache.tmdbId))
+      .leftJoin(movies, eq(userMovieLists.tmdbId, movies.tmdbId))
       .where(
         and(
           eq(userMovieLists.userId, user.id),
@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
     const newPrompts = await db
       .select({
         prompt: watchPrompts,
-        movie: movieCache,
+        movie: movies,
       })
       .from(watchPrompts)
-      .leftJoin(movieCache, eq(watchPrompts.tmdbId, movieCache.tmdbId))
+      .leftJoin(movies, eq(watchPrompts.tmdbId, movies.tmdbId))
       .where(
         and(
           eq(watchPrompts.userId, user.id),
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-function formatPrompt(item: { prompt: typeof watchPrompts.$inferSelect; movie: typeof movieCache.$inferSelect | null }) {
+function formatPrompt(item: { prompt: typeof watchPrompts.$inferSelect; movie: Movie | null }) {
   return {
     id: item.prompt.id,
     tmdbId: item.prompt.tmdbId,
@@ -112,6 +112,8 @@ function formatPrompt(item: { prompt: typeof watchPrompts.$inferSelect; movie: t
           title: item.movie.title,
           titleRu: item.movie.titleRu,
           posterPath: item.movie.posterPath,
+          posterUrl: item.movie.posterUrl,
+          localPosterPath: item.movie.localPosterPath,
           releaseDate: item.movie.releaseDate,
         }
       : null,

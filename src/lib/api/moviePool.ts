@@ -1,11 +1,10 @@
 import { tmdb, TMDBClient } from './tmdb';
 import { omdb, OMDBClient } from './omdb';
 import { db } from '../db';
-import { movieCache } from '../db/schema';
+import { movies } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { shuffle } from '../utils/shuffle';
 import type { Movie, MediaTypeFilter } from '@/types/movie';
-import type { MovieCacheEntry } from '../db/schema';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -80,12 +79,12 @@ export async function generateMoviePool(
 }
 
 export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
-  // Check cache first
+  // Check movies table first
   try {
     const [cached] = await db
       .select()
-      .from(movieCache)
-      .where(eq(movieCache.tmdbId, tmdbId));
+      .from(movies)
+      .where(eq(movies.tmdbId, tmdbId));
 
     if (cached && isRecentCache(cached.cachedAt)) {
       return formatCachedMovie(cached);
@@ -107,7 +106,7 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
       omdbData = await omdb.getByImdbId(detailsEn.imdb_id);
     }
 
-    const cacheEntry = {
+    const movieEntry = {
       tmdbId,
       title: detailsEn.title,
       titleRu: detailsRu.title !== detailsEn.title ? detailsRu.title : null,
@@ -117,9 +116,9 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
       posterPath: detailsEn.poster_path,
       backdropPath: detailsEn.backdrop_path,
       releaseDate: detailsEn.release_date,
-      voteAverage: detailsEn.vote_average.toString(),
-      voteCount: detailsEn.vote_count,
-      popularity: detailsEn.popularity.toString(),
+      tmdbRating: detailsEn.vote_average.toString(),
+      tmdbVoteCount: detailsEn.vote_count,
+      tmdbPopularity: detailsEn.popularity.toString(),
       imdbId: detailsEn.imdb_id,
       imdbRating: omdbData?.imdbRating || null,
       rottenTomatoesRating: omdbData
@@ -128,23 +127,29 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
       metacriticRating: omdbData?.Metascore || null,
       genres: JSON.stringify(detailsEn.genres.map((g) => g.name)),
       runtime: detailsEn.runtime,
+      mediaType: 'movie' as const,
+      primarySource: 'tmdb' as const,
       cachedAt: new Date(),
+      updatedAt: new Date(),
     };
 
-    // Try to cache the data
+    // Try to cache the data in movies table
     try {
       await db
-        .insert(movieCache)
-        .values(cacheEntry)
+        .insert(movies)
+        .values(movieEntry)
         .onConflictDoUpdate({
-          target: movieCache.tmdbId,
-          set: cacheEntry,
+          target: movies.tmdbId,
+          set: {
+            ...movieEntry,
+            updatedAt: new Date(),
+          },
         });
     } catch {
       // Ignore cache errors
     }
 
-    return formatCachedMovie(cacheEntry as MovieCacheEntry);
+    return formatCachedMovie(movieEntry);
   } catch (error) {
     console.error(`Failed to enhance movie ${tmdbId}:`, error);
     return null;
@@ -200,27 +205,48 @@ function isRecentCache(cachedAt: Date): boolean {
   return Date.now() - cachedAt.getTime() < THIRTY_DAYS_MS;
 }
 
-function formatCachedMovie(cached: MovieCacheEntry): Movie {
+interface CachedMovieData {
+  tmdbId: number | null;
+  title: string;
+  titleRu: string | null;
+  overview: string | null;
+  overviewRu: string | null;
+  posterPath: string | null;
+  posterUrl?: string | null;
+  releaseDate: string | null;
+  tmdbRating: string | null;
+  imdbRating: string | null;
+  kinopoiskRating?: string | null;
+  rottenTomatoesRating: string | null;
+  metacriticRating: string | null;
+  genres: string | null;
+  runtime: number | null;
+  mediaType?: string | null;
+  numberOfSeasons?: number | null;
+  numberOfEpisodes?: number | null;
+}
+
+function formatCachedMovie(cached: CachedMovieData): Movie {
   return {
-    tmdbId: cached.tmdbId,
+    tmdbId: cached.tmdbId!,
     title: cached.title,
     titleRu: cached.titleRu,
     overview: cached.overview || '',
     overviewRu: cached.overviewRu,
-    posterUrl: TMDBClient.getPosterUrl(cached.posterPath),
+    posterUrl: cached.posterUrl || TMDBClient.getPosterUrl(cached.posterPath),
     releaseDate: cached.releaseDate || '',
     ratings: {
-      tmdb: cached.voteAverage || '0',
+      tmdb: cached.tmdbRating || '0',
       imdb: cached.imdbRating,
-      kinopoisk: null,
+      kinopoisk: cached.kinopoiskRating || null,
       rottenTomatoes: cached.rottenTomatoesRating,
       metacritic: cached.metacriticRating,
     },
     genres: JSON.parse(cached.genres || '[]'),
     runtime: cached.runtime,
-    mediaType: 'movie',
-    numberOfSeasons: null,
-    numberOfEpisodes: null,
+    mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
+    numberOfSeasons: cached.numberOfSeasons || null,
+    numberOfEpisodes: cached.numberOfEpisodes || null,
   };
 }
 

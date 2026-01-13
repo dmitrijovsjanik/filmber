@@ -128,29 +128,6 @@ export const movies = pgTable(
   ]
 );
 
-// Legacy movie cache - kept for migration, will be removed
-// @deprecated Use movies table instead
-export const movieCache = pgTable('movie_cache', {
-  tmdbId: integer('tmdb_id').primaryKey(),
-  title: varchar('title', { length: 500 }).notNull(),
-  titleRu: varchar('title_ru', { length: 500 }),
-  overview: text('overview'),
-  overviewRu: text('overview_ru'),
-  posterPath: varchar('poster_path', { length: 500 }),
-  backdropPath: varchar('backdrop_path', { length: 500 }),
-  releaseDate: varchar('release_date', { length: 20 }),
-  voteAverage: varchar('vote_average', { length: 10 }),
-  voteCount: integer('vote_count'),
-  popularity: varchar('popularity', { length: 20 }),
-  imdbId: varchar('imdb_id', { length: 20 }),
-  imdbRating: varchar('imdb_rating', { length: 10 }),
-  rottenTomatoesRating: varchar('rt_rating', { length: 10 }),
-  metacriticRating: varchar('metacritic_rating', { length: 10 }),
-  genres: text('genres'), // JSON array
-  runtime: integer('runtime'),
-  cachedAt: timestamp('cached_at').defaultNow().notNull(),
-});
-
 // ============================================
 // RELATIONS
 // ============================================
@@ -586,10 +563,6 @@ export type MediaTypeFilter = (typeof MEDIA_TYPE_FILTER)[keyof typeof MEDIA_TYPE
 // Movie types (unified)
 export type Movie = typeof movies.$inferSelect;
 export type NewMovie = typeof movies.$inferInsert;
-
-// Legacy movie cache types (deprecated)
-export type MovieCacheEntry = typeof movieCache.$inferSelect;
-export type NewMovieCacheEntry = typeof movieCache.$inferInsert;
 
 // Room types
 export type Room = typeof rooms.$inferSelect;

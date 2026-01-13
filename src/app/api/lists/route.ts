@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
   userMovieLists,
-  movieCache,
+  movies,
   MOVIE_STATUS,
   MOVIE_SOURCE,
   type MovieStatus,
   type MovieSource,
 } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, badRequest, success } from '@/lib/auth/middleware';
-import { eq, and, desc, count, or, inArray } from 'drizzle-orm';
-import { enhanceMovieData } from '@/lib/api/moviePool';
+import { eq, and, desc, count, inArray } from 'drizzle-orm';
+import { movieService } from '@/lib/services/movieService';
 
 interface MovieListItem {
   id: string;
@@ -27,6 +27,8 @@ interface MovieListItem {
     title: string;
     titleRu: string | null;
     posterPath: string | null;
+    posterUrl: string | null;
+    localPosterPath: string | null;
     releaseDate: string | null;
     voteAverage: string | null;
     genres: string | null;
@@ -34,7 +36,11 @@ interface MovieListItem {
     overview: string | null;
     overviewRu: string | null;
     imdbRating: string | null;
+    kinopoiskRating: string | null;
     rottenTomatoesRating: string | null;
+    mediaType: string;
+    numberOfSeasons: number | null;
+    numberOfEpisodes: number | null;
   } | null;
 }
 
@@ -77,10 +83,10 @@ export async function GET(request: NextRequest) {
   const items = await db
     .select({
       list: userMovieLists,
-      movie: movieCache,
+      movie: movies,
     })
     .from(userMovieLists)
-    .leftJoin(movieCache, eq(userMovieLists.tmdbId, movieCache.tmdbId))
+    .leftJoin(movies, eq(userMovieLists.tmdbId, movies.tmdbId))
     .where(and(...conditions))
     .orderBy(desc(userMovieLists.updatedAt))
     .limit(limit)
@@ -115,14 +121,20 @@ export async function GET(request: NextRequest) {
           title: item.movie.title,
           titleRu: item.movie.titleRu,
           posterPath: item.movie.posterPath,
+          posterUrl: item.movie.posterUrl,
+          localPosterPath: item.movie.localPosterPath,
           releaseDate: item.movie.releaseDate,
-          voteAverage: item.movie.voteAverage,
+          voteAverage: item.movie.tmdbRating,
           genres: item.movie.genres,
           runtime: item.movie.runtime,
           overview: item.movie.overview,
           overviewRu: item.movie.overviewRu,
           imdbRating: item.movie.imdbRating,
+          kinopoiskRating: item.movie.kinopoiskRating,
           rottenTomatoesRating: item.movie.rottenTomatoesRating,
+          mediaType: item.movie.mediaType,
+          numberOfSeasons: item.movie.numberOfSeasons,
+          numberOfEpisodes: item.movie.numberOfEpisodes,
         }
       : null,
   }));
@@ -204,15 +216,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure movie is cached before adding to list
-    const [cachedMovie] = await db
-      .select()
-      .from(movieCache)
-      .where(eq(movieCache.tmdbId, tmdbId));
+    // Ensure movie exists in database before adding to list
+    const existingMovie = await movieService.findByExternalId({ tmdbId });
 
-    if (!cachedMovie) {
-      // Fetch and cache movie data from TMDB
-      await enhanceMovieData(tmdbId);
+    if (!existingMovie) {
+      // Fetch and cache movie data
+      await movieService.findOrCreate({ tmdbId, source: 'tmdb' });
     }
 
     // Check if movie already exists in user's list

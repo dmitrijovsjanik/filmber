@@ -4,7 +4,7 @@ import {
   users,
   userMovieLists,
   watchPrompts,
-  movieCache,
+  movies,
   MOVIE_STATUS,
 } from '../../src/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -225,8 +225,8 @@ For the full experience, use the Mini App!`;
       // Get movie title for confirmation
       const [movie] = await db
         .select()
-        .from(movieCache)
-        .where(eq(movieCache.tmdbId, tmdbId));
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
 
       const movieTitle =
         isRussian && movie?.titleRu
@@ -302,8 +302,8 @@ For the full experience, use the Mini App!`;
       // Get movie title for message
       const [movie] = await db
         .select()
-        .from(movieCache)
-        .where(eq(movieCache.tmdbId, tmdbId));
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
 
       const movieTitle =
         isRussian && movie?.titleRu

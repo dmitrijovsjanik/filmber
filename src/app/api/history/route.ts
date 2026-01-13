@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { userSwipeHistory, movieCache } from '@/lib/db/schema';
+import { userSwipeHistory, movies } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, success } from '@/lib/auth/middleware';
 import { eq, desc } from 'drizzle-orm';
 
@@ -17,13 +17,13 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0', 10);
 
   // Build query
-  let query = db
+  const query = db
     .select({
       history: userSwipeHistory,
-      movie: movieCache,
+      movie: movies,
     })
     .from(userSwipeHistory)
-    .leftJoin(movieCache, eq(userSwipeHistory.tmdbId, movieCache.tmdbId))
+    .leftJoin(movies, eq(userSwipeHistory.tmdbId, movies.tmdbId))
     .where(eq(userSwipeHistory.userId, user.id))
     .orderBy(desc(userSwipeHistory.createdAt))
     .limit(limit)
@@ -49,8 +49,10 @@ export async function GET(request: NextRequest) {
           title: item.movie.title,
           titleRu: item.movie.titleRu,
           posterPath: item.movie.posterPath,
+          posterUrl: item.movie.posterUrl,
+          localPosterPath: item.movie.localPosterPath,
           releaseDate: item.movie.releaseDate,
-          voteAverage: item.movie.voteAverage,
+          voteAverage: item.movie.tmdbRating,
         }
       : null,
   }));

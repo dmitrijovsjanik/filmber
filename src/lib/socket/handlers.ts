@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { db } from '../db';
-import { rooms, swipes, movieCache, userMovieLists, MOVIE_STATUS } from '../db/schema';
+import { rooms, swipes, movies, userMovieLists, MOVIE_STATUS } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { enhanceMovieData } from '../api/moviePool';
 import type {
@@ -265,35 +265,35 @@ async function handleUserLeave(
 
 async function getMovieById(tmdbId: number): Promise<Movie | null> {
   try {
-    // Check cache first
+    // Check movies table first
     const [cached] = await db
       .select()
-      .from(movieCache)
-      .where(eq(movieCache.tmdbId, tmdbId));
+      .from(movies)
+      .where(eq(movies.tmdbId, tmdbId));
 
     if (cached) {
       return {
-        tmdbId: cached.tmdbId,
+        tmdbId: cached.tmdbId!,
         title: cached.title,
         titleRu: cached.titleRu,
         overview: cached.overview || '',
         overviewRu: cached.overviewRu,
-        posterUrl: cached.posterPath
+        posterUrl: cached.posterUrl || (cached.posterPath
           ? `https://image.tmdb.org/t/p/w500${cached.posterPath}`
-          : '',
+          : ''),
         releaseDate: cached.releaseDate || '',
         ratings: {
-          tmdb: cached.voteAverage || '0',
+          tmdb: cached.tmdbRating || '0',
           imdb: cached.imdbRating,
-          kinopoisk: null,
+          kinopoisk: cached.kinopoiskRating,
           rottenTomatoes: cached.rottenTomatoesRating,
           metacritic: cached.metacriticRating,
         },
         genres: JSON.parse(cached.genres || '[]'),
         runtime: cached.runtime,
-        mediaType: 'movie',
-        numberOfSeasons: null,
-        numberOfEpisodes: null,
+        mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
+        numberOfSeasons: cached.numberOfSeasons,
+        numberOfEpisodes: cached.numberOfEpisodes,
       };
     }
 

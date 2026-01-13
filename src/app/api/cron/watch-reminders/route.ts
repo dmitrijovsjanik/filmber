@@ -3,7 +3,6 @@ import { db } from '@/lib/db';
 import {
   userMovieLists,
   users,
-  movieCache,
   movies,
   watchPrompts,
   notificationSettings,
@@ -42,11 +41,6 @@ export async function GET(request: NextRequest) {
           firstName: users.firstName,
           languageCode: users.languageCode,
         },
-        movieCache: {
-          title: movieCache.title,
-          titleRu: movieCache.titleRu,
-          runtime: movieCache.runtime,
-        },
         movie: {
           title: movies.title,
           titleRu: movies.titleRu,
@@ -55,8 +49,7 @@ export async function GET(request: NextRequest) {
       })
       .from(userMovieLists)
       .innerJoin(users, eq(userMovieLists.userId, users.id))
-      .leftJoin(movieCache, eq(userMovieLists.tmdbId, movieCache.tmdbId))
-      .leftJoin(movies, eq(userMovieLists.unifiedMovieId, movies.id))
+      .leftJoin(movies, eq(userMovieLists.tmdbId, movies.tmdbId))
       .leftJoin(
         notificationSettings,
         eq(users.id, notificationSettings.userId)
@@ -77,19 +70,13 @@ export async function GET(request: NextRequest) {
     const moviesNeedingReminder = watchingMovies.filter((item) => {
       if (!item.watchStartedAt) return false;
 
-      // Get runtime from either movies or movieCache table
-      const runtime = item.movie?.runtime || item.movieCache?.runtime || 120; // default 2 hours
+      // Get runtime from movies table (default 2 hours)
+      const runtime = item.movie?.runtime || 120;
       const watchEndTime = new Date(item.watchStartedAt.getTime() + runtime * 60 * 1000);
       const reminderTime = new Date(watchEndTime.getTime() + BUFFER_AFTER_MOVIE_MS);
 
       return now >= reminderTime;
-    }).map((item) => ({
-      ...item,
-      movie: {
-        title: item.movie?.title || item.movieCache?.title,
-        titleRu: item.movie?.titleRu || item.movieCache?.titleRu,
-      },
-    }));
+    });
 
     // Filter out movies that already have pending prompts (not responded yet)
     // or have been snoozed (snoozeUntil > now)
