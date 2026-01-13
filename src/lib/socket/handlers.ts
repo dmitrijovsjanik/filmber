@@ -175,20 +175,28 @@ export function setupSocketHandlers(io: TypedServer) {
           // Check if movie is in partner's watchlist (for instant match)
           let partnerHasInWatchlist = false;
           if (!otherSwipe && partnerId) {
-            const [watchlistEntry] = await db
-              .select()
-              .from(userMovieLists)
-              .where(
-                and(
-                  eq(userMovieLists.userId, partnerId),
-                  eq(userMovieLists.tmdbId, movieId),
-                  inArray(userMovieLists.status, [
-                    MOVIE_STATUS.WANT_TO_WATCH,
-                    MOVIE_STATUS.WATCHING,
-                  ])
-                )
-              );
-            partnerHasInWatchlist = !!watchlistEntry;
+            // First look up the movie to get unifiedMovieId
+            const [movieEntry] = await db
+              .select({ id: movies.id })
+              .from(movies)
+              .where(eq(movies.tmdbId, movieId));
+
+            if (movieEntry) {
+              const [watchlistEntry] = await db
+                .select()
+                .from(userMovieLists)
+                .where(
+                  and(
+                    eq(userMovieLists.userId, partnerId),
+                    eq(userMovieLists.unifiedMovieId, movieEntry.id),
+                    inArray(userMovieLists.status, [
+                      MOVIE_STATUS.WANT_TO_WATCH,
+                      MOVIE_STATUS.WATCHING,
+                    ])
+                  )
+                );
+              partnerHasInWatchlist = !!watchlistEntry;
+            }
           }
 
           if (otherSwipe || partnerHasInWatchlist) {

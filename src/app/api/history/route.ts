@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       movie: movies,
     })
     .from(userSwipeHistory)
-    .leftJoin(movies, eq(userSwipeHistory.tmdbId, movies.tmdbId))
+    .leftJoin(movies, eq(userSwipeHistory.unifiedMovieId, movies.id))
     .where(eq(userSwipeHistory.userId, user.id))
     .orderBy(desc(userSwipeHistory.createdAt))
     .limit(limit)

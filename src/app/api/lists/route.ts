@@ -79,14 +79,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Get list items with movie data
+  // Get list items with movie data (using unifiedMovieId for JOIN)
   const items = await db
     .select({
       list: userMovieLists,
       movie: movies,
     })
     .from(userMovieLists)
-    .leftJoin(movies, eq(userMovieLists.tmdbId, movies.tmdbId))
+    .leftJoin(movies, eq(userMovieLists.unifiedMovieId, movies.id))
     .where(and(...conditions))
     .orderBy(desc(userMovieLists.updatedAt))
     .limit(limit)
@@ -216,19 +216,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure movie exists in database before adding to list
-    const existingMovie = await movieService.findByExternalId({ tmdbId });
+    // Ensure movie exists in database and get its unified ID
+    let movie = await movieService.findByExternalId({ tmdbId });
 
-    if (!existingMovie) {
+    if (!movie) {
       // Fetch and cache movie data
-      await movieService.findOrCreate({ tmdbId, source: 'tmdb' });
+      movie = await movieService.findOrCreate({ tmdbId, source: 'tmdb' });
     }
 
-    // Check if movie already exists in user's list
+    if (!movie) {
+      return badRequest('Failed to fetch movie data');
+    }
+
+    // Check if movie already exists in user's list (by unifiedMovieId)
     const [existing] = await db
       .select()
       .from(userMovieLists)
-      .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
+      .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, movie.id)));
 
     if (existing) {
       // Determine if we should start the watch timer
@@ -264,6 +268,7 @@ export async function POST(request: NextRequest) {
       .values({
         userId: user.id,
         tmdbId,
+        unifiedMovieId: movie.id,
         status,
         rating: rating || null,
         source: movieSource,

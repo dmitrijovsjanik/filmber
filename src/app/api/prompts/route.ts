@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       movie: movies,
     })
     .from(watchPrompts)
-    .leftJoin(movies, eq(watchPrompts.tmdbId, movies.tmdbId))
+    .leftJoin(movies, eq(watchPrompts.unifiedMovieId, movies.id))
     .where(
       and(
         eq(watchPrompts.userId, user.id),
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         movie: movies,
       })
       .from(userMovieLists)
-      .leftJoin(movies, eq(userMovieLists.tmdbId, movies.tmdbId))
+      .leftJoin(movies, eq(userMovieLists.unifiedMovieId, movies.id))
       .where(
         and(
           eq(userMovieLists.userId, user.id),
@@ -55,21 +55,22 @@ export async function GET(request: NextRequest) {
 
     // Create prompts for these movies
     for (const candidate of candidates) {
-      // Check if prompt already exists
+      // Check if prompt already exists (by unifiedMovieId)
       const [existing] = await db
         .select()
         .from(watchPrompts)
         .where(
           and(
             eq(watchPrompts.userId, user.id),
-            eq(watchPrompts.tmdbId, candidate.list.tmdbId)
+            eq(watchPrompts.unifiedMovieId, candidate.list.unifiedMovieId!)
           )
         );
 
-      if (!existing) {
+      if (!existing && candidate.list.unifiedMovieId) {
         await db.insert(watchPrompts).values({
           userId: user.id,
           tmdbId: candidate.list.tmdbId,
+          unifiedMovieId: candidate.list.unifiedMovieId,
         });
       }
     }
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
         movie: movies,
       })
       .from(watchPrompts)
-      .leftJoin(movies, eq(watchPrompts.tmdbId, movies.tmdbId))
+      .leftJoin(movies, eq(watchPrompts.unifiedMovieId, movies.id))
       .where(
         and(
           eq(watchPrompts.userId, user.id),

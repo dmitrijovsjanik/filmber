@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     // If "not_yet", update movie status back to want_to_watch
-    if (response === 'not_yet') {
+    if (response === 'not_yet' && prompt.unifiedMovieId) {
       await db
         .update(userMovieLists)
         .set({
@@ -62,20 +62,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           updatedAt: now,
         })
         .where(
-          and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, prompt.tmdbId))
+          and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, prompt.unifiedMovieId))
         );
     }
 
     await db.update(watchPrompts).set(updates).where(eq(watchPrompts.id, id));
 
     // If watched, update the movie list entry
-    if (response === 'watched') {
-      // Find or create list entry
+    if (response === 'watched' && prompt.unifiedMovieId) {
+      // Find or create list entry (by unifiedMovieId)
       const [existingEntry] = await db
         .select()
         .from(userMovieLists)
         .where(
-          and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, prompt.tmdbId))
+          and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, prompt.unifiedMovieId))
         );
 
       if (existingEntry) {
@@ -94,6 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         await db.insert(userMovieLists).values({
           userId: user.id,
           tmdbId: prompt.tmdbId,
+          unifiedMovieId: prompt.unifiedMovieId,
           status: MOVIE_STATUS.WATCHED,
           rating: rating || null,
           source: 'manual',

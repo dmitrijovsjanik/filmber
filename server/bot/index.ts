@@ -192,6 +192,19 @@ For the full experience, use the Mini App!`;
         return;
       }
 
+      // Look up movie to get unifiedMovieId
+      const [movie] = await db
+        .select()
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
+
+      if (!movie) {
+        await ctx.answerCallbackQuery({
+          text: isRussian ? 'Фильм не найден' : 'Movie not found',
+        });
+        return;
+      }
+
       // Update movie status and rating
       await db
         .update(userMovieLists)
@@ -204,7 +217,7 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(userMovieLists.userId, user.id),
-            eq(userMovieLists.tmdbId, tmdbId)
+            eq(userMovieLists.unifiedMovieId, movie.id)
           )
         );
 
@@ -218,20 +231,15 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(watchPrompts.userId, user.id),
-            eq(watchPrompts.tmdbId, tmdbId)
+            eq(watchPrompts.unifiedMovieId, movie.id)
           )
         );
 
-      // Get movie title for confirmation
-      const [movie] = await db
-        .select()
-        .from(movies)
-        .where(eq(movies.tmdbId, tmdbId));
-
+      // Get movie title for confirmation (already have movie from above)
       const movieTitle =
-        isRussian && movie?.titleRu
+        isRussian && movie.titleRu
           ? movie.titleRu
-          : movie?.title || `Movie #${tmdbId}`;
+          : movie.title || `Movie #${tmdbId}`;
 
       const ratingEmoji = rating === 1 ? '😐' : rating === 2 ? '🙂' : '🤩';
       const successMessage = isRussian
@@ -270,6 +278,19 @@ For the full experience, use the Mini App!`;
         return;
       }
 
+      // Look up movie to get unifiedMovieId
+      const [movie] = await db
+        .select()
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
+
+      if (!movie) {
+        await ctx.answerCallbackQuery({
+          text: isRussian ? 'Фильм не найден' : 'Movie not found',
+        });
+        return;
+      }
+
       // Update movie status back to want_to_watch and clear watchStartedAt
       await db
         .update(userMovieLists)
@@ -281,7 +302,7 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(userMovieLists.userId, user.id),
-            eq(userMovieLists.tmdbId, tmdbId)
+            eq(userMovieLists.unifiedMovieId, movie.id)
           )
         );
 
@@ -295,20 +316,15 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(watchPrompts.userId, user.id),
-            eq(watchPrompts.tmdbId, tmdbId)
+            eq(watchPrompts.unifiedMovieId, movie.id)
           )
         );
 
-      // Get movie title for message
-      const [movie] = await db
-        .select()
-        .from(movies)
-        .where(eq(movies.tmdbId, tmdbId));
-
+      // Get movie title for message (already have movie from above)
       const movieTitle =
-        isRussian && movie?.titleRu
+        isRussian && movie.titleRu
           ? movie.titleRu
-          : movie?.title || `Movie #${tmdbId}`;
+          : movie.title || `Movie #${tmdbId}`;
 
       const notYetMessage = isRussian
         ? `😔 Как жаль, что не удалось посмотреть «${movieTitle}».\n\nОставил в списке «Хочу посмотреть».`

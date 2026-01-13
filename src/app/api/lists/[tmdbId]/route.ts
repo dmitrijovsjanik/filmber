@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { userMovieLists, MOVIE_STATUS } from '@/lib/db/schema';
+import { userMovieLists, movies, MOVIE_STATUS } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, badRequest, notFound, success } from '@/lib/auth/middleware';
 import { eq, and } from 'drizzle-orm';
 
@@ -22,10 +22,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return badRequest('Invalid tmdbId');
   }
 
+  // Look up movie by tmdbId to get unifiedMovieId
+  const [movie] = await db
+    .select({ id: movies.id })
+    .from(movies)
+    .where(eq(movies.tmdbId, tmdbId));
+
+  if (!movie) {
+    return notFound('Movie not found');
+  }
+
   const [item] = await db
     .select()
     .from(userMovieLists)
-    .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
+    .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, movie.id)));
 
   if (!item) {
     return notFound('Movie not in list');
@@ -64,11 +74,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Look up movie by tmdbId to get unifiedMovieId
+    const [movie] = await db
+      .select({ id: movies.id })
+      .from(movies)
+      .where(eq(movies.tmdbId, tmdbId));
+
+    if (!movie) {
+      return notFound('Movie not found');
+    }
+
     // Find existing entry
     const [existing] = await db
       .select()
       .from(userMovieLists)
-      .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
+      .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, movie.id)));
 
     if (!existing) {
       return notFound('Movie not in list');
@@ -129,11 +149,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return badRequest('Invalid tmdbId');
   }
 
+  // Look up movie by tmdbId to get unifiedMovieId
+  const [movie] = await db
+    .select({ id: movies.id })
+    .from(movies)
+    .where(eq(movies.tmdbId, tmdbId));
+
+  if (!movie) {
+    return notFound('Movie not found');
+  }
+
   // First check if the item exists
   const [existing] = await db
     .select({ id: userMovieLists.id })
     .from(userMovieLists)
-    .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
+    .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, movie.id)));
 
   if (!existing) {
     return notFound('Movie not in list');
@@ -141,7 +171,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
   await db
     .delete(userMovieLists)
-    .where(and(eq(userMovieLists.userId, user.id), eq(userMovieLists.tmdbId, tmdbId)));
+    .where(eq(userMovieLists.id, existing.id));
 
   return success({ success: true });
 }
