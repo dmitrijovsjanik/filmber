@@ -1,22 +1,41 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import postgres, { type Sql } from 'postgres';
 import * as schema from './schema';
 
-const connectionString = process.env.DATABASE_URL;
+// Lazy initialization to avoid errors during Next.js build
+let _db: PostgresJsDatabase<typeof schema> | null = null;
+let _queryClient: Sql | null = null;
+let _migrationClient: Sql | null = null;
 
-if (!connectionString) {
-  throw new Error(
-    'DATABASE_URL is not set. Make sure environment variables are loaded before importing db module.'
-  );
+function getConnectionString(): string {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error(
+      'DATABASE_URL is not set. Make sure environment variables are loaded.'
+    );
+  }
+  return connectionString;
 }
 
 // For queries - with connection pool settings
-const queryClient = postgres(connectionString, {
-  max: 10, // Maximum connections in pool
-  idle_timeout: 20, // Close idle connections after 20 seconds
-  connect_timeout: 10, // Connection timeout in seconds
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
+  get(_, prop) {
+    if (!_db) {
+      _queryClient = postgres(getConnectionString(), {
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10,
+      });
+      _db = drizzle(_queryClient, { schema });
+    }
+    return (_db as Record<string | symbol, unknown>)[prop];
+  },
 });
-export const db = drizzle(queryClient, { schema });
 
 // For migrations (uses different connection)
-export const migrationClient = postgres(connectionString, { max: 1 });
+export function getMigrationClient(): Sql {
+  if (!_migrationClient) {
+    _migrationClient = postgres(getConnectionString(), { max: 1 });
+  }
+  return _migrationClient;
+}
