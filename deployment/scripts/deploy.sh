@@ -61,18 +61,17 @@ if [ -d "${CURRENT_LINK}/node_modules" ]; then
 fi
 
 # Клонируем репозиторий
-cd "${RELEASE_DIR}"
 if [ -d "${APP_DIR}/repo" ]; then
     cd "${APP_DIR}/repo"
     git fetch origin
     git checkout "${BRANCH}"
     git pull origin "${BRANCH}"
-    rsync -a --exclude='.git' --exclude='node_modules' ./ "${RELEASE_DIR}/"
 else
     # Первый деплой - клонируем полностью
     git clone --branch "${BRANCH}" --depth 1 https://github.com/dmitrijovsjanik/filmber.git "${APP_DIR}/repo"
-    rsync -a --exclude='.git' ./ "${RELEASE_DIR}/"
+    cd "${APP_DIR}/repo"
 fi
+rsync -a --exclude='.git' --exclude='node_modules' ./ "${RELEASE_DIR}/"
 
 cd "${RELEASE_DIR}"
 
