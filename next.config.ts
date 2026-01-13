@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
         pathname: '/t/p/**',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/api/tmdb-image',
+        search: '?path=*&size=*',
+      },
+      {
+        pathname: '/uploads/**',
+      },
+    ],
   },
   env: {
     NEXT_PUBLIC_BUILD_ID: getGitCommitHash(),
