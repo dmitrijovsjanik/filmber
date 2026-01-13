@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { rooms, swipes, roomQueues, userSessions, watchPrompts } from '@/lib/db/schema';
+import { rooms, swipes, roomQueues, watchPrompts } from '@/lib/db/schema';
 import { eq, lt, and, isNotNull, inArray } from 'drizzle-orm';
 import { cleanupExpiredSessions } from '@/lib/auth/session';
 

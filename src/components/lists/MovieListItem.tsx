@@ -60,7 +60,6 @@ interface MovieListItemProps {
 }
 
 export function MovieListItem({
-  id,
   tmdbId,
   imdbId,
   kinopoiskId,
@@ -85,8 +84,6 @@ export function MovieListItem({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Determine if this is a search result (no status yet) or a list item
-  const isSearchMode = status === null;
 
   // Handle poster URL - prefer TMDB path, then direct URL (Kinopoisk), then placeholder
   const posterUrl = movie?.posterPath
@@ -148,6 +145,7 @@ export function MovieListItem({
         {/* Poster */}
         <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
           {movie?.posterPath ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={posterUrl}
               alt={displayTitle}

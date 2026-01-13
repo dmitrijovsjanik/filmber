@@ -1,7 +1,7 @@
 'use client';
 
 import { QRCodeSVG } from 'qrcode.react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { H4, Muted } from '@/components/ui/typography';
 import { Loader } from '@/components/ui/Loader';
@@ -18,7 +18,6 @@ interface ShareLinkProps {
 export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const t = useTranslations('room');
   const tCommon = useTranslations('common');
-  const locale = useLocale();
   const { trackShareRoom } = useAnalytics();
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';

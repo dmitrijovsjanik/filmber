@@ -73,8 +73,6 @@ export function MovieDetailSheet({
   isOpen,
   onClose,
   tmdbId,
-  imdbId,
-  kinopoiskId,
   status = null,
   rating = null,
   movie,
@@ -83,7 +81,6 @@ export function MovieDetailSheet({
   onRemove,
   onAddedToList,
   canAddToList = true,
-  source = 'tmdb',
 }: MovieDetailSheetProps) {
   const t = useTranslations('lists');
   const tCommon = useTranslations('common');
@@ -272,6 +269,7 @@ export function MovieDetailSheet({
               {/* Poster */}
               {posterUrl && (
                 <div className="h-24 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={posterUrl}
                     alt={displayTitle}

@@ -42,6 +42,7 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-500 to-blue-600">
               {user?.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.photoUrl}
                   alt={user.firstName}

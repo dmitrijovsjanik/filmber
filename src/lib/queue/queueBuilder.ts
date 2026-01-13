@@ -7,7 +7,7 @@ import {
   movies,
   MOVIE_STATUS,
 } from '../db/schema';
-import { eq, and, inArray, gte } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { generateMoviePool, enhanceMovieData } from '../api/moviePool';
 import type { Movie } from '@/types/movie';
 
@@ -247,43 +247,6 @@ async function getMoviesByIds(tmdbIds: number[]): Promise<Map<number, Movie>> {
   }
 
   return result;
-}
-
-async function getMovieById(tmdbId: number): Promise<Movie | null> {
-  // Check movies table first
-  const [cached] = await db
-    .select()
-    .from(movies)
-    .where(eq(movies.tmdbId, tmdbId));
-
-  if (cached) {
-    return {
-      tmdbId: cached.tmdbId!,
-      title: cached.title,
-      titleRu: cached.titleRu,
-      overview: cached.overview || '',
-      overviewRu: cached.overviewRu,
-      posterUrl: cached.posterUrl || (cached.posterPath
-        ? `https://image.tmdb.org/t/p/w500${cached.posterPath}`
-        : ''),
-      releaseDate: cached.releaseDate || '',
-      ratings: {
-        tmdb: cached.tmdbRating || '0',
-        imdb: cached.imdbRating,
-        kinopoisk: cached.kinopoiskRating,
-        rottenTomatoes: cached.rottenTomatoesRating,
-        metacritic: cached.metacriticRating,
-      },
-      genres: JSON.parse(cached.genres || '[]'),
-      runtime: cached.runtime,
-      mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
-      numberOfSeasons: cached.numberOfSeasons,
-      numberOfEpisodes: cached.numberOfEpisodes,
-    };
-  }
-
-  // Fetch and cache if not found
-  return enhanceMovieData(tmdbId);
 }
 
 // Inject a partner-liked movie into the queue (for real-time updates)

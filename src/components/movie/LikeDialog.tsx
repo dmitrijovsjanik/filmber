@@ -59,6 +59,7 @@ export function LikeDialog({ movie, isOpen, onClose, onSave }: LikeDialogProps) 
         {/* Movie poster header */}
         <div className="relative h-32 bg-gradient-to-b from-pink-500 to-rose-500 flex items-end justify-center pb-4">
           {movie.posterUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={movie.posterUrl}
               alt={movie.title}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { userSwipeHistory, userMovieLists, movies, MOVIE_STATUS, MOVIE_SOURCE } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, badRequest, success } from '@/lib/auth/middleware';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { movieService } from '@/lib/services/movieService';
 
 interface AnonymousSwipe {
@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
 
     // OPTIMIZED: Batch queries instead of N+1 pattern
     const tmdbIds = swipes.map((s) => s.movieId);
-    const likeIds = swipes.filter((s) => s.action === 'like').map((s) => s.movieId);
 
     // 1. Batch fetch existing movies from DB
     const existingMovies = await db

@@ -126,6 +126,7 @@ export function WatchPromptBanner() {
           {/* Poster thumbnail */}
           {posterUrl && (
             <div className="h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-muted shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={posterUrl}
                 alt={movieTitle}

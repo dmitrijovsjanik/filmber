@@ -56,6 +56,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   };
 
   // Expose swipe method via ref for button clicks
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId]);
 
   const handleDragEnd = async (_: unknown, info: PanInfo) => {

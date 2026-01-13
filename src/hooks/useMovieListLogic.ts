@@ -72,7 +72,6 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
 
   // Pagination state for infinite scroll
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
@@ -245,6 +244,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     } else {
       fetchFromApi(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHydrated, token, isExternalSearch]);
 
   // Refetch callback
@@ -292,7 +292,6 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
       setIsExternalSearch(false);
       setTotalResults(0);
       setCurrentPage(1);
-      setTotalPages(0);
       setHasMore(false);
       setExpandedResults([]);
       setShowExpandedSection(false);
@@ -322,7 +321,6 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
 
         setSearchResults(data.tmdb?.results || []);
         setTotalResults(data.tmdb?.totalResults || 0);
-        setTotalPages(data.tmdb?.totalPages || 0);
         setHasMore((data.tmdb?.page || 1) < (data.tmdb?.totalPages || 0));
       } catch (err) {
         console.error('Search failed:', err);
@@ -335,6 +333,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     };
 
     searchTMDB();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, searchFilters, buildSearchUrl]);
 
   // Update item status - optimistic update
