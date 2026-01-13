@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { LRUCache } from 'lru-cache';
 import { tastedive } from '@/lib/api/tastedive';
 import { tmdb } from '@/lib/api/tmdb';
 import { movieService } from '@/lib/services/movieService';
@@ -6,12 +7,12 @@ import { db } from '@/lib/db';
 import { movies } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-// In-memory cache for similar movies results
-const similarCache = new Map<
-  number,
-  { movies: SimilarMovie[]; timestamp: number }
->();
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+// LRU cache for similar movies results
+// Max 500 entries, 1 hour TTL, ~100KB per entry max
+const similarCache = new LRUCache<number, SimilarMovie[]>({
+  max: 500, // Maximum number of items
+  ttl: 60 * 60 * 1000, // 1 hour TTL
+});
 
 interface SimilarMovie {
   tmdbId: number;
@@ -89,11 +90,11 @@ export async function GET(
       );
     }
 
-    // Check in-memory cache
+    // Check LRU cache (TTL handled automatically)
     const cached = similarCache.get(tmdbId);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached) {
       return NextResponse.json(
-        { movies: cached.movies },
+        { movies: cached },
         {
           headers: {
             'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
@@ -130,7 +131,7 @@ export async function GET(
     const tasteDiveResults = await tastedive.getSimilarMovies(movieTitle, 10);
 
     if (tasteDiveResults.length === 0) {
-      similarCache.set(tmdbId, { movies: [], timestamp: Date.now() });
+      similarCache.set(tmdbId, []);
       return NextResponse.json({ movies: [] });
     }
 
@@ -173,11 +174,8 @@ export async function GET(
     // Limit to 8 results
     const limitedResults = similarMovies.slice(0, 8);
 
-    // Cache results
-    similarCache.set(tmdbId, {
-      movies: limitedResults,
-      timestamp: Date.now(),
-    });
+    // Cache results (LRU with TTL)
+    similarCache.set(tmdbId, limitedResults);
 
     return NextResponse.json(
       { movies: limitedResults },

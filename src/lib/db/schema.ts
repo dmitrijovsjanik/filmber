@@ -13,28 +13,35 @@ import {
 import { relations } from 'drizzle-orm';
 
 // Rooms table - temporary sessions for 2 users
-export const rooms = pgTable('rooms', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  code: varchar('code', { length: 10 }).notNull().unique(),
-  pin: varchar('pin', { length: 6 }).notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('waiting'),
-  // Status: 'waiting' | 'active' | 'matched' | 'expired'
-  userAConnected: boolean('user_a_connected').default(false),
-  userBConnected: boolean('user_b_connected').default(false),
-  // Associate authenticated users with slots (for personalized queue)
-  userAId: uuid('user_a_id').references(() => users.id, { onDelete: 'set null' }),
-  userBId: uuid('user_b_id').references(() => users.id, { onDelete: 'set null' }),
+export const rooms = pgTable(
+  'rooms',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: varchar('code', { length: 10 }).notNull().unique(),
+    pin: varchar('pin', { length: 6 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('waiting'),
+    // Status: 'waiting' | 'active' | 'matched' | 'expired'
+    userAConnected: boolean('user_a_connected').default(false),
+    userBConnected: boolean('user_b_connected').default(false),
+    // Associate authenticated users with slots (for personalized queue)
+    userAId: uuid('user_a_id').references(() => users.id, { onDelete: 'set null' }),
+    userBId: uuid('user_b_id').references(() => users.id, { onDelete: 'set null' }),
 
-  // Legacy TMDB ID for match (kept for backward compatibility)
-  matchedMovieId: integer('matched_movie_id'),
+    // Legacy TMDB ID for match (kept for backward compatibility)
+    matchedMovieId: integer('matched_movie_id'),
 
-  // New unified movie reference (for future use)
-  unifiedMatchedMovieId: uuid('unified_matched_movie_id').references(() => movies.id, { onDelete: 'set null' }),
+    // New unified movie reference (for future use)
+    unifiedMatchedMovieId: uuid('unified_matched_movie_id').references(() => movies.id, { onDelete: 'set null' }),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  expiresAt: timestamp('expires_at'),
-  moviePoolSeed: integer('movie_pool_seed').notNull(),
-});
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at'),
+    moviePoolSeed: integer('movie_pool_seed').notNull(),
+  },
+  (table) => [
+    index('rooms_expires_idx').on(table.expiresAt),
+    index('rooms_status_idx').on(table.status),
+  ]
+);
 
 // Swipes table - tracks user swipe actions
 export const swipes = pgTable(
@@ -116,6 +123,8 @@ export const movies = pgTable(
     index('movies_imdb_idx').on(table.imdbId),
     index('movies_kinopoisk_idx').on(table.kinopoiskId),
     index('movies_media_type_idx').on(table.mediaType),
+    index('movies_cached_idx').on(table.cachedAt),
+    index('movies_release_idx').on(table.releaseDate),
   ]
 );
 
@@ -379,6 +388,7 @@ export const watchPrompts = pgTable(
     uniqueIndex('unique_prompt_idx').on(table.userId, table.tmdbId),
     index('prompt_user_pending_idx').on(table.userId, table.respondedAt),
     index('prompt_unified_idx').on(table.userId, table.unifiedMovieId),
+    index('prompt_snooze_idx').on(table.snoozeUntil),
   ]
 );
 
