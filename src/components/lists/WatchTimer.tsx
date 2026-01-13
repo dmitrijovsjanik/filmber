@@ -74,6 +74,7 @@ export function useWatchProgress(watchStartedAt: string | null, runtime: number 
 
   useEffect(() => {
     if (!watchStartedAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsComplete(false);
       return;
     }

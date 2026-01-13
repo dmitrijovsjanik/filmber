@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollFadeContainer } from '@/components/ui/ScrollFadeContainer';
 import { useMovieListLogic } from '@/hooks/useMovieListLogic';
 import type { MovieStatus } from '@/lib/db/schema';
+import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
+import type { ListItem } from '@/stores/listStore';
 
 interface MovieListGridProps {
   initialStatus?: MovieStatus | 'all';
@@ -165,10 +167,10 @@ function ExternalSearchContent({
 }: {
   t: ReturnType<typeof useTranslations<'lists'>>;
   isSearching: boolean;
-  searchResults: any[];
+  searchResults: SearchResult[];
   lastElementRef: (node: HTMLElement | null) => void;
   handleAddedFromSearch: () => void;
-  searchFilters: any;
+  searchFilters: SearchFiltersType;
   isLoadingMore: boolean;
   hasMore: boolean;
   debouncedQuery: string;
@@ -176,7 +178,7 @@ function ExternalSearchContent({
   showExpandedSection: boolean;
   handleExpandedSearch: () => void;
   isLoadingExpanded: boolean;
-  expandedResults: any[];
+  expandedResults: SearchResult[];
   expandedQuery: string | null;
 }) {
   if (isSearching) {
@@ -311,13 +313,13 @@ function LocalListContent({
   t: ReturnType<typeof useTranslations<'lists'>>;
   isLoading: boolean;
   error: string | null;
-  filteredItems: any[];
-  items: any[];
+  filteredItems: ListItem[];
+  items: ListItem[];
   searchQuery: string;
-  searchFilters: any;
-  statusFilter: string;
+  searchFilters: SearchFiltersType;
+  statusFilter: MovieStatus | 'all';
   ratingFilter: number | null;
-  handleStatusChange: (tmdbId: number, status: any) => void;
+  handleStatusChange: (tmdbId: number, status: MovieStatus) => void;
   handleRatingChange: (tmdbId: number, rating: number) => void;
   handleRemove: (tmdbId: number) => void;
   handleWatchComplete: (tmdbId: number, rating: number) => void;

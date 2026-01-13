@@ -124,6 +124,7 @@ export function useTelegramWebApp() {
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     if (tg && tg.initData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWebApp(tg);
       setIsTelegramMiniApp(true);
 

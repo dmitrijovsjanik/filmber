@@ -1,6 +1,6 @@
 'use client';
 
-import { useImperativeHandle, forwardRef, useState, useRef } from 'react';
+import { useImperativeHandle, forwardRef, useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
@@ -42,9 +42,11 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const genres = translateGenres(movie.genres, locale);
   const averageRating = calculateAverageRating(movie.ratings);
 
-  // Use ref to always have latest onSwipe callback - update synchronously on every render
+  // Use ref to always have latest onSwipe callback
   const onSwipeRef = useRef(onSwipe);
-  onSwipeRef.current = onSwipe; // Always sync to latest
+  useEffect(() => {
+    onSwipeRef.current = onSwipe;
+  }, [onSwipe]);
 
   // Animate card flying off screen then trigger callback
   const animateSwipe = async (direction: 'left' | 'right') => {

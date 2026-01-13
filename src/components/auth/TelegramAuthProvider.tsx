@@ -23,6 +23,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
       isInitialized &&
       !authAttempted
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthAttempted(true);
       authenticateWithTelegram(initData).catch((error) => {
         console.error('Auto-auth failed:', error);

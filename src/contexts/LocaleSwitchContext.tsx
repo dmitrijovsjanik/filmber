@@ -44,6 +44,7 @@ export function LocaleSwitchProvider({ children }: LocaleSwitchProviderProps) {
 
   // Check if we're in the middle of switching on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
     const stored = sessionStorage.getItem(SWITCH_STORAGE_KEY);

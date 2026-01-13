@@ -14,6 +14,7 @@ export function YandexMetrica() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed?.state?.analyticsConsent === true) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setShouldLoad(true);
         }
       }

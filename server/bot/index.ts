@@ -10,7 +10,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 
 // Types
-export interface BotContext extends Context {}
+export type BotContext = Context;
 
 // Environment config
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
