@@ -51,10 +51,11 @@ jobs:
             next.config.ts \
             ecosystem.config.js \
             server \
-            src/lib \
+            src \
             drizzle.config.ts \
             tsconfig.json \
-            node_modules
+            node_modules \
+            CHANGELOG-*.md
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
