@@ -1,0 +1,7 @@
+# Домены для маршрутизации через VPN
+# Эти домены блокируются в России
+
+api.themoviedb.org
+api.tmdb.org
+image.tmdb.org
+themoviedb.org
