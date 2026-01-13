@@ -123,7 +123,7 @@ export function MovieDetailSheet({
   const displayOverview = movie?.overviewRu || movie?.overview;
 
   const posterUrl = movie?.posterPath
-    ? `https://image.tmdb.org/t/p/w200${movie.posterPath}`
+    ? `/api/tmdb-image?path=${encodeURIComponent(movie.posterPath)}&size=w342`
     : movie?.posterUrl
       ? movie.posterUrl
       : null;

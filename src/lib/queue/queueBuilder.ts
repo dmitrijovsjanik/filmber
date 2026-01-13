@@ -9,6 +9,7 @@ import {
 } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { generateMoviePool, enhanceMovieData } from '../api/moviePool';
+import { TMDBClient } from '../api/tmdb';
 import type { Movie } from '@/types/movie';
 
 export interface QueueItem {
@@ -218,9 +219,11 @@ async function getMoviesByIds(tmdbIds: number[]): Promise<Map<number, Movie>> {
       titleRu: cached.titleRu,
       overview: cached.overview || '',
       overviewRu: cached.overviewRu,
-      posterUrl: cached.posterUrl || (cached.posterPath
-        ? `https://image.tmdb.org/t/p/w500${cached.posterPath}`
-        : ''),
+      posterUrl: TMDBClient.getSmartPosterUrl(
+        cached.localPosterPath,
+        cached.posterPath,
+        cached.posterUrl
+      ),
       releaseDate: cached.releaseDate || '',
       ratings: {
         tmdb: cached.tmdbRating || '0',

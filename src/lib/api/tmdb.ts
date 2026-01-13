@@ -292,6 +292,45 @@ class TMDBClient {
     return `/api/tmdb-image?path=${encodeURIComponent(path)}&size=${size}`;
   }
 
+  /**
+   * Get smart poster URL with fallback logic
+   * Priority: local file (if exists) > TMDB proxy > direct URL > fallback
+   */
+  static getSmartPosterUrl(
+    localPosterPath: string | null | undefined,
+    posterPath: string | null | undefined,
+    posterUrl: string | null | undefined,
+    size: 'w185' | 'w342' | 'w500' | 'original' = 'w500'
+  ): string {
+    // Check local poster - verify file exists on server
+    if (localPosterPath && typeof window === 'undefined') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const fs = require('fs');
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const path = require('path');
+        const fullPath = path.join(process.cwd(), 'public', localPosterPath);
+        if (fs.existsSync(fullPath)) {
+          return localPosterPath;
+        }
+      } catch {
+        // File doesn't exist or error checking, fall through to proxy
+      }
+    }
+
+    // Use TMDB proxy if we have posterPath
+    if (posterPath) {
+      return TMDBClient.getPosterUrl(posterPath, size);
+    }
+
+    // Direct URL (e.g. Kinopoisk)
+    if (posterUrl) {
+      return posterUrl;
+    }
+
+    return '/images/no-poster.svg';
+  }
+
   // Build backdrop URL - uses proxy endpoint on server to bypass geo-blocking
   static getBackdropUrl(
     path: string | null,

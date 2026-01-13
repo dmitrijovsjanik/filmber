@@ -213,6 +213,7 @@ interface CachedMovieData {
   overviewRu: string | null;
   posterPath: string | null;
   posterUrl?: string | null;
+  localPosterPath?: string | null;
   releaseDate: string | null;
   tmdbRating: string | null;
   imdbRating: string | null;
@@ -233,7 +234,11 @@ function formatCachedMovie(cached: CachedMovieData): Movie {
     titleRu: cached.titleRu,
     overview: cached.overview || '',
     overviewRu: cached.overviewRu,
-    posterUrl: cached.posterUrl || TMDBClient.getPosterUrl(cached.posterPath),
+    posterUrl: TMDBClient.getSmartPosterUrl(
+      cached.localPosterPath,
+      cached.posterPath,
+      cached.posterUrl
+    ),
     releaseDate: cached.releaseDate || '',
     ratings: {
       tmdb: cached.tmdbRating || '0',

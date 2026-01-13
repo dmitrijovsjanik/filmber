@@ -90,6 +90,18 @@ else
     exit 1
 fi
 
+# Линкуем uploads из shared директории (для сохранения постеров между деплоями)
+if [ -d "${SHARED_DIR}/uploads" ]; then
+    rm -rf "${RELEASE_DIR}/public/uploads"
+    ln -sf "${SHARED_DIR}/uploads" "${RELEASE_DIR}/public/uploads"
+    echo -e "${GREEN}uploads директория подключена${NC}"
+else
+    echo -e "${YELLOW}Предупреждение: ${SHARED_DIR}/uploads не найден, создаем...${NC}"
+    mkdir -p "${SHARED_DIR}/uploads/posters"
+    rm -rf "${RELEASE_DIR}/public/uploads"
+    ln -sf "${SHARED_DIR}/uploads" "${RELEASE_DIR}/public/uploads"
+fi
+
 # ============================================
 # 4. Установка зависимостей
 # ============================================

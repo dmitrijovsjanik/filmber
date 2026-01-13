@@ -80,11 +80,14 @@ class PosterService {
   }
 
   /**
-   * Get the source URL for a movie's poster
+   * Get the source URL for a movie's poster (for server-side downloading)
+   * Uses the internal API proxy to bypass geo-blocking
    */
   getSourceUrl(posterPath: string | null, posterUrl: string | null): string | null {
     if (posterPath) {
-      return `https://image.tmdb.org/t/p/w500${posterPath}`;
+      // Use internal API proxy URL for server-side fetching
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      return `${baseUrl}/api/tmdb-image?path=${encodeURIComponent(posterPath)}&size=w500`;
     }
     if (posterUrl) {
       return posterUrl;

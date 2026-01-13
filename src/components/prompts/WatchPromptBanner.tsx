@@ -99,7 +99,7 @@ export function WatchPromptBanner() {
   }
 
   const posterUrl = currentPrompt?.movie?.posterPath
-    ? `https://image.tmdb.org/t/p/w92${currentPrompt.movie.posterPath}`
+    ? `/api/tmdb-image?path=${encodeURIComponent(currentPrompt.movie.posterPath)}&size=w185`
     : null;
 
   const movieTitle = currentPrompt?.movie?.title || `Movie #${currentPrompt?.tmdbId}`;

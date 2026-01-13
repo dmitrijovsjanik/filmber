@@ -85,9 +85,9 @@ export function MovieListItem({
   const [isLoading, setIsLoading] = useState(false);
 
 
-  // Handle poster URL - prefer TMDB path, then direct URL (Kinopoisk), then placeholder
+  // Handle poster URL - prefer TMDB path via proxy, then direct URL (Kinopoisk), then placeholder
   const posterUrl = movie?.posterPath
-    ? `https://image.tmdb.org/t/p/w200${movie.posterPath}`
+    ? `/api/tmdb-image?path=${encodeURIComponent(movie.posterPath)}&size=w342`
     : movie?.posterUrl
       ? movie.posterUrl
       : '/placeholder-poster.png';
