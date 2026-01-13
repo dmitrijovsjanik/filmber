@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { userSwipeHistory, userMovieLists, MOVIE_STATUS, MOVIE_SOURCE } from '@/lib/db/schema';
+import { userSwipeHistory, userMovieLists, movies, MOVIE_STATUS, MOVIE_SOURCE } from '@/lib/db/schema';
 import { getAuthUser, unauthorized, badRequest, success } from '@/lib/auth/middleware';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { movieService } from '@/lib/services/movieService';
 
 interface AnonymousSwipe {
@@ -45,61 +45,86 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let importedCount = 0;
-    let addedToWatchlistCount = 0;
+    // OPTIMIZED: Batch queries instead of N+1 pattern
+    const tmdbIds = swipes.map((s) => s.movieId);
+    const likeIds = swipes.filter((s) => s.action === 'like').map((s) => s.movieId);
 
-    // Import swipes one by one (upsert behavior)
-    for (const swipe of swipes) {
-      // Ensure movie exists in database and get its unified ID
-      const movie = await movieService.findOrCreate({ tmdbId: swipe.movieId, source: 'tmdb' });
-      if (!movie) {
-        // Skip if we can't get movie data
-        continue;
+    // 1. Batch fetch existing movies from DB
+    const existingMovies = await db
+      .select({ id: movies.id, tmdbId: movies.tmdbId })
+      .from(movies)
+      .where(inArray(movies.tmdbId, tmdbIds));
+    const movieMap = new Map(existingMovies.map((m) => [m.tmdbId!, m.id]));
+
+    // 2. Find movies not in DB and fetch them (unavoidable external API calls)
+    const missingTmdbIds = tmdbIds.filter((id) => !movieMap.has(id));
+    for (const tmdbId of missingTmdbIds) {
+      const movie = await movieService.findOrCreate({ tmdbId, source: 'tmdb' });
+      if (movie) {
+        movieMap.set(tmdbId, movie.id);
       }
+    }
 
-      // Check if already exists (by unifiedMovieId)
-      const [existing] = await db
-        .select()
-        .from(userSwipeHistory)
-        .where(
-          and(eq(userSwipeHistory.userId, user.id), eq(userSwipeHistory.unifiedMovieId, movie.id))
-        );
+    // 3. Batch fetch existing swipe history for this user
+    const existingSwipes = await db
+      .select({ unifiedMovieId: userSwipeHistory.unifiedMovieId })
+      .from(userSwipeHistory)
+      .where(eq(userSwipeHistory.userId, user.id));
+    const existingSwipeSet = new Set(existingSwipes.map((s) => s.unifiedMovieId));
 
-      if (!existing) {
-        // Insert new swipe history
-        await db.insert(userSwipeHistory).values({
+    // 4. Batch fetch existing watchlist items for likes
+    const existingWatchlist = await db
+      .select({ unifiedMovieId: userMovieLists.unifiedMovieId })
+      .from(userMovieLists)
+      .where(eq(userMovieLists.userId, user.id));
+    const existingWatchlistSet = new Set(existingWatchlist.map((w) => w.unifiedMovieId));
+
+    // 5. Prepare batch inserts
+    const swipesToInsert: (typeof userSwipeHistory.$inferInsert)[] = [];
+    const watchlistToInsert: (typeof userMovieLists.$inferInsert)[] = [];
+
+    for (const swipe of swipes) {
+      const unifiedMovieId = movieMap.get(swipe.movieId);
+      if (!unifiedMovieId) continue;
+
+      // Add to swipe history if not exists
+      if (!existingSwipeSet.has(unifiedMovieId)) {
+        swipesToInsert.push({
           userId: user.id,
           tmdbId: swipe.movieId,
-          unifiedMovieId: movie.id,
+          unifiedMovieId,
           action: swipe.action,
           context: 'solo',
           createdAt: new Date(swipe.timestamp),
         });
-        importedCount++;
+        existingSwipeSet.add(unifiedMovieId); // Prevent duplicates in batch
+      }
 
-        // Add liked movies to watchlist if requested
-        if (addLikesToWatchlist && swipe.action === 'like') {
-          // Check if already in list (by unifiedMovieId)
-          const [existingInList] = await db
-            .select()
-            .from(userMovieLists)
-            .where(
-              and(eq(userMovieLists.userId, user.id), eq(userMovieLists.unifiedMovieId, movie.id))
-            );
-
-          if (!existingInList) {
-            await db.insert(userMovieLists).values({
-              userId: user.id,
-              tmdbId: swipe.movieId,
-              unifiedMovieId: movie.id,
-              status: MOVIE_STATUS.WANT_TO_WATCH,
-              source: MOVIE_SOURCE.IMPORT,
-            });
-            addedToWatchlistCount++;
-          }
-        }
+      // Add to watchlist if like and not exists
+      if (addLikesToWatchlist && swipe.action === 'like' && !existingWatchlistSet.has(unifiedMovieId)) {
+        watchlistToInsert.push({
+          userId: user.id,
+          tmdbId: swipe.movieId,
+          unifiedMovieId,
+          status: MOVIE_STATUS.WANT_TO_WATCH,
+          source: MOVIE_SOURCE.IMPORT,
+        });
+        existingWatchlistSet.add(unifiedMovieId); // Prevent duplicates in batch
       }
     }
+
+    // 6. Batch insert swipe history
+    if (swipesToInsert.length > 0) {
+      await db.insert(userSwipeHistory).values(swipesToInsert);
+    }
+
+    // 7. Batch insert watchlist items
+    if (watchlistToInsert.length > 0) {
+      await db.insert(userMovieLists).values(watchlistToInsert);
+    }
+
+    const importedCount = swipesToInsert.length;
+    const addedToWatchlistCount = watchlistToInsert.length;
 
     return success({
       imported: importedCount,

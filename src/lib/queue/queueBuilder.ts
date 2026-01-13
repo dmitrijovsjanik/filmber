@@ -84,7 +84,10 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
   const queue: QueueItem[] = [];
 
   // PRIORITY 1: Partner's likes (from swipes in this room)
+  // PRIORITY 2: Partner's "want to watch" list
+  // OPTIMIZED: Batch fetch all priority movies in a single query
   if (partnerId) {
+    // Get partner likes
     const partnerLikes = await db
       .select({ movieId: swipes.movieId })
       .from(swipes)
@@ -96,20 +99,8 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
         )
       );
 
-    for (const like of partnerLikes) {
-      if (!excludeIds.has(like.movieId)) {
-        const movie = await getMovieById(like.movieId);
-        if (movie) {
-          queue.push({ movie, source: 'partner_like' });
-          excludeIds.add(like.movieId);
-        }
-      }
-    }
-  }
-
-  // PRIORITY 2: Partner's "want to watch" list
-  if (partnerId) {
-    let partnerWantToWatchQuery = db
+    // Get partner's want to watch list
+    const partnerWantToWatch = await db
       .select({
         tmdbId: userMovieLists.tmdbId,
         rating: userMovieLists.rating,
@@ -125,18 +116,40 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
         )
       );
 
-    const partnerWantToWatch = await partnerWantToWatchQuery;
-
-    // Filter by rating if user has minRatingFilter set
+    // Filter want-to-watch by rating if user has minRatingFilter set
     const filteredWantToWatch = userDeckSettings?.minRatingFilter
       ? partnerWantToWatch.filter(
           (m) => m.rating && m.rating >= userDeckSettings.minRatingFilter!
         )
       : partnerWantToWatch;
 
+    // Collect all tmdbIds that need movie data (not already excluded)
+    const likeIds = partnerLikes
+      .filter((l) => !excludeIds.has(l.movieId))
+      .map((l) => l.movieId);
+    const wantToWatchIds = filteredWantToWatch
+      .filter((w) => !excludeIds.has(w.tmdbId))
+      .map((w) => w.tmdbId);
+    const allPriorityIds = [...new Set([...likeIds, ...wantToWatchIds])];
+
+    // Batch fetch all priority movies from DB
+    const priorityMoviesMap = await getMoviesByIds(allPriorityIds);
+
+    // Add partner likes to queue (priority 1)
+    for (const like of partnerLikes) {
+      if (!excludeIds.has(like.movieId)) {
+        const movie = priorityMoviesMap.get(like.movieId);
+        if (movie) {
+          queue.push({ movie, source: 'partner_like' });
+          excludeIds.add(like.movieId);
+        }
+      }
+    }
+
+    // Add partner's want-to-watch to queue (priority 2)
     for (const item of filteredWantToWatch) {
       if (!excludeIds.has(item.tmdbId)) {
-        const movie = await getMovieById(item.tmdbId);
+        const movie = priorityMoviesMap.get(item.tmdbId);
         if (movie) {
           queue.push({ movie, source: 'priority' });
           excludeIds.add(item.tmdbId);
@@ -182,6 +195,58 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
       hasMore: totalRemaining > limit,
     },
   };
+}
+
+// OPTIMIZED: Batch fetch multiple movies by IDs
+async function getMoviesByIds(tmdbIds: number[]): Promise<Map<number, Movie>> {
+  const result = new Map<number, Movie>();
+  if (tmdbIds.length === 0) return result;
+
+  // Batch fetch from DB
+  const cachedMovies = await db
+    .select()
+    .from(movies)
+    .where(inArray(movies.tmdbId, tmdbIds));
+
+  const foundIds = new Set<number>();
+  for (const cached of cachedMovies) {
+    if (!cached.tmdbId) continue;
+    foundIds.add(cached.tmdbId);
+    result.set(cached.tmdbId, {
+      tmdbId: cached.tmdbId,
+      title: cached.title,
+      titleRu: cached.titleRu,
+      overview: cached.overview || '',
+      overviewRu: cached.overviewRu,
+      posterUrl: cached.posterUrl || (cached.posterPath
+        ? `https://image.tmdb.org/t/p/w500${cached.posterPath}`
+        : ''),
+      releaseDate: cached.releaseDate || '',
+      ratings: {
+        tmdb: cached.tmdbRating || '0',
+        imdb: cached.imdbRating,
+        kinopoisk: cached.kinopoiskRating,
+        rottenTomatoes: cached.rottenTomatoesRating,
+        metacritic: cached.metacriticRating,
+      },
+      genres: JSON.parse(cached.genres || '[]'),
+      runtime: cached.runtime,
+      mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
+      numberOfSeasons: cached.numberOfSeasons,
+      numberOfEpisodes: cached.numberOfEpisodes,
+    });
+  }
+
+  // Fetch missing movies from external API (can't batch external calls)
+  const missingIds = tmdbIds.filter((id) => !foundIds.has(id));
+  for (const tmdbId of missingIds) {
+    const movie = await enhanceMovieData(tmdbId);
+    if (movie) {
+      result.set(tmdbId, movie);
+    }
+  }
+
+  return result;
 }
 
 async function getMovieById(tmdbId: number): Promise<Movie | null> {
