@@ -115,6 +115,18 @@ jobs:
             # Линкуем .env
             ln -sf "${APP_DIR}/shared/.env" "${RELEASE_DIR}/.env"
 
+            # Линкуем uploads из shared директории (для сохранения постеров между деплоями)
+            if [ -d "${APP_DIR}/shared/uploads" ]; then
+              rm -rf "${RELEASE_DIR}/public/uploads"
+              ln -sf "${APP_DIR}/shared/uploads" "${RELEASE_DIR}/public/uploads"
+              echo "uploads directory linked"
+            else
+              echo "Creating shared/uploads directory..."
+              mkdir -p "${APP_DIR}/shared/uploads/posters"
+              rm -rf "${RELEASE_DIR}/public/uploads"
+              ln -sf "${APP_DIR}/shared/uploads" "${RELEASE_DIR}/public/uploads"
+            fi
+
             # Rebuild esbuild for server platform (fixes cross-platform binary issues)
             echo "Rebuilding esbuild for server platform..."
             cd "${RELEASE_DIR}/node_modules/tsx/node_modules"
@@ -134,13 +146,8 @@ jobs:
 
             # Перезапуск PM2 (delete and start fresh to ensure correct cwd)
             cd "${APP_DIR}/current"
-            # Find and delete existing process
-            PM2_ID=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name | contains("film")) | .pm_id' | head -1)
-            if [ -n "$PM2_ID" ]; then
-              echo "Deleting existing PM2 process (ID: $PM2_ID)..."
-              pm2 delete "$PM2_ID" || true
-            fi
-            echo "Starting PM2 process from ${APP_DIR}/current..."
+            echo "Restarting PM2 process..."
+            pm2 delete filmber 2>/dev/null || true
             pm2 start ecosystem.config.js --env production
             pm2 save
 
@@ -184,11 +191,7 @@ jobs:
             if [ -n "$PREV_RELEASE" ]; then
               ln -sfn "${APP_DIR}/releases/${PREV_RELEASE}" "${APP_DIR}/current"
               cd "${APP_DIR}/current"
-              # Delete and start fresh to ensure correct cwd
-              PM2_ID=$(pm2 jlist 2>/dev/null | jq -r '.[] | select(.name | contains("film")) | .pm_id' | head -1)
-              if [ -n "$PM2_ID" ]; then
-                pm2 delete "$PM2_ID" || true
-              fi
+              pm2 delete filmber 2>/dev/null || true
               pm2 start ecosystem.config.js --env production
               pm2 save
               echo "Rolled back to ${PREV_RELEASE}"
