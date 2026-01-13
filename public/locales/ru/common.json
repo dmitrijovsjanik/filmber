@@ -139,6 +139,7 @@
     "language": "Язык",
     "notifications": "Уведомления",
     "deckSettings": "Рекомендации",
+    "whatsNew": "Что нового",
     "logout": "Выйти",
     "version": "Filmber v2.0",
     "copyright": "2025 Filmber",
@@ -186,6 +187,16 @@
   },
   "footer": {
     "madeWith": "Сделано с ❤️ для киноманов"
+  },
+  "changelog": {
+    "title": "Что нового",
+    "added": "Добавлено",
+    "changed": "Изменено",
+    "fixed": "Исправлено",
+    "removed": "Удалено",
+    "deprecated": "Устарело",
+    "security": "Безопасность",
+    "noChanges": "Пока нет изменений"
   },
   "search": {
     "filters": "Фильтры",

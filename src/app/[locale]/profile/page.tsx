@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon, SparklesIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { localeNames, type Locale } from '@/i18n/config';
 import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
@@ -96,6 +96,12 @@ export default function ProfilePage() {
               onClick={() => router.push('/profile/deck')}
               icon={<HugeiconsIcon icon={Settings02Icon} size={20} />}
               label={t('deckSettings', { defaultValue: 'Deck Settings' })}
+            />
+            <div className="mx-4 border-t border-border" />
+            <MenuButton
+              onClick={() => router.push('/profile/whats-new')}
+              icon={<HugeiconsIcon icon={SparklesIcon} size={20} />}
+              label={t('whatsNew', { defaultValue: "What's New" })}
             />
           </div>
 
