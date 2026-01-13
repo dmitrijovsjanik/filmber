@@ -114,12 +114,13 @@ jobs:
             # Линкуем .env
             ln -sf "${APP_DIR}/shared/.env" "${RELEASE_DIR}/.env"
 
-            # Миграции (если нужны)
+            # Миграции базы данных
             cd "${RELEASE_DIR}"
             set -a
             source "${APP_DIR}/shared/.env"
             set +a
-            npx drizzle-kit push 2>/dev/null || true
+            echo "Running database migrations..."
+            npx drizzle-kit migrate || echo "Migration failed or no migrations to apply"
 
             # Переключаем релиз
             ln -sfn "${RELEASE_DIR}" "${APP_DIR}/current"
