@@ -12,11 +12,18 @@ import type { Movie } from '@/types/movie';
 
 import 'overlayscrollbars/overlayscrollbars.css';
 
+// Stack depth configuration
+const STACK_CONFIG = {
+  scaleDecrement: 0.04,  // Each card behind is 4% smaller
+  yOffset: 10,           // Each card behind is 10px lower
+};
+
 interface MovieCardProps {
   movie: Movie;
   onSwipe: (direction: 'left' | 'right', movieId: number) => void;
   isTop?: boolean;
   locale?: string;
+  stackIndex?: number; // 0 = top card, 1 = second, 2 = third
 }
 
 export interface MovieCardRef {
@@ -24,7 +31,7 @@ export interface MovieCardRef {
 }
 
 export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function MovieCard(
-  { movie, onSwipe, isTop = false, locale = 'en' },
+  { movie, onSwipe, isTop = false, locale = 'en', stackIndex = 0 },
   ref
 ) {
   const x = useMotionValue(0);
@@ -35,6 +42,12 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   const skipOpacity = useTransform(x, [-100, 0], [1, 0]);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  // Calculate stack transforms
+  const stackScale = 1 - (stackIndex * STACK_CONFIG.scaleDecrement);
+  const stackY = stackIndex * STACK_CONFIG.yOffset;
 
   const title = locale === 'ru' && movie.titleRu ? movie.titleRu : movie.title;
   const overview =
@@ -48,37 +61,73 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
     onSwipeRef.current = onSwipe;
   }, [onSwipe]);
 
-  // Animate card flying off screen then trigger callback
+  // Animate swipe for button clicks (with blocking)
   const animateSwipe = async (direction: 'left' | 'right') => {
-    const targetX = direction === 'right' ? 400 : -400;
-    await animate(x, targetX, { duration: 0.3, ease: [0.4, 0, 0.2, 1] });
+    if (isSwiping) return; // Already swiping - ignore repeated clicks
+
+    setIsSwiping(true);
+    setExitDirection(direction);
+    const targetX = direction === 'right' ? 150 : -150;
+    await animate(x, targetX, { duration: 0.15, ease: 'easeOut' });
     onSwipeRef.current(direction, movie.tmdbId);
   };
 
   // Expose swipe method via ref for button clicks
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId]);
+  useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId, isSwiping]);
 
-  const handleDragEnd = async (_: unknown, info: PanInfo) => {
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    if (isSwiping) return; // Already swiping - ignore
+
     const threshold = 100;
     if (info.offset.x > threshold) {
-      await animateSwipe('right');
+      setIsSwiping(true);
+      setExitDirection('right');
+      onSwipeRef.current('right', movie.tmdbId);
     } else if (info.offset.x < -threshold) {
-      await animateSwipe('left');
+      setIsSwiping(true);
+      setExitDirection('left');
+      onSwipeRef.current('left', movie.tmdbId);
     }
   };
 
   return (
     <motion.div
-      className="absolute w-full max-w-[340px] cursor-grab active:cursor-grabbing touch-none"
+      className="absolute w-full max-w-[340px] cursor-grab active:cursor-grabbing touch-none origin-bottom"
       style={{ x, rotate, opacity }}
+      initial={{
+        scale: stackScale - 0.05,
+        y: stackY + 40,
+        opacity: 0,
+      }}
+      animate={{
+        scale: stackScale,
+        y: stackY,
+        opacity: stackIndex === 0 ? 1 : 0.95,
+        transition: { type: 'spring', stiffness: 400, damping: 30 },
+      }}
+      exit={{
+        x: exitDirection === 'right' ? 500 : -500,
+        y: -50,
+        rotate: exitDirection === 'right' ? 25 : -25,
+        opacity: 0,
+        scale: 0.95,
+        transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
+      }}
       drag={isTop ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
       onDragEnd={handleDragEnd}
       whileTap={{ cursor: 'grabbing' }}
     >
-      <div className="relative w-full h-[520px] rounded-2xl overflow-hidden bg-gray-900 shadow-2xl">
+      <div
+        className="relative w-full h-[520px] rounded-2xl overflow-hidden bg-gray-900 transition-shadow duration-300"
+        style={{
+          boxShadow: stackIndex === 0
+            ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            : `0 ${15 - stackIndex * 5}px ${30 - stackIndex * 10}px -12px rgba(0, 0, 0, ${0.3 - stackIndex * 0.1})`,
+        }}
+      >
         {/* Poster */}
         <Image
           src={movie.posterUrl}

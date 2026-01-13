@@ -236,17 +236,20 @@ export default function SoloSwipePage() {
       {/* Card stack */}
       <div className="flex flex-col items-center gap-8">
         <div className="relative w-[340px] h-[520px]">
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {[...visibleMovies].reverse().map((movie, index) => {
               const isTop = index === visibleMovies.length - 1;
+              // Calculate actual stack position (0 = top)
+              const stackIndex = visibleMovies.length - 1 - index;
               return (
                 <MovieCard
-                  key={`${movie.tmdbId}-${currentIndex}`}
+                  key={movie.tmdbId}
                   ref={isTop ? setTopCardRef : null}
                   movie={movie}
                   onSwipe={handleSwipe}
                   isTop={isTop}
                   locale={locale}
+                  stackIndex={stackIndex}
                 />
               );
             })}
