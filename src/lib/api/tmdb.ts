@@ -2,7 +2,6 @@ import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails } f
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 // HTTP proxy for TMDB requests (v2ray on server)
 const TMDB_PROXY_URL = process.env.TMDB_PROXY_URL;
@@ -283,22 +282,24 @@ class TMDBClient {
     };
   }
 
-  // Build poster URL
+  // Build poster URL - uses proxy endpoint on server to bypass geo-blocking
   static getPosterUrl(
     path: string | null,
     size: 'w185' | 'w342' | 'w500' | 'original' = 'w500'
   ): string {
     if (!path) return '/images/no-poster.svg';
-    return `${TMDB_IMAGE_BASE}/${size}${path}`;
+    // Use proxy endpoint to route through server's v2ray
+    return `/api/tmdb-image?path=${encodeURIComponent(path)}&size=${size}`;
   }
 
-  // Build backdrop URL
+  // Build backdrop URL - uses proxy endpoint on server to bypass geo-blocking
   static getBackdropUrl(
     path: string | null,
     size: 'w780' | 'w1280' | 'original' = 'w1280'
   ): string {
     if (!path) return '/images/no-backdrop.png';
-    return `${TMDB_IMAGE_BASE}/${size}${path}`;
+    // Use proxy endpoint to route through server's v2ray
+    return `/api/tmdb-image?path=${encodeURIComponent(path)}&size=${size}`;
   }
 }
 
