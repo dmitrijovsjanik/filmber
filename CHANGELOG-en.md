@@ -4,6 +4,16 @@ All notable changes to Filmber will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.6.0] - 2026-01-13 — Smooth Swipe Animations
+
+### Changed
+- Smooth card exit animation with rotation when swiping
+- Stack depth effect: cards behind are smaller with softer shadows
+- Smooth entrance animation for new cards from below
+
+### Fixed
+- Fixed card "jittering" when rapidly clicking buttons
+
 ## [2.5.0] - 2026-01-13 — What's New Page
 
 ### Added
