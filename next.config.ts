@@ -24,8 +24,7 @@ const nextConfig: NextConfig = {
     ],
     localPatterns: [
       {
-        pathname: '/api/tmdb-image',
-        search: '?path=*&size=*',
+        pathname: '/api/tmdb-image/**',
       },
       {
         pathname: '/uploads/**',
