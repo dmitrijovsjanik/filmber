@@ -125,8 +125,9 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
         ? OMDBClient.getRottenTomatoesRating(omdbData.Ratings)
         : null,
       metacriticRating: omdbData?.Metascore || null,
-      genres: JSON.stringify(detailsEn.genres.map((g) => g.name)),
+      genres: JSON.stringify(detailsEn.genres),
       runtime: detailsEn.runtime,
+      originalLanguage: detailsEn.original_language || null,
       mediaType: 'movie' as const,
       primarySource: 'tmdb' as const,
       cachedAt: new Date(),

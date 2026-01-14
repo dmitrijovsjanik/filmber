@@ -173,8 +173,7 @@ export default function HomePage() {
             <Button
               onClick={handlePickMovie}
               disabled={isCreating}
-              variant="gradient"
-              className="w-full"
+                            className="w-full"
               size="lg"
             >
               {isCreating ? <Loader size="sm" className="mr-2" /> : null}
@@ -257,8 +256,7 @@ export default function HomePage() {
           <Button
             onClick={handlePickMovie}
             disabled={isCreating}
-            variant="gradient"
-            className="w-full"
+                        className="w-full"
             size="lg"
           >
             {isCreating ? (

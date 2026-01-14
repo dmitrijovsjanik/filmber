@@ -74,7 +74,6 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
       <div className="flex w-full flex-col gap-2">
         <Button
           onClick={handleShare}
-          variant="gradient"
           className="w-full"
           size="lg"
         >

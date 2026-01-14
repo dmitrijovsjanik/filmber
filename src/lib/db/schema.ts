@@ -103,6 +103,7 @@ export const movies = pgTable(
     mediaType: varchar('media_type', { length: 20 }).notNull().default('movie'), // 'movie' | 'tv'
     numberOfSeasons: integer('number_of_seasons'),
     numberOfEpisodes: integer('number_of_episodes'),
+    originalLanguage: varchar('original_language', { length: 10 }), // ISO 639-1 code (e.g., 'en', 'ru')
 
     // Ratings from all sources
     tmdbRating: varchar('tmdb_rating', { length: 10 }),

@@ -67,7 +67,6 @@ export function ReferralSection() {
     <div className="text-center">
       <Button
         onClick={handleInvite}
-        variant="gradient"
         className="w-full"
         size="lg"
       >

@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { SortMenu } from '@/components/molecules/SortMenu';
 import { FiltersMenu } from '@/components/molecules/FiltersMenu';
+import { QuickFilters } from '@/components/molecules/QuickFilters';
 import type { SearchFilters as Filters, SortOption } from '@/types/movie';
 
 interface SearchFiltersProps {
@@ -26,13 +27,19 @@ export function SearchFilters({
   );
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide px-4">
       <SortMenu
         value={filters.sortBy}
         onChange={handleSortChange}
         disabled={disabled}
       />
       <FiltersMenu
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        locale={locale}
+        disabled={disabled}
+      />
+      <QuickFilters
         filters={filters}
         onFiltersChange={onFiltersChange}
         locale={locale}

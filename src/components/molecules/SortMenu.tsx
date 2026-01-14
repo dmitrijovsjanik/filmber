@@ -52,7 +52,7 @@ export function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
           variant="outline"
           size="icon"
           disabled={disabled}
-          className={`h-9 w-9 ${
+          className={`h-9 w-9 flex-shrink-0 ${
             value !== 'relevance'
               ? 'bg-pink-500 border-pink-500 hover:bg-pink-600 hover:border-pink-600'
               : ''

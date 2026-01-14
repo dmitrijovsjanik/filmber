@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { MovieListSearchBar } from '@/components/molecules/MovieListSearchBar';
 import { MovieListItem } from './MovieListItem';
+import { MovieListSkeleton } from './MovieListSkeleton';
 import { ListFilter } from './ListFilter';
 import { SearchResultItem } from './SearchResultItem';
 import { SearchFilters } from './SearchFilters';
@@ -76,23 +77,27 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       {/* Fixed header: Search + Filters */}
       <div className="flex-shrink-0 space-y-2 pb-4 bg-background">
         {/* Search */}
-        <MovieListSearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
+        <div className="px-4">
+          <MovieListSearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
 
         {/* Status/Rating filters (when viewing local list) */}
         {!isExternalSearch && (
-          <ListFilter
-            status={statusFilter}
-            rating={ratingFilter}
-            onStatusChange={setStatusFilter}
-            onRatingChange={setRatingFilter}
-            counts={listCounts}
-          />
+          <div className="px-4">
+            <ListFilter
+              status={statusFilter}
+              rating={ratingFilter}
+              onStatusChange={setStatusFilter}
+              onRatingChange={setRatingFilter}
+              counts={listCounts}
+            />
+          </div>
         )}
 
-        {/* Search filters */}
+        {/* Search filters - no horizontal padding, extends to screen edges */}
         <SearchFilters
           filters={searchFilters}
           onFiltersChange={setSearchFilters}
@@ -102,7 +107,7 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
       </div>
 
       {/* Scrollable content */}
-      <ScrollFadeContainer innerClassName="pb-2">
+      <ScrollFadeContainer innerClassName="pb-2 px-4">
         {isExternalSearch ? (
           // External search results
           <ExternalSearchContent
@@ -327,11 +332,7 @@ function LocalListContent({
   fetchItems: () => void;
 }) {
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader size="lg" />
-      </div>
-    );
+    return <MovieListSkeleton count={6} />;
   }
 
   if (error) {
@@ -350,7 +351,8 @@ function LocalListContent({
 
   if (filteredItems.length === 0) {
     const hasFilters = searchQuery || searchFilters.genres.length > 0 ||
-      searchFilters.yearFrom || searchFilters.yearTo || searchFilters.ratingMin;
+      searchFilters.yearFrom || searchFilters.yearTo || searchFilters.ratingMin ||
+      searchFilters.mediaType !== 'all';
 
     return (
       <div className="py-12 text-center">

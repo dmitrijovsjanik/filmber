@@ -42,3 +42,8 @@ next-env.d.ts
 
 # VPN configs (contain private keys)
 config/vpn/wireguard/*.conf
+
+# Claude Code / Claude-Flow
+CLAUDE.md
+.swarm/
+.claude-flow/*.db

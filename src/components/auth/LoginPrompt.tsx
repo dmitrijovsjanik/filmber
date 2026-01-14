@@ -83,7 +83,7 @@ export function LoginPrompt({ isOpen, onClose, likedCount }: LoginPromptProps) {
 
         {/* Actions */}
         <div className="space-y-3">
-          <Button onClick={openTelegramBot} variant="gradient" className="w-full" size="lg">
+          <Button onClick={openTelegramBot} className="w-full" size="lg">
             {t('openInTelegram', { defaultValue: 'Open in Telegram' })}
           </Button>
 

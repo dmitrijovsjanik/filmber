@@ -112,6 +112,9 @@ export async function GET(request: NextRequest) {
   const yearTo = parseInt(searchParams.get('yearTo') || '') || null;
   const ratingMin = parseFloat(searchParams.get('ratingMin') || '') || null;
   const sortBy = (searchParams.get('sortBy') as SortOption) || 'relevance';
+  const originalLanguages = searchParams.get('originalLanguages')?.split(',').filter(Boolean) || [];
+  const runtimeMin = parseInt(searchParams.get('runtimeMin') || '') || null;
+  const runtimeMax = parseInt(searchParams.get('runtimeMax') || '') || null;
 
   // Media type filter
   const mediaTypeParam = searchParams.get('mediaType');
@@ -121,7 +124,7 @@ export async function GET(request: NextRequest) {
       ? (mediaTypeParam as MediaTypeFilter)
       : 'all';
 
-  const hasFilters = genres.length > 0 || yearFrom || yearTo || ratingMin;
+  const hasFilters = genres.length > 0 || yearFrom || yearTo || ratingMin || originalLanguages.length > 0 || runtimeMin || runtimeMax;
 
   // If no query and no filters, return empty
   if (!query && !hasFilters) {
@@ -141,7 +144,10 @@ export async function GET(request: NextRequest) {
         date_asc: 'release_date.desc', // Will reverse client-side
       };
 
-      const [discoverEn, discoverRu] = await Promise.all([
+      // Make parallel requests for each selected language (or all if none selected)
+      const languagesToFetch = originalLanguages.length > 0 ? originalLanguages : [null];
+
+      const discoverPromises = languagesToFetch.flatMap((lang) => [
         tmdb.discoverMovies({
           genres: genres.length > 0 ? genres : undefined,
           yearFrom: yearFrom || undefined,
@@ -150,6 +156,9 @@ export async function GET(request: NextRequest) {
           sortBy: discoverSortMap[sortBy],
           page,
           language: 'en-US',
+          originalLanguage: lang || undefined,
+          runtimeMin: runtimeMin || undefined,
+          runtimeMax: runtimeMax || undefined,
         }),
         tmdb.discoverMovies({
           genres: genres.length > 0 ? genres : undefined,
@@ -159,14 +168,47 @@ export async function GET(request: NextRequest) {
           sortBy: discoverSortMap[sortBy],
           page,
           language: 'ru-RU',
+          originalLanguage: lang || undefined,
+          runtimeMin: runtimeMin || undefined,
+          runtimeMax: runtimeMax || undefined,
         }),
       ]);
 
-      const ruDataMap = new Map(
-        discoverRu.results.map((r) => [r.id, { title: r.title, overview: r.overview }])
-      );
+      const discoverResults = await Promise.all(discoverPromises);
 
-      let results: SearchResult[] = discoverEn.results.map((r) => {
+      // Merge and deduplicate results
+      const seenIds = new Set<number>();
+      const allResults: typeof discoverResults[0]['results'] = [];
+      const ruDataMap = new Map<number, { title: string; overview: string }>();
+
+      // First pass: collect Russian data
+      discoverResults.forEach((result, index) => {
+        if (index % 2 === 1) { // RU results
+          result.results.forEach((r) => {
+            ruDataMap.set(r.id, { title: r.title, overview: r.overview });
+          });
+        }
+      });
+
+      // Second pass: collect unique EN results
+      discoverResults.forEach((result, index) => {
+        if (index % 2 === 0) { // EN results
+          result.results.forEach((r) => {
+            if (!seenIds.has(r.id)) {
+              seenIds.add(r.id);
+              allResults.push(r);
+            }
+          });
+        }
+      });
+
+      // Use first result for pagination info
+      const discoverEn = discoverResults[0];
+      const totalResults = originalLanguages.length > 1
+        ? allResults.length * discoverEn.totalPages // Approximate
+        : discoverEn.totalResults;
+
+      let results: SearchResult[] = allResults.map((r) => {
         const ruData = ruDataMap.get(r.id);
         return {
           tmdbId: r.id,
@@ -194,7 +236,7 @@ export async function GET(request: NextRequest) {
         {
           tmdb: {
             results,
-            totalResults: discoverEn.totalResults,
+            totalResults: totalResults,
             page,
             totalPages: discoverEn.totalPages,
           },
@@ -341,6 +383,7 @@ export async function GET(request: NextRequest) {
       runtime: m.runtime,
       genres: m.genres,
       genreIds: null,
+      originalLanguage: m.originalLanguage,
       imdbRating: m.imdbRating,
       kinopoiskRating: m.kinopoiskRating,
       mediaType: (m.mediaType as MediaType) || 'movie',
@@ -409,23 +452,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Helper to convert genre IDs to JSON string of names
-    // Also splits combined genres like "Action & Adventure" and capitalizes
     const genreIdsToNames = (ids: number[] | null, genreMap: Map<number, string>): string | null => {
       if (!ids || ids.length === 0) return null;
       const names: string[] = [];
       ids.forEach((id) => {
         const genre = genreMap.get(id);
         if (genre) {
-          // Split combined genres (e.g., "Action & Adventure" -> ["Action", "Adventure"])
-          // Also handles Russian "боевик и приключения" -> ["боевик", "приключения"]
-          // IMPORTANT: Match " & " or " и " with spaces to avoid splitting words like "Криминал"
-          const parts = genre.split(/\s+&\s+|\s+и\s+/);
-          parts.forEach((part) => {
-            const trimmed = part.trim();
-            if (trimmed) {
-              names.push(capitalize(trimmed));
-            }
-          });
+          names.push(capitalize(genre));
         }
       });
       return names.length > 0 ? JSON.stringify(names) : null;
@@ -449,6 +482,7 @@ export async function GET(request: NextRequest) {
         source: 'tmdb' as const,
         genreIds: r.genre_ids || null,
         genres: genreIdsToNames(r.genre_ids, movieGenreMap),
+        originalLanguage: r.original_language || null,
         mediaType: 'movie' as const,
       };
     });
@@ -471,6 +505,7 @@ export async function GET(request: NextRequest) {
         source: 'tmdb' as const,
         genreIds: r.genre_ids || null,
         genres: genreIdsToNames(r.genre_ids, tvGenreMap),
+        originalLanguage: r.original_language || null,
         mediaType: 'tv' as const,
         numberOfSeasons: null,
         numberOfEpisodes: null,
@@ -490,10 +525,26 @@ export async function GET(request: NextRequest) {
     // Apply client-side filters
     if (genres.length > 0) {
       allTmdbResults = allTmdbResults.filter((movie) => {
-        if (movie.genreIds) {
+        // Check genreIds first (TMDB results)
+        if (movie.genreIds && movie.genreIds.length > 0) {
           return genres.some((gId) => movie.genreIds?.includes(gId));
         }
-        return true; // Keep local cache results without genreIds
+        // For local cache results with genres string, try to match by ID in parsed array
+        if (movie.genres) {
+          try {
+            const parsed = JSON.parse(movie.genres);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              // Check if it's the new format with objects containing id
+              if (typeof parsed[0] === 'object' && parsed[0] !== null && 'id' in parsed[0]) {
+                return genres.some((gId) => parsed.some((g: { id: number }) => g.id === gId));
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+        // Exclude items without genre info when filtering by genre
+        return false;
       });
     }
 
@@ -512,6 +563,21 @@ export async function GET(request: NextRequest) {
       allTmdbResults = allTmdbResults.filter((m) => {
         const rating = parseFloat(m.voteAverage || '0');
         return rating >= ratingMin;
+      });
+    }
+
+    // Filter by original language
+    if (originalLanguages.length > 0) {
+      const DEFAULT_LANGS = ['en', 'ru'];
+      // Check if user has all default languages (for backwards compatibility with old data without originalLanguage)
+      const hasAllDefaultLangs = DEFAULT_LANGS.every(lang => originalLanguages.includes(lang));
+
+      allTmdbResults = allTmdbResults.filter((m) => {
+        // If movie has no language info:
+        // - Keep if user has all default languages selected (backwards compatible)
+        // - Exclude if user narrowed search (removed some default languages)
+        if (!m.originalLanguage) return hasAllDefaultLangs;
+        return originalLanguages.includes(m.originalLanguage);
       });
     }
 

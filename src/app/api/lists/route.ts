@@ -41,6 +41,7 @@ interface MovieListItem {
     mediaType: string;
     numberOfSeasons: number | null;
     numberOfEpisodes: number | null;
+    originalLanguage: string | null;
   } | null;
 }
 
@@ -135,6 +136,7 @@ export async function GET(request: NextRequest) {
           mediaType: item.movie.mediaType,
           numberOfSeasons: item.movie.numberOfSeasons,
           numberOfEpisodes: item.movie.numberOfEpisodes,
+          originalLanguage: item.movie.originalLanguage,
         }
       : null,
   }));

@@ -63,23 +63,23 @@ export function ListFilter({
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2 w-full">
       {/* Status filter */}
-      <Tabs value={status} onValueChange={handleStatusChange}>
-        <TabsList>
-          <TabsTrigger value="all">
+      <Tabs value={status} onValueChange={handleStatusChange} className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="all" className="flex-1">
             {t('all', { defaultValue: 'All' })}
             {counts?.all !== undefined && (
               <span className="ml-1 opacity-70">{counts.all}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value={MOVIE_STATUS.WANT_TO_WATCH}>
+          <TabsTrigger value={MOVIE_STATUS.WANT_TO_WATCH} className="flex-1">
             {t('wantToWatch', { defaultValue: 'Want to watch' })}
             {counts?.wantToWatch !== undefined && (
               <span className="ml-1 opacity-70">{counts.wantToWatch}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value={MOVIE_STATUS.WATCHED}>
+          <TabsTrigger value={MOVIE_STATUS.WATCHED} className="flex-1">
             {t('watched', { defaultValue: 'Watched' })}
             {counts?.watched !== undefined && (
               <span className="ml-1 opacity-70">{counts.watched}</span>
@@ -90,24 +90,24 @@ export function ListFilter({
 
       {/* Rating filter (only show when viewing watched movies) */}
       {status === MOVIE_STATUS.WATCHED && (
-        <Tabs value={rating?.toString() ?? 'any'} onValueChange={handleRatingChange}>
-          <TabsList>
-            <TabsTrigger value="any">
+        <Tabs value={rating?.toString() ?? 'any'} onValueChange={handleRatingChange} className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="any" className="flex-1">
               {t('anyRating', { defaultValue: 'Any' })}
             </TabsTrigger>
-            <TabsTrigger value="3">
+            <TabsTrigger value="3" className="flex-1">
               <FilterEmoji rating={3} />
               {counts?.ratings?.[3] !== undefined && (
                 <span className="ml-1 opacity-70">{counts.ratings[3]}</span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="2">
+            <TabsTrigger value="2" className="flex-1">
               <FilterEmoji rating={2} />
               {counts?.ratings?.[2] !== undefined && (
                 <span className="ml-1 opacity-70">{counts.ratings[2]}</span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="1">
+            <TabsTrigger value="1" className="flex-1">
               <FilterEmoji rating={1} />
               {counts?.ratings?.[1] !== undefined && (
                 <span className="ml-1 opacity-70">{counts.ratings[1]}</span>

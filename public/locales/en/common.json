@@ -95,7 +95,7 @@
     "listsDescription": "Track movies you want to watch and rate the ones you watched",
     "all": "All",
     "watching": "Watching",
-    "wantToWatch": "Want to watch",
+    "wantToWatch": "Plans",
     "watched": "Watched",
     "anyRating": "Any",
     "searchPlaceholder": "Search movies...",
@@ -106,7 +106,7 @@
     "status": "Status",
     "yourRating": "Your rating",
     "rateMovie": "How was the movie?",
-    "moveToWantToWatch": "Move back to \"Want to watch\"",
+    "moveToWantToWatch": "Move back to \"Plans\"",
     "removeFromList": "Remove from list",
     "confirmDelete": "Remove from list?",
     "confirmDeleteDescription": "This will remove \"{title}\" from your list.",
@@ -133,7 +133,7 @@
     "notFinished": "Didn't finish"
   },
   "profile": {
-    "wantToWatch": "Want to Watch",
+    "wantToWatch": "Plans",
     "watched": "Watched",
     "myLists": "My Movie Lists",
     "language": "Language",
@@ -215,6 +215,14 @@
     "mediaType": "Type",
     "mediaTypeAll": "All",
     "mediaTypeMovie": "Movies",
-    "mediaTypeTv": "TV Series"
+    "mediaTypeTv": "TV Series",
+    "originalLanguage": "Original Language",
+    "anyLanguage": "Any language",
+    "runtime": "Runtime (min)",
+    "genresMovies": "Movie Genres",
+    "genresTv": "TV Genres",
+    "apply": "Apply",
+    "close": "Close",
+    "rating": "Rating"
   }
 }

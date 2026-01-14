@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
 import { AuthGuard } from '@/components/auth';
 import { useUser } from '@/stores/authStore';
 import { ReferralSection } from '@/components/referral';
+import {
+  NotificationsOverlay,
+  DeckSettingsOverlay,
+  WhatsNewOverlay,
+} from '@/components/profile';
 import { H3, Muted } from '@/components/ui/typography';
 import {
   Sheet,
@@ -16,16 +20,19 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon, SparklesIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
+import { FadeImage } from '@/components/ui/FadeImage';
 import { localeNames, type Locale } from '@/i18n/config';
 import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const locale = useLocale();
-  const router = useRouter();
   const user = useUser();
   const { switchLocale: globalSwitchLocale } = useLocaleSwitch();
   const [isLanguageSheetOpen, setIsLanguageSheetOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isDeckSettingsOpen, setIsDeckSettingsOpen] = useState(false);
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
 
   const handleLocaleChange = (newLocale: string) => {
     if (newLocale === locale) return;
@@ -42,11 +49,15 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-500 to-blue-600">
               {user?.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <FadeImage
                   src={user.photoUrl}
                   alt={user.firstName}
                   className="h-full w-full object-cover"
+                  fallback={
+                    <span className="text-4xl text-white">
+                      {user?.firstName?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  }
                 />
               ) : (
                 <span className="text-4xl text-white">
@@ -88,19 +99,19 @@ export default function ProfilePage() {
             </button>
             <div className="mx-4 border-t border-border" />
             <MenuButton
-              onClick={() => router.push('/profile/notifications')}
+              onClick={() => setIsNotificationsOpen(true)}
               icon={<HugeiconsIcon icon={Notification01Icon} size={20} />}
               label={t('notifications', { defaultValue: 'Notifications' })}
             />
             <div className="mx-4 border-t border-border" />
             <MenuButton
-              onClick={() => router.push('/profile/deck')}
+              onClick={() => setIsDeckSettingsOpen(true)}
               icon={<HugeiconsIcon icon={Settings02Icon} size={20} />}
               label={t('deckSettings', { defaultValue: 'Deck Settings' })}
             />
             <div className="mx-4 border-t border-border" />
             <MenuButton
-              onClick={() => router.push('/profile/whats-new')}
+              onClick={() => setIsWhatsNewOpen(true)}
               icon={<HugeiconsIcon icon={SparklesIcon} size={20} />}
               label={t('whatsNew', { defaultValue: "What's New" })}
             />
@@ -160,6 +171,20 @@ export default function ProfilePage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Profile Overlays */}
+      <NotificationsOverlay
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+      />
+      <DeckSettingsOverlay
+        isOpen={isDeckSettingsOpen}
+        onClose={() => setIsDeckSettingsOpen(false)}
+      />
+      <WhatsNewOverlay
+        isOpen={isWhatsNewOpen}
+        onClose={() => setIsWhatsNewOpen(false)}
+      />
     </AuthGuard>
   );
 }

@@ -1,0 +1,177 @@
+# AI Recommendations Configuration for Filmber
+# Uses AgentDB for semantic movie search and personalization
+
+# Recommendation Engine Settings
+engine:
+  name: filmber-recommendations
+  version: 1.0.0
+  backend: agentdb
+
+# Vector Search Configuration
+vector_search:
+  # Movie embeddings for semantic search
+  movies:
+    namespace: movies
+    dimensions: 1024
+    index_type: hnsw
+    metric: cosine
+
+    # Fields to embed
+    embed_fields:
+      - title
+      - titleRu
+      - overview
+      - overviewRu
+      - genres
+
+    # Search parameters
+    default_k: 10
+    default_threshold: 0.7
+
+    # Example queries
+    example_queries:
+      - "cyberpunk noir detective sci-fi"
+      - "romantic comedy set in new york"
+      - "psychological thriller with twist ending"
+      - "animated family adventure"
+      - "documentary about nature"
+
+  # User preference embeddings
+  user_preferences:
+    namespace: user_preferences
+    dimensions: 1024
+
+    # Build preference vector from
+    source_data:
+      - liked_movies
+      - favorite_genres
+      - rating_history
+      - swipe_patterns
+
+# Recommendation Algorithms
+algorithms:
+  # Content-based filtering
+  content_based:
+    enabled: true
+    weight: 0.4
+    features:
+      - genres
+      - overview_embedding
+      - ratings
+      - release_year
+      - runtime
+
+  # Collaborative filtering (future)
+  collaborative:
+    enabled: false
+    weight: 0.3
+    min_common_movies: 5
+    similarity_metric: cosine
+
+  # Popularity-based (fallback)
+  popularity:
+    enabled: true
+    weight: 0.3
+    decay_factor: 0.95
+    time_window_days: 30
+
+# Personalization Settings
+personalization:
+  # Learn from user interactions
+  learn_from:
+    - swipes
+    - list_additions
+    - ratings
+    - watch_completions
+
+  # Update frequency
+  update_frequency: realtime
+
+  # Cold start handling
+  cold_start:
+    strategy: popularity
+    min_interactions: 10
+
+# ReasoningBank Integration (Pattern-based, no API keys)
+reasoningbank:
+  enabled: true
+  storage: .swarm/memory.db
+
+  # Pattern namespaces
+  namespaces:
+    recommendations:
+      description: Successful recommendation patterns
+      retention_days: 90
+
+    user_patterns:
+      description: User behavior patterns
+      retention_days: 30
+
+    genre_correlations:
+      description: Genre co-occurrence patterns
+      retention_days: 180
+
+  # Example patterns to store
+  pattern_examples:
+    - key: "sci_fi_thriller_fans"
+      value: "Users who like Interstellar also enjoy Arrival, Blade Runner 2049"
+    - key: "korean_drama_lovers"
+      value: "Parasite fans often enjoy Oldboy, Memories of Murder"
+    - key: "animated_family"
+      value: "Pixar fans typically enjoy Studio Ghibli films"
+
+# Integration with Filmber
+integration:
+  # API endpoints to create
+  endpoints:
+    - path: /api/recommendations/similar
+      method: POST
+      description: Get similar movies based on vector search
+
+    - path: /api/recommendations/personalized
+      method: GET
+      description: Get personalized recommendations for user
+
+    - path: /api/recommendations/search
+      method: POST
+      description: Semantic search for movies
+
+  # Store integration
+  stores:
+    - name: recommendationStore
+      actions:
+        - fetchSimilar
+        - fetchPersonalized
+        - semanticSearch
+
+# Usage Examples
+examples:
+  semantic_search: |
+    # Search for movies semantically
+    npx claude-flow@alpha memory vector-search "cyberpunk detective noir" \
+      --k 10 --threshold 0.7 --namespace movies
+
+  store_movie: |
+    # Store movie with embedding
+    npx claude-flow@alpha memory store-vector movie_550 \
+      "Fight Club - psychological thriller about consumerism and identity" \
+      --namespace movies \
+      --metadata '{"tmdbId": 550, "genres": ["drama", "thriller"]}'
+
+  pattern_query: |
+    # Query recommendation patterns
+    npx claude-flow@alpha memory query "sci-fi fans" \
+      --namespace recommendations --reasoningbank
+
+# Metrics and Monitoring
+metrics:
+  track:
+    - recommendation_clicks
+    - recommendation_conversions
+    - search_success_rate
+    - cold_start_rate
+
+  success_criteria:
+    click_through_rate: 0.15
+    conversion_rate: 0.05
+    search_relevance: 0.7

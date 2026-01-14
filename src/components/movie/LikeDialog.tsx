@@ -92,7 +92,6 @@ export function LikeDialog({ movie, isOpen, onClose, onSave }: LikeDialogProps) 
                 <Button
                   onClick={handleWatched}
                   disabled={isLoading}
-                  variant="gradient"
                   className="w-full"
                 >
                   {t('yesWatched')}

@@ -7,6 +7,7 @@ import { translateGenres } from '@/lib/genres';
 import { calculateAverageRatingFromStrings } from '@/lib/utils/rating';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreHorizontalIcon, Film02Icon } from '@hugeicons/core-free-icons';
+import { FadeImage } from '@/components/ui/FadeImage';
 import { MovieBadges } from '@/components/molecules/MovieBadges';
 import { RatingBadge as UserRatingBadge } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
@@ -145,11 +146,15 @@ export function MovieListItem({
         {/* Poster */}
         <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
           {movie?.posterPath ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <FadeImage
               src={posterUrl}
               alt={displayTitle}
               className="h-full w-full object-cover"
+              fallback={
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                  <HugeiconsIcon icon={Film02Icon} size={32} />
+                </div>
+              }
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">

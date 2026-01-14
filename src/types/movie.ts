@@ -119,6 +119,7 @@ export interface TMDBMovie {
   vote_count: number;
   popularity: number;
   genre_ids: number[];
+  original_language: string;
 }
 
 export interface TMDBMovieDetails extends TMDBMovie {
@@ -143,6 +144,7 @@ export interface TMDBTVSeries {
   popularity: number;
   genre_ids: number[];
   origin_country: string[];
+  original_language: string;
 }
 
 export interface TMDBTVSeriesDetails extends TMDBTVSeries {
@@ -207,6 +209,7 @@ export interface SearchResult {
   runtime?: number | null;
   genres?: string | null; // JSON array string
   genreIds?: number[] | null; // For filtering
+  originalLanguage?: string | null; // ISO 639-1 language code
   // Ratings from various sources
   imdbRating?: string | null;
   kinopoiskRating?: string | null;
@@ -218,11 +221,23 @@ export interface SearchResult {
 
 export type SortOption = 'relevance' | 'popularity' | 'rating' | 'date_desc' | 'date_asc';
 
+// Original language codes (ISO 639-1)
+export type OriginalLanguage = 'en' | 'ru' | 'ko' | 'ja' | 'fr' | 'de' | 'es' | 'it' | 'zh' | 'hi' | 'tr';
+
+// Default languages for filtering (EN + RU)
+export const DEFAULT_LANGUAGES: OriginalLanguage[] = ['en', 'ru'];
+
 export interface SearchFilters {
   genres: number[];
+  // Genre names for filtering old-format data (EN + RU names)
+  genreNames: string[];
   yearFrom: number | null;
   yearTo: number | null;
   ratingMin: number | null;
   sortBy: SortOption;
   mediaType: MediaTypeFilter;
+  // Language filter (array for multi-select)
+  originalLanguages: OriginalLanguage[];
+  runtimeMin: number | null; // minutes (movies only)
+  runtimeMax: number | null; // minutes (movies only)
 }

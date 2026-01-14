@@ -2,20 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthToken } from '@/stores/authStore';
-import { useListStore, type ListItem } from '@/stores/listStore';
+import { useListStore } from '@/stores/listStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useClearSearchTrigger } from '@/stores/searchStore';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
-import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
-
-interface FilterCounts {
-  all: number;
-  wantToWatch: number;
-  watched: number;
-  ratings: Record<number, number>;
-}
+import type { SearchResult, SearchFilters as SearchFiltersType, OriginalLanguage } from '@/types/movie';
+import { DEFAULT_LANGUAGES } from '@/types/movie';
 
 interface UseMovieListLogicProps {
   initialStatus?: MovieStatus | 'all';
@@ -26,20 +20,31 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
   const clearSearchTrigger = useClearSearchTrigger();
   const { trackMovieRemoved, trackListSearchUsed } = useAnalytics();
 
-  // Use listStore for caching
+  // Use listStore directly - no more local items state duplication
   const {
     cache,
     hasHydrated,
+    isFetching,
     setCache,
     updateItem,
     removeItem: removeItemFromCache,
     isCacheValid,
     isCacheStale,
+    setLoading,
     setFetching,
   } = useListStore();
 
-  const [items, setItems] = useState<ListItem[]>([]);
-  const [isLoading, setIsLoadingLocal] = useState(true);
+  // Get items directly from cache - memoized to avoid unnecessary recalculations
+  const items = useMemo(() => cache?.items ?? [], [cache?.items]);
+  const listCounts = useMemo(() => cache?.counts ?? {
+    all: 0,
+    wantToWatch: 0,
+    watched: 0,
+    ratings: { 1: 0, 2: 0, 3: 0 },
+  }, [cache?.counts]);
+
+  // Local loading state for initial fetch only
+  const [isInitialLoading, setIsInitialLoading] = useState(!cache);
   const [error, setError] = useState<string | null>(null);
 
   // Filters
@@ -54,14 +59,6 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
       setSearchQuery('');
     }
   }, [clearSearchTrigger]);
-
-  // Counts for list filters
-  const [listCounts, setListCounts] = useState<FilterCounts>({
-    all: 0,
-    wantToWatch: 0,
-    watched: 0,
-    ratings: { 1: 0, 2: 0, 3: 0 },
-  });
 
   // External search state
   const [isExternalSearch, setIsExternalSearch] = useState(false);
@@ -84,14 +81,18 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
   // Search filters state
   const [searchFilters, setSearchFilters] = useState<SearchFiltersType>({
     genres: [],
+    genreNames: [],
     yearFrom: null,
     yearTo: null,
     ratingMin: null,
     sortBy: 'relevance',
     mediaType: 'all',
+    originalLanguages: DEFAULT_LANGUAGES,
+    runtimeMin: null,
+    runtimeMax: null,
   });
 
-  // Apply filters and sorting to local items
+  // Apply filters and sorting to items from store
   const filteredItems = useMemo(() => {
     let result = [...items];
 
@@ -107,15 +108,38 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
       result = result.filter((item) => item.rating === ratingFilter);
     }
 
+    // Filter by media type (movie/tv)
+    if (searchFilters.mediaType !== 'all') {
+      result = result.filter((item) => {
+        if (!item.movie?.mediaType) return true; // Keep items without mediaType
+        return item.movie.mediaType === searchFilters.mediaType;
+      });
+    }
+
     // Filter by genres
     if (searchFilters.genres.length > 0) {
       result = result.filter((item) => {
         if (!item.movie?.genres) return false;
         try {
-          const movieGenres: { id: number }[] = JSON.parse(item.movie.genres);
-          return searchFilters.genres.some((gId) =>
-            movieGenres.some((g) => g.id === gId)
-          );
+          const parsed = JSON.parse(item.movie.genres);
+          if (!Array.isArray(parsed) || parsed.length === 0) return false;
+
+          // Check format: new format has objects with id, old format has strings
+          if (typeof parsed[0] === 'object' && parsed[0] !== null && 'id' in parsed[0]) {
+            // New format: [{ id: 10, name: "Action" }]
+            const movieGenres: { id: number; name: string }[] = parsed;
+            return searchFilters.genres.some((gId) =>
+              movieGenres.some((g) => g.id === gId)
+            );
+          }
+          // Old format: ["Action", "Adventure"] - filter by name
+          if (searchFilters.genreNames.length > 0) {
+            const movieGenreStrings: string[] = parsed.map((g: string) => g.toLowerCase());
+            return searchFilters.genreNames.some((name) =>
+              movieGenreStrings.includes(name)
+            );
+          }
+          return false;
         } catch {
           return false;
         }
@@ -145,6 +169,22 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
         if (!item.movie?.voteAverage) return false;
         const rating = parseFloat(item.movie.voteAverage);
         return rating >= searchFilters.ratingMin!;
+      });
+    }
+
+    // Filter by original language
+    if (searchFilters.originalLanguages.length > 0) {
+      // Check if user has all default languages (for backwards compatibility with old data without originalLanguage)
+      const hasAllDefaultLangs = DEFAULT_LANGUAGES.every(lang =>
+        searchFilters.originalLanguages.includes(lang)
+      );
+
+      result = result.filter((item) => {
+        // If movie has no language info:
+        // - Keep if user has all default languages selected (backwards compatible)
+        // - Exclude if user narrowed search (removed some default languages)
+        if (!item.movie?.originalLanguage) return hasAllDefaultLangs;
+        return searchFilters.originalLanguages.includes(item.movie.originalLanguage as OriginalLanguage);
       });
     }
 
@@ -191,7 +231,10 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     if (!token) return;
 
     if (!isBackground) {
-      setIsLoadingLocal(true);
+      setLoading(true);
+      setIsInitialLoading(true);
+    } else {
+      setFetching(true);
     }
     setError(null);
 
@@ -214,34 +257,30 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
         watched: 0,
         ratings: { 1: 0, 2: 0, 3: 0 },
       });
-
-      setItems(data.items);
-      if (data.counts) {
-        setListCounts(data.counts);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoadingLocal(false);
+      setLoading(false);
       setFetching(false);
+      setIsInitialLoading(false);
     }
-  }, [token, setCache, setFetching]);
+  }, [token, setCache, setLoading, setFetching]);
 
-  // Initialize from cache or fetch
+  // Initialize from cache or fetch - optimized for instant cache display
   useEffect(() => {
     if (!hasHydrated || !token) return;
     if (isExternalSearch) return;
 
-    if (cache && isCacheValid()) {
-      setItems(cache.items);
-      setListCounts(cache.counts);
-      setIsLoadingLocal(false);
-
+    // If we have valid cache, show it immediately (already done via items from cache)
+    // Only fetch if cache is invalid or stale
+    if (isCacheValid()) {
+      setIsInitialLoading(false);
+      // Background refresh if stale
       if (isCacheStale()) {
-        setFetching(true);
         fetchFromApi(true);
       }
     } else {
+      // No valid cache - fetch data
       fetchFromApi(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,6 +317,15 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
       }
       if (searchFilters.mediaType !== 'all') {
         params.set('mediaType', searchFilters.mediaType);
+      }
+      if (searchFilters.originalLanguages.length > 0) {
+        params.set('originalLanguages', searchFilters.originalLanguages.join(','));
+      }
+      if (searchFilters.runtimeMin) {
+        params.set('runtimeMin', String(searchFilters.runtimeMin));
+      }
+      if (searchFilters.runtimeMax) {
+        params.set('runtimeMax', String(searchFilters.runtimeMax));
       }
 
       return `/api/search?${params}`;
@@ -336,15 +384,11 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, searchFilters, buildSearchUrl]);
 
-  // Update item status - optimistic update
+  // Update item status - optimistic update directly in store
   const handleStatusChange = async (tmdbId: number, newStatus: MovieStatus) => {
     if (!token) return;
 
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, status: newStatus } : item
-      )
-    );
+    // Optimistic update in store only
     updateItem(tmdbId, { status: newStatus });
 
     try {
@@ -372,11 +416,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
 
     const rating = newRating || null;
 
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, rating } : item
-      )
-    );
+    // Optimistic update in store only
     updateItem(tmdbId, { rating });
 
     try {
@@ -403,7 +443,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     if (!token) return;
 
     trackMovieRemoved(tmdbId);
-    setItems((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    // Optimistic update in store only
     removeItemFromCache(tmdbId);
 
     try {
@@ -503,11 +543,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     if (!token) return;
 
     const updates = { status: 'watched' as MovieStatus, rating, watchStartedAt: null };
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, ...updates } : item
-      )
-    );
+    // Optimistic update in store only
     updateItem(tmdbId, updates);
 
     try {
@@ -541,11 +577,7 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
       rating: null,
       watchStartedAt: null,
     };
-    setItems((prev) =>
-      prev.map((item) =>
-        item.tmdbId === tmdbId ? { ...item, ...updates } : item
-      )
-    );
+    // Optimistic update in store only
     updateItem(tmdbId, updates);
 
     try {
@@ -571,11 +603,15 @@ export function useMovieListLogic({ initialStatus = 'all' }: UseMovieListLogicPr
     }
   };
 
+  // Combined loading state - show loading only when no cached data and fetching
+  const isLoading = !hasHydrated || (isInitialLoading && items.length === 0);
+
   return {
     // State
     items,
     filteredItems,
     isLoading,
+    isFetching,
     error,
     listCounts,
 

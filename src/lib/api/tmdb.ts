@@ -141,6 +141,9 @@ class TMDBClient {
     sortBy?: 'popularity.desc' | 'vote_average.desc' | 'release_date.desc' | 'vote_count.desc';
     page?: number;
     language?: 'en-US' | 'ru-RU';
+    originalLanguage?: string; // ISO 639-1 code (en, ru, ko, ja, etc.)
+    runtimeMin?: number; // minutes
+    runtimeMax?: number; // minutes
   }): Promise<{ results: TMDBMovie[]; totalResults: number; totalPages: number }> {
     const queryParams: Record<string, string> = {
       language: params.language || 'en-US',
@@ -163,6 +166,15 @@ class TMDBClient {
     }
     if (params.sortBy) {
       queryParams.sort_by = params.sortBy;
+    }
+    if (params.originalLanguage) {
+      queryParams.with_original_language = params.originalLanguage;
+    }
+    if (params.runtimeMin) {
+      queryParams['with_runtime.gte'] = String(params.runtimeMin);
+    }
+    if (params.runtimeMax) {
+      queryParams['with_runtime.lte'] = String(params.runtimeMax);
     }
 
     const data = await this.fetch<TMDBResponse<TMDBMovie>>('/discover/movie', queryParams);
@@ -250,6 +262,7 @@ class TMDBClient {
     sortBy?: 'popularity.desc' | 'vote_average.desc' | 'first_air_date.desc' | 'vote_count.desc';
     page?: number;
     language?: 'en-US' | 'ru-RU';
+    originalLanguage?: string; // ISO 639-1 code (en, ru, ko, ja, etc.)
   }): Promise<{ results: TMDBTVSeries[]; totalResults: number; totalPages: number }> {
     const queryParams: Record<string, string> = {
       language: params.language || 'en-US',
@@ -272,6 +285,9 @@ class TMDBClient {
     }
     if (params.sortBy) {
       queryParams.sort_by = params.sortBy;
+    }
+    if (params.originalLanguage) {
+      queryParams.with_original_language = params.originalLanguage;
     }
 
     const data = await this.fetch<TMDBResponse<TMDBTVSeries>>('/discover/tv', queryParams);

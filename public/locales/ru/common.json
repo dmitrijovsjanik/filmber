@@ -95,8 +95,8 @@
     "listsDescription": "Отслеживайте фильмы к просмотру и оценивайте просмотренные",
     "all": "Все",
     "watching": "Смотрю",
-    "wantToWatch": "Хочу посмотреть",
-    "watched": "Просмотрено",
+    "wantToWatch": "В планах",
+    "watched": "Смотрел",
     "anyRating": "Любая",
     "searchPlaceholder": "Поиск фильмов...",
     "noSearchResults": "Фильмы не найдены",
@@ -106,7 +106,7 @@
     "status": "Статус",
     "yourRating": "Ваша оценка",
     "rateMovie": "Как вам фильм?",
-    "moveToWantToWatch": "Вернуть в «Хочу посмотреть»",
+    "moveToWantToWatch": "Вернуть в «В планах»",
     "removeFromList": "Удалить из списка",
     "confirmDelete": "Удалить из списка?",
     "confirmDeleteDescription": "Фильм «{title}» будет удалён из вашего списка.",
@@ -133,8 +133,8 @@
     "notFinished": "Не досмотрел"
   },
   "profile": {
-    "wantToWatch": "Хочу посмотреть",
-    "watched": "Просмотрено",
+    "wantToWatch": "В планах",
+    "watched": "Смотрел",
     "myLists": "Мои списки фильмов",
     "language": "Язык",
     "notifications": "Уведомления",
@@ -150,7 +150,7 @@
     "title": "Настройки подбора",
     "sectionPartner": "Рекомендации партнёру",
     "showWatched": "Делиться просмотренными",
-    "showWatchedDescription": "Показывать партнёру ваши любимые фильмы (с оценкой 3 звезды) из списка \"Просмотрено\"",
+    "showWatchedDescription": "Показывать партнёру ваши любимые фильмы (с оценкой 3 звезды) из списка «Смотрел»",
     "info": "Когда вы свайпаете вместе, партнёр увидит ваши любимые фильмы среди рекомендаций.",
     "mediaTypeDescription": "Что показывать в подборке",
     "mediaTypeAll": "Все",
@@ -215,6 +215,14 @@
     "mediaType": "Тип",
     "mediaTypeAll": "Все",
     "mediaTypeMovie": "Фильмы",
-    "mediaTypeTv": "Сериалы"
+    "mediaTypeTv": "Сериалы",
+    "originalLanguage": "Язык оригинала",
+    "anyLanguage": "Любой язык",
+    "runtime": "Продолжительность (мин)",
+    "genresMovies": "Жанры фильмов",
+    "genresTv": "Жанры сериалов",
+    "apply": "Применить",
+    "close": "Закрыть",
+    "rating": "Рейтинг"
   }
 }

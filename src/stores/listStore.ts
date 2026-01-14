@@ -16,6 +16,8 @@ interface MovieData {
   overviewRu: string | null;
   imdbRating: string | null;
   rottenTomatoesRating: string | null;
+  mediaType?: 'movie' | 'tv';
+  originalLanguage?: string | null;
 }
 
 export interface ListItem {

@@ -140,6 +140,24 @@ export function useTelegramWebApp() {
         tg.disableVerticalSwipes();
       }
 
+      // Set header/background colors to match app theme for seamless look
+      // Uses CSS variable fallback for theme consistency
+      const bgColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--background')
+        .trim();
+      if (bgColor && tg.setHeaderColor && tg.setBackgroundColor) {
+        try {
+          // Convert HSL to hex if needed, or use theme params
+          const headerBg = tg.themeParams.header_bg_color || tg.themeParams.bg_color;
+          if (headerBg) {
+            tg.setHeaderColor(headerBg);
+            tg.setBackgroundColor(headerBg);
+          }
+        } catch {
+          // Ignore color setting errors
+        }
+      }
+
       setIsReady(true);
     } else {
       // Not in Telegram Mini App context

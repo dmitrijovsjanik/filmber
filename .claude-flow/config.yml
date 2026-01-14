@@ -1,0 +1,188 @@
+# Claude-Flow Configuration for Filmber
+# Version: 2.7.0-alpha
+
+project:
+  name: filmber
+  type: web-development
+  stack:
+    - nextjs
+    - react
+    - typescript
+    - postgresql
+    - socketio
+    - zustand
+  methodology: agile
+  team_size: solo
+
+# Template configuration
+template:
+  base: react-nextjs
+  extensions:
+    - web-development
+    - telegram-integration
+
+# Swarm configuration
+swarm:
+  topology: mesh
+  max_agents: 5
+  coordination: parallel
+  default_agents:
+    - role: frontend
+      focus: [react-components, state-management, animations]
+    - role: backend
+      focus: [api-routes, database-queries, authentication]
+    - role: testing
+      focus: [unit-tests, integration-tests, e2e]
+
+# Memory configuration
+memory:
+  backend: reasoningbank
+  storage_path: .swarm/memory.db
+  namespaces:
+    - filmber
+    - movies
+    - recommendations
+    - development
+  auto_store: true
+  query_threshold: 0.7
+
+# AgentDB configuration (for future AI recommendations)
+agentdb:
+  enabled: false  # Enable when ready to implement AI recommendations
+  vector_search:
+    dimensions: 1024
+    index_type: hnsw
+    metric: cosine
+  embeddings:
+    provider: hash  # Use hash-based embeddings (no API key required)
+    # provider: openai  # Uncomment for OpenAI embeddings
+    # model: text-embedding-3-small
+  namespaces:
+    movies:
+      description: Movie embeddings for semantic search
+      fields: [title, overview, genres]
+    user_preferences:
+      description: User preference patterns
+      fields: [liked_movies, genres, ratings]
+
+# Hooks configuration
+hooks:
+  pre_edit:
+    - validate_typescript
+    - check_imports
+  post_edit:
+    - format_code
+    - update_tests
+  pre_commit:
+    - run_lint
+    - run_typecheck
+    - run_tests
+  post_commit:
+    - update_changelog
+
+# Patterns for code generation
+patterns:
+  component:
+    template: |
+      'use client';
+
+      import { FC } from 'react';
+
+      interface ${ComponentName}Props {
+        // Props here
+      }
+
+      export const ${ComponentName}: FC<${ComponentName}Props> = (props) => {
+        return (
+          <div>
+            {/* Component content */}
+          </div>
+        );
+      };
+    test_template: |
+      import { render, screen } from '@testing-library/react';
+      import { ${ComponentName} } from './${ComponentName}';
+
+      describe('${ComponentName}', () => {
+        it('renders correctly', () => {
+          render(<${ComponentName} />);
+          // Add assertions
+        });
+      });
+
+  api_route:
+    template: |
+      import { NextRequest, NextResponse } from 'next/server';
+      import { db } from '@/lib/db';
+      import { withAuth } from '@/lib/auth/middleware';
+
+      export async function GET(request: NextRequest) {
+        // Handler logic
+        return NextResponse.json({ data: [] });
+      }
+
+  zustand_store:
+    template: |
+      import { create } from 'zustand';
+      import { persist } from 'zustand/middleware';
+
+      interface ${StoreName}State {
+        // State properties
+      }
+
+      export const use${StoreName}Store = create<${StoreName}State>()(
+        persist(
+          (set, get) => ({
+            // Initial state and actions
+          }),
+          { name: '${storeName}-storage' }
+        )
+      );
+
+# File structure rules
+structure:
+  components:
+    path: src/components
+    subfolders:
+      - ui
+      - movie
+      - room
+      - lists
+      - auth
+      - prompts
+  hooks:
+    path: src/hooks
+    naming: use*.ts
+  stores:
+    path: src/stores
+    naming: '*Store.ts'
+  api:
+    path: src/app/api
+    pattern: route.ts
+  types:
+    path: src/types
+    naming: '*.ts'
+
+# Security rules
+security:
+  sensitive_files:
+    - .env
+    - .env.local
+    - .env.production
+  forbidden_patterns:
+    - 'API_KEY='
+    - 'SECRET='
+    - 'password='
+  required_validation:
+    - telegram_init_data
+    - jwt_tokens
+    - user_input
+
+# Performance monitoring
+performance:
+  bundle_size_limit: 500kb
+  lighthouse_scores:
+    performance: 80
+    accessibility: 90
+    best_practices: 90
+    seo: 80
