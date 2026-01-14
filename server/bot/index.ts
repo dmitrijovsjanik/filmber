@@ -5,6 +5,7 @@ import {
   userMovieLists,
   watchPrompts,
   movies,
+  bugReports,
   MOVIE_STATUS,
 } from '../../src/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -112,22 +113,47 @@ For the full experience, use the Mini App!`;
 
       const isRussian = ctx.from?.language_code === 'ru';
 
-      // Send to admin
-      if (ADMIN_TELEGRAM_ID) {
-        const reportMessage = `🐛 Bug Report\n\nFrom: ${ctx.from?.first_name} (@${ctx.from?.username || 'no username'})\nID: ${telegramId}\n\n${ctx.message.text}`;
+      try {
+        // Find user in database (optional - report can be from non-registered user)
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.telegramId, telegramId));
 
-        try {
-          await ctx.api.sendMessage(ADMIN_TELEGRAM_ID, reportMessage);
-        } catch (error) {
-          console.error('Failed to send bug report to admin:', error);
+        // Save bug report to database
+        await db.insert(bugReports).values({
+          userId: user?.id || null,
+          telegramId,
+          telegramUsername: ctx.from?.username || null,
+          firstName: ctx.from?.first_name || null,
+          message: ctx.message.text,
+          status: 'open',
+        });
+
+        // Also send to admin via Telegram (for immediate notification)
+        if (ADMIN_TELEGRAM_ID) {
+          const reportMessage = `🐛 Bug Report\n\nFrom: ${ctx.from?.first_name} (@${ctx.from?.username || 'no username'})\nID: ${telegramId}\n\n${ctx.message.text}`;
+
+          try {
+            await ctx.api.sendMessage(ADMIN_TELEGRAM_ID, reportMessage);
+          } catch (error) {
+            console.error('Failed to send bug report to admin:', error);
+          }
         }
-      }
 
-      await ctx.reply(
-        isRussian
-          ? '✅ Спасибо! Ваше сообщение отправлено разработчику.'
-          : '✅ Thank you! Your message has been sent to the developer.'
-      );
+        await ctx.reply(
+          isRussian
+            ? '✅ Спасибо! Ваше сообщение отправлено разработчику.'
+            : '✅ Thank you! Your message has been sent to the developer.'
+        );
+      } catch (error) {
+        console.error('Failed to save bug report:', error);
+        await ctx.reply(
+          isRussian
+            ? '❌ Произошла ошибка. Попробуйте позже.'
+            : '❌ An error occurred. Please try again later.'
+        );
+      }
     }
   });
 

@@ -527,6 +527,48 @@ export const deckSettingsRelations = relations(deckSettings, ({ one }) => ({
 }));
 
 // ============================================
+// BUG_REPORTS - User bug reports via Telegram bot
+// ============================================
+export const bugReports = pgTable(
+  'bug_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    telegramId: bigint('telegram_id', { mode: 'number' }).notNull(),
+    telegramUsername: varchar('telegram_username', { length: 255 }),
+    firstName: varchar('first_name', { length: 255 }),
+
+    // Report content
+    message: text('message').notNull(),
+
+    // Status
+    status: varchar('status', { length: 20 }).notNull().default('open'), // 'open' | 'replied' | 'closed'
+
+    // Admin response
+    adminReply: text('admin_reply'),
+    repliedAt: timestamp('replied_at'),
+    repliedBy: uuid('replied_by').references(() => users.id, { onDelete: 'set null' }),
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('bug_report_status_idx').on(table.status),
+    index('bug_report_user_idx').on(table.userId),
+  ]
+);
+
+export const bugReportsRelations = relations(bugReports, ({ one }) => ({
+  user: one(users, {
+    fields: [bugReports.userId],
+    references: [users.id],
+  }),
+  repliedByUser: one(users, {
+    fields: [bugReports.repliedBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================
 // ENUMS/CONSTANTS
 // ============================================
 export const MOVIE_STATUS = {
@@ -590,3 +632,5 @@ export type RoomQueue = typeof roomQueues.$inferSelect;
 export type NewRoomQueue = typeof roomQueues.$inferInsert;
 export type DeckSettings = typeof deckSettings.$inferSelect;
 export type NewDeckSettings = typeof deckSettings.$inferInsert;
+export type BugReport = typeof bugReports.$inferSelect;
+export type NewBugReport = typeof bugReports.$inferInsert;
