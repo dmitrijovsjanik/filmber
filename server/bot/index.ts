@@ -360,8 +360,12 @@ export function createWebhookHandler() {
 export async function startPolling(): Promise<void> {
   const bot = getBot();
 
-  // Delete any existing webhook before starting polling
-  await bot.api.deleteWebhook();
+  // Delete any existing webhook before starting polling (non-blocking)
+  try {
+    await bot.api.deleteWebhook();
+  } catch (err) {
+    console.warn('> Failed to delete webhook:', (err as Error).message);
+  }
 
   await bot.start({
     onStart: () => {
@@ -376,15 +380,21 @@ export async function setWebhook(url: string): Promise<void> {
   await bot.api.setWebhook(url, {
     secret_token: WEBHOOK_SECRET,
   });
-
-  // Set bot menu commands
-  await bot.api.setMyCommands([
-    { command: 'start', description: 'Открыть Filmber / Open Filmber' },
-    { command: 'help', description: 'Помощь / Help' },
-    { command: 'bug', description: 'Сообщить об ошибке / Report a bug' },
-  ]);
-
   console.log(`> Telegram webhook set to ${url}`);
+
+  // Set bot menu commands (non-blocking - don't fail if rate limited)
+  bot.api
+    .setMyCommands([
+      { command: 'start', description: 'Открыть Filmber / Open Filmber' },
+      { command: 'help', description: 'Помощь / Help' },
+      { command: 'bug', description: 'Сообщить об ошибке / Report a bug' },
+    ])
+    .then(() => {
+      console.log('> Telegram bot commands set');
+    })
+    .catch((err) => {
+      console.warn('> Failed to set bot commands (will retry on next deploy):', err.message);
+    });
 }
 
 // Stop the bot gracefully

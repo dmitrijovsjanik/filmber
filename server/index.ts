@@ -38,22 +38,26 @@ app.prepare().then(async () => {
 
   setupSocketHandlers(io);
 
-  // Initialize Telegram bot
+  // Initialize Telegram bot (non-blocking to prevent server crash on rate limits)
   if (process.env.TELEGRAM_BOT_TOKEN) {
-    try {
-      const { startPolling, setWebhook } = await import('./bot');
-
-      if (dev) {
-        // Development: use long polling (don't await - it blocks)
-        startPolling();
-      } else {
-        // Production: set webhook (handled by API route)
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`;
-        await setWebhook(webhookUrl);
-      }
-    } catch (error) {
-      console.error('Failed to initialize Telegram bot:', error);
-    }
+    import('./bot')
+      .then(({ startPolling, setWebhook }) => {
+        if (dev) {
+          // Development: use long polling
+          startPolling().catch((err) => {
+            console.error('Failed to start bot polling:', err);
+          });
+        } else {
+          // Production: set webhook (handled by API route)
+          const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`;
+          setWebhook(webhookUrl).catch((err) => {
+            console.error('Failed to set bot webhook:', err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to import bot module:', err);
+      });
   } else {
     console.log('> Telegram bot disabled (no TELEGRAM_BOT_TOKEN)');
   }
