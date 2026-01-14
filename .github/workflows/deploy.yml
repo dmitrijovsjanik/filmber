@@ -147,11 +147,21 @@ jobs:
             # Перезапуск PM2 (delete and start fresh to ensure correct cwd)
             cd "${APP_DIR}/current"
             echo "Restarting PM2 process..."
+            pm2 stop filmber 2>/dev/null || true
             pm2 delete filmber 2>/dev/null || true
-            sleep 2
-            # Kill any process holding port 3000 to avoid EADDRINUSE
-            fuser -k 3000/tcp 2>/dev/null || true
-            sleep 1
+
+            # Wait for port 3000 to be free (max 10 attempts)
+            echo "Waiting for port 3000 to be free..."
+            for i in {1..10}; do
+              if ! fuser 3000/tcp >/dev/null 2>&1; then
+                echo "Port 3000 is free"
+                break
+              fi
+              echo "Port 3000 still in use, killing... (attempt $i)"
+              fuser -k 3000/tcp 2>/dev/null || true
+              sleep 2
+            done
+
             pm2 start ecosystem.config.js --env production
             pm2 save
 
