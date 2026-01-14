@@ -22,6 +22,12 @@ module.exports = {
       out_file: '/var/www/filmber/logs/out.log',
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      // Prevent rapid restart loops
+      restart_delay: 3000, // Wait 3s between restarts
+      kill_timeout: 5000, // Wait 5s for graceful shutdown
+      max_restarts: 10, // Max 10 restarts in min_uptime window
+      min_uptime: 10000, // Consider crashed if dies within 10s
+      exp_backoff_restart_delay: 1000, // Exponential backoff starting at 1s
     },
   ],
 };
