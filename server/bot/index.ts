@@ -88,6 +88,36 @@ For the full experience, use the Mini App!`;
     await ctx.reply(helpText, { parse_mode: 'Markdown' });
   });
 
+  // /admin command - opens admin panel (only for admins)
+  bot.command('admin', async (ctx) => {
+    const telegramId = ctx.from?.id;
+    const isRussian = ctx.from?.language_code === 'ru';
+
+    // Check if user is admin
+    const adminIds = process.env.ADMIN_TELEGRAM_IDS?.split(',').map(id => parseInt(id.trim(), 10)) || [];
+
+    if (!telegramId || !adminIds.includes(telegramId)) {
+      await ctx.reply(
+        isRussian
+          ? '⛔ У вас нет доступа к админ-панели.'
+          : '⛔ You do not have access to the admin panel.'
+      );
+      return;
+    }
+
+    const keyboard = new InlineKeyboard().webApp(
+      isRussian ? '🔧 Открыть админку' : '🔧 Open Admin Panel',
+      `${WEBAPP_URL}/admin`
+    );
+
+    await ctx.reply(
+      isRussian
+        ? '🔧 Нажмите кнопку ниже, чтобы открыть админ-панель:'
+        : '🔧 Tap the button below to open the admin panel:',
+      { reply_markup: keyboard }
+    );
+  });
+
   // /bug command - report an issue
   bot.command('bug', async (ctx) => {
     const isRussian = ctx.from?.language_code === 'ru';
