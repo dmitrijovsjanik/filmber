@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PreferenceHorizontalIcon } from '@hugeicons/core-free-icons';
+import { FilterIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -90,17 +89,19 @@ export function FiltersMenu({
       <SheetTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           disabled={disabled}
-          className="gap-2 h-9 px-3"
+          className={`h-9 w-9 ${
+            activeFiltersCount > 0
+              ? 'bg-pink-500 border-pink-500 hover:bg-pink-600 hover:border-pink-600'
+              : ''
+          }`}
         >
-          <HugeiconsIcon icon={PreferenceHorizontalIcon} size={16} />
-          {t('filters')}
-          {activeFiltersCount > 0 && (
-            <Badge variant="default" className="ml-1 h-5 min-w-5 p-0 justify-center text-xs">
-              {activeFiltersCount}
-            </Badge>
-          )}
+          <HugeiconsIcon
+            icon={FilterIcon}
+            size={18}
+            className={activeFiltersCount > 0 ? 'text-white' : ''}
+          />
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">

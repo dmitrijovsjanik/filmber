@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { SortByUp01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { ArrowUpDownIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -50,12 +50,19 @@ export function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
       <SheetTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           disabled={disabled}
-          className="gap-2 h-9 px-3"
+          className={`h-9 w-9 ${
+            value !== 'relevance'
+              ? 'bg-pink-500 border-pink-500 hover:bg-pink-600 hover:border-pink-600'
+              : ''
+          }`}
         >
-          <HugeiconsIcon icon={SortByUp01Icon} size={16} />
-          {getSortLabel(value)}
+          <HugeiconsIcon
+            icon={ArrowUpDownIcon}
+            size={18}
+            className={value !== 'relevance' ? 'text-white' : ''}
+          />
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-2xl">
