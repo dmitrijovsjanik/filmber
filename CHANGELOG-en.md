@@ -4,6 +4,22 @@ All notable changes to Filmber will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.7.0] - 2026-01-15 — Advanced Search Filters
+
+### Added
+- Quick filters: content type, original language, genres, rating
+- Runtime filter for movies and TV series
+- Support for filtering legacy data by genre name
+
+### Changed
+- Redesigned filters menu with expandable sections
+- Improved filter compatibility with legacy cached data
+
+### Fixed
+- Fixed genre filtering for movies from different sources
+- Fixed original language filtering
+- Fixed hydration error in nested buttons
+
 ## [2.6.0] - 2026-01-13 — Smooth Swipe Animations
 
 ### Changed
