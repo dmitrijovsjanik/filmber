@@ -153,9 +153,11 @@ jobs:
             cd "${APP_DIR}/current"
             echo "Stopping all filmber processes..."
 
-            # 1. Stop PM2 managed process
+            # 1. Stop PM2 managed process (both root and filmber user)
             pm2 stop filmber 2>/dev/null || true
             pm2 delete filmber 2>/dev/null || true
+            sudo -u filmber pm2 delete filmber 2>/dev/null || true
+            sudo -u filmber pm2 save --force 2>/dev/null || true
             sleep 2
 
             # 2. Kill node processes on port 3000 (safer than pkill with broad pattern)
