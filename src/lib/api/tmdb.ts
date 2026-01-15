@@ -1,4 +1,12 @@
-import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails, TMDBSeason, TMDBVideo } from '@/types/movie';
+import type {
+  TMDBMovie,
+  TMDBMovieDetails,
+  TMDBTVSeries,
+  TMDBTVSeriesDetails,
+  TMDBSeason,
+  TMDBVideo,
+  TMDBReleaseDates,
+} from '@/types/movie';
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
 import {
   POSTER_SIZES,
@@ -193,6 +201,73 @@ class TMDBClient {
       totalResults: data.total_results,
       totalPages: data.total_pages,
     };
+  }
+
+  // ============================================
+  // UPCOMING MOVIES ENDPOINTS
+  // ============================================
+
+  // Get upcoming movies (using TMDB's upcoming endpoint)
+  async getUpcomingMovies(params: {
+    language?: 'en-US' | 'ru-RU';
+    page?: number;
+    region?: 'US' | 'RU';
+  } = {}): Promise<{ results: TMDBMovie[]; totalResults: number; totalPages: number }> {
+    const queryParams: Record<string, string> = {
+      language: params.language || 'en-US',
+      page: String(params.page || 1),
+    };
+
+    if (params.region) {
+      queryParams.region = params.region;
+    }
+
+    const data = await this.fetch<TMDBResponse<TMDBMovie>>('/movie/upcoming', queryParams);
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+      totalPages: data.total_pages,
+    };
+  }
+
+  // Get movies with future release dates using discover endpoint (more control over date range)
+  async discoverUpcomingMovies(params: {
+    language?: 'en-US' | 'ru-RU';
+    page?: number;
+    daysAhead?: number; // How far into the future (default: 90)
+    minPopularity?: number; // Filter by popularity threshold
+  } = {}): Promise<{ results: TMDBMovie[]; totalResults: number; totalPages: number }> {
+    const today = new Date().toISOString().split('T')[0];
+    const futureDate = new Date(
+      Date.now() + (params.daysAhead || 90) * 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .split('T')[0];
+
+    const queryParams: Record<string, string> = {
+      language: params.language || 'en-US',
+      page: String(params.page || 1),
+      'primary_release_date.gte': today,
+      'primary_release_date.lte': futureDate,
+      sort_by: 'popularity.desc',
+      include_adult: 'false',
+    };
+
+    if (params.minPopularity) {
+      queryParams['vote_count.gte'] = '0'; // Include movies without votes
+    }
+
+    const data = await this.fetch<TMDBResponse<TMDBMovie>>('/discover/movie', queryParams);
+    return {
+      results: data.results,
+      totalResults: data.total_results,
+      totalPages: data.total_pages,
+    };
+  }
+
+  // Get detailed release dates for a movie (theatrical, digital, etc. for all regions)
+  async getMovieReleaseDates(movieId: number): Promise<TMDBReleaseDates> {
+    return this.fetch<TMDBReleaseDates>(`/movie/${movieId}/release_dates`);
   }
 
   // ============================================

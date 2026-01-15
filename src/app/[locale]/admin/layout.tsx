@@ -10,6 +10,7 @@ import {
   Film02Icon,
   GridIcon,
   TelegramIcon,
+  Notification03Icon,
 } from '@hugeicons/core-free-icons';
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/admin/rooms', label: 'Rooms', icon: GridIcon },
   { href: '/admin/movies', label: 'Movies', icon: Film02Icon },
   { href: '/admin/bot', label: 'Bot', icon: TelegramIcon },
+  { href: '/admin/notifications', label: 'Notifications', icon: Notification03Icon },
 ];
 
 export default function AdminLayout({

@@ -383,6 +383,21 @@ export const notificationSettings = pgTable('notification_settings', {
   // Bot message settings
   watchReminders: boolean('watch_reminders').default(true), // Напоминания о просмотре
 
+  // Upcoming movies notifications
+  upcomingAnnouncements: boolean('upcoming_announcements').default(true), // Анонсы новых фильмов
+  upcomingTheatricalReleases: boolean('upcoming_theatrical_releases').default(true), // Премьеры в кино
+  upcomingDigitalReleases: boolean('upcoming_digital_releases').default(true), // Цифровые релизы
+
+  // App updates / release notes notifications
+  appUpdates: boolean('app_updates').default(true), // Уведомления о новых версиях приложения
+
+  // TV Series notifications
+  seriesSeasonAnnouncements: boolean('series_season_announcements').default(true), // Уведомления о новых сезонах
+  seriesEpisodeReleases: boolean('series_episode_releases').default(true), // Уведомления о новых сериях
+
+  // Preferred release region for notifications
+  preferredReleaseRegion: varchar('preferred_release_region', { length: 5 }).default('US'), // 'US' | 'RU'
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -569,6 +584,243 @@ export const bugReportsRelations = relations(bugReports, ({ one }) => ({
 }));
 
 // ============================================
+// UPCOMING_MOVIES - Track upcoming movie releases
+// ============================================
+export const upcomingMovies = pgTable(
+  'upcoming_movies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // External IDs
+    tmdbId: integer('tmdb_id').notNull().unique(),
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'set null' }),
+
+    // Release dates (YYYY-MM-DD format)
+    theatricalReleaseUs: varchar('theatrical_release_us', { length: 20 }),
+    theatricalReleaseRu: varchar('theatrical_release_ru', { length: 20 }),
+    digitalRelease: varchar('digital_release', { length: 20 }),
+
+    // Metadata for filtering and display
+    popularity: varchar('popularity', { length: 20 }),
+    title: varchar('title', { length: 500 }).notNull(),
+    titleRu: varchar('title_ru', { length: 500 }),
+    posterPath: varchar('poster_path', { length: 500 }),
+    overview: text('overview'),
+    overviewRu: text('overview_ru'),
+    genres: text('genres'), // JSON array
+
+    // Notification tracking - when each type was sent
+    announcementSentAt: timestamp('announcement_sent_at'),
+    theatricalReleaseSentAt: timestamp('theatrical_release_sent_at'),
+    digitalReleaseSentAt: timestamp('digital_release_sent_at'),
+
+    // Status tracking
+    status: varchar('status', { length: 20 }).notNull().default('tracked'), // 'tracked' | 'released' | 'archived'
+
+    // Timestamps
+    discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('upcoming_tmdb_idx').on(table.tmdbId),
+    index('upcoming_theatrical_us_idx').on(table.theatricalReleaseUs),
+    index('upcoming_theatrical_ru_idx').on(table.theatricalReleaseRu),
+    index('upcoming_digital_idx').on(table.digitalRelease),
+    index('upcoming_status_idx').on(table.status),
+    index('upcoming_popularity_idx').on(table.popularity),
+  ]
+);
+
+// ============================================
+// NOTIFICATION_CONFIG - Admin-configurable notification settings
+// ============================================
+export const notificationConfig = pgTable('notification_config', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: varchar('key', { length: 100 }).notNull().unique(),
+  value: text('value').notNull(), // JSON string
+  description: text('description'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+});
+
+// ============================================
+// NOTIFICATION_LOG - Track sent notifications for analytics
+// ============================================
+export const notificationLog = pgTable(
+  'notification_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // Notification details
+    type: varchar('type', { length: 30 }).notNull(), // 'announcement' | 'theatrical_release' | 'digital_release' | 'season_announcement' | 'episode_release'
+    upcomingMovieId: uuid('upcoming_movie_id').references(() => upcomingMovies.id, { onDelete: 'set null' }),
+    tmdbId: integer('tmdb_id'),
+
+    // TV Series specific fields
+    trackedSeriesId: uuid('tracked_series_id'), // Will be set after trackedSeries table exists
+    seasonNumber: integer('season_number'),
+    episodeNumber: integer('episode_number'),
+
+    // Stats
+    totalRecipients: integer('total_recipients').notNull(),
+    successCount: integer('success_count').notNull().default(0),
+    failureCount: integer('failure_count').notNull().default(0),
+
+    // Timing
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    completedAt: timestamp('completed_at'),
+
+    // Debug info
+    errorDetails: text('error_details'), // JSON array of errors
+  },
+  (table) => [
+    index('notification_log_type_idx').on(table.type),
+    index('notification_log_movie_idx').on(table.upcomingMovieId),
+    index('notification_log_started_idx').on(table.startedAt),
+    index('notification_log_series_idx').on(table.trackedSeriesId),
+  ]
+);
+
+// ============================================
+// UPCOMING_SYNC_STATS - Daily statistics for sync and announcements
+// ============================================
+export const upcomingSyncStats = pgTable(
+  'upcoming_sync_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // Date for grouping (one record per day)
+    date: varchar('date', { length: 10 }).notNull(), // YYYY-MM-DD format
+
+    // Sync stats
+    syncNewMovies: integer('sync_new_movies').notNull().default(0),
+    syncUpdatedMovies: integer('sync_updated_movies').notNull().default(0),
+    syncArchivedMovies: integer('sync_archived_movies').notNull().default(0),
+
+    // Announcement stats
+    announcedMovies: integer('announced_movies').notNull().default(0),
+    skippedLowPopularity: integer('skipped_low_popularity').notNull().default(0),
+    skippedNoRussian: integer('skipped_no_russian').notNull().default(0),
+    skippedNoPoster: integer('skipped_no_poster').notNull().default(0),
+    skippedTooYoung: integer('skipped_too_young').notNull().default(0),
+
+    // Notification delivery stats
+    notificationsSent: integer('notifications_sent').notNull().default(0),
+    notificationsFailed: integer('notifications_failed').notNull().default(0),
+
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('upcoming_sync_stats_date_idx').on(table.date)]
+);
+
+// Relations for upcoming movies tables
+export const upcomingMoviesRelations = relations(upcomingMovies, ({ one, many }) => ({
+  unifiedMovie: one(movies, {
+    fields: [upcomingMovies.unifiedMovieId],
+    references: [movies.id],
+  }),
+  notificationLogs: many(notificationLog),
+}));
+
+// ============================================
+// TRACKED_SERIES - Track TV series for notifications
+// ============================================
+export const trackedSeries = pgTable(
+  'tracked_series',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tmdbId: integer('tmdb_id').notNull().unique(),
+    unifiedMovieId: uuid('unified_movie_id').references(() => movies.id, { onDelete: 'set null' }),
+
+    // Cached data
+    title: varchar('title', { length: 500 }).notNull(),
+    titleRu: varchar('title_ru', { length: 500 }),
+    posterPath: varchar('poster_path', { length: 500 }),
+
+    // Season tracking
+    lastKnownSeasons: integer('last_known_seasons').notNull(),
+    currentSeasons: integer('current_seasons').notNull(),
+    seriesStatus: varchar('series_status', { length: 30 }), // 'Returning Series' | 'Ended' | 'Canceled'
+
+    // Notifications
+    newSeasonDetectedAt: timestamp('new_season_detected_at'),
+    seasonAnnouncementSentAt: timestamp('season_announcement_sent_at'),
+
+    // Tracking status
+    trackingStatus: varchar('tracking_status', { length: 20 }).notNull().default('active'), // 'active' | 'ended' | 'archived'
+
+    discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('tracked_series_tmdb_idx').on(table.tmdbId),
+    index('tracked_series_status_idx').on(table.trackingStatus),
+    index('tracked_series_new_season_idx').on(table.newSeasonDetectedAt),
+  ]
+);
+
+// ============================================
+// TRACKED_EPISODES - Track episodes for notifications
+// ============================================
+export const trackedEpisodes = pgTable(
+  'tracked_episodes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    trackedSeriesId: uuid('tracked_series_id')
+      .references(() => trackedSeries.id, { onDelete: 'cascade' })
+      .notNull(),
+    tmdbId: integer('tmdb_id').notNull(),
+
+    seasonNumber: integer('season_number').notNull(),
+    episodeNumber: integer('episode_number').notNull(),
+    episodeName: varchar('episode_name', { length: 500 }),
+
+    airDate: varchar('air_date', { length: 20 }), // YYYY-MM-DD
+    notifyDate: varchar('notify_date', { length: 20 }), // airDate + delay days
+
+    notificationSentAt: timestamp('notification_sent_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('tracked_episodes_series_idx').on(table.trackedSeriesId),
+    index('tracked_episodes_notify_idx').on(table.notifyDate),
+    uniqueIndex('tracked_episodes_unique_idx').on(table.trackedSeriesId, table.seasonNumber, table.episodeNumber),
+  ]
+);
+
+// Relations for tracked series
+export const trackedSeriesRelations = relations(trackedSeries, ({ one, many }) => ({
+  unifiedMovie: one(movies, {
+    fields: [trackedSeries.unifiedMovieId],
+    references: [movies.id],
+  }),
+  episodes: many(trackedEpisodes),
+}));
+
+export const trackedEpisodesRelations = relations(trackedEpisodes, ({ one }) => ({
+  series: one(trackedSeries, {
+    fields: [trackedEpisodes.trackedSeriesId],
+    references: [trackedSeries.id],
+  }),
+}));
+
+export const notificationConfigRelations = relations(notificationConfig, ({ one }) => ({
+  updatedByUser: one(users, {
+    fields: [notificationConfig.updatedBy],
+    references: [users.id],
+  }),
+}));
+
+export const notificationLogRelations = relations(notificationLog, ({ one }) => ({
+  upcomingMovie: one(upcomingMovies, {
+    fields: [notificationLog.upcomingMovieId],
+    references: [upcomingMovies.id],
+  }),
+}));
+
+// ============================================
 // ENUMS/CONSTANTS
 // ============================================
 export const MOVIE_STATUS = {
@@ -594,10 +846,34 @@ export const MEDIA_TYPE_FILTER = {
   TV: 'tv',
 } as const;
 
+export const NOTIFICATION_TYPE = {
+  // Movie notifications
+  ANNOUNCEMENT: 'announcement',
+  THEATRICAL_RELEASE: 'theatrical_release',
+  DIGITAL_RELEASE: 'digital_release',
+  // TV Series notifications
+  SEASON_ANNOUNCEMENT: 'season_announcement',
+  EPISODE_RELEASE: 'episode_release',
+} as const;
+
+export const UPCOMING_MOVIE_STATUS = {
+  TRACKED: 'tracked',
+  RELEASED: 'released',
+  ARCHIVED: 'archived',
+} as const;
+
+export const RELEASE_REGION = {
+  US: 'US',
+  RU: 'RU',
+} as const;
+
 export type MovieStatus = (typeof MOVIE_STATUS)[keyof typeof MOVIE_STATUS];
 export type MovieSource = (typeof MOVIE_SOURCE)[keyof typeof MOVIE_SOURCE];
 export type MediaType = (typeof MEDIA_TYPE)[keyof typeof MEDIA_TYPE];
 export type MediaTypeFilter = (typeof MEDIA_TYPE_FILTER)[keyof typeof MEDIA_TYPE_FILTER];
+export type NotificationType = (typeof NOTIFICATION_TYPE)[keyof typeof NOTIFICATION_TYPE];
+export type UpcomingMovieStatus = (typeof UPCOMING_MOVIE_STATUS)[keyof typeof UPCOMING_MOVIE_STATUS];
+export type ReleaseRegion = (typeof RELEASE_REGION)[keyof typeof RELEASE_REGION];
 
 // ============================================
 // TYPE EXPORTS
@@ -634,3 +910,19 @@ export type DeckSettings = typeof deckSettings.$inferSelect;
 export type NewDeckSettings = typeof deckSettings.$inferInsert;
 export type BugReport = typeof bugReports.$inferSelect;
 export type NewBugReport = typeof bugReports.$inferInsert;
+
+// Upcoming movies types
+export type UpcomingMovie = typeof upcomingMovies.$inferSelect;
+export type NewUpcomingMovie = typeof upcomingMovies.$inferInsert;
+export type NotificationConfig = typeof notificationConfig.$inferSelect;
+export type NewNotificationConfig = typeof notificationConfig.$inferInsert;
+export type NotificationLog = typeof notificationLog.$inferSelect;
+export type NewNotificationLog = typeof notificationLog.$inferInsert;
+export type UpcomingSyncStats = typeof upcomingSyncStats.$inferSelect;
+export type NewUpcomingSyncStats = typeof upcomingSyncStats.$inferInsert;
+
+// TV Series tracking types
+export type TrackedSeries = typeof trackedSeries.$inferSelect;
+export type NewTrackedSeries = typeof trackedSeries.$inferInsert;
+export type TrackedEpisode = typeof trackedEpisodes.$inferSelect;
+export type NewTrackedEpisode = typeof trackedEpisodes.$inferInsert;

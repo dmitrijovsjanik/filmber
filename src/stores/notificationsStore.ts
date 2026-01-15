@@ -3,8 +3,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type ReleaseRegion = 'US' | 'RU';
+
 export interface NotificationSettings {
   watchReminders: boolean;
+  // Upcoming movies notifications
+  upcomingAnnouncements: boolean;
+  upcomingTheatricalReleases: boolean;
+  upcomingDigitalReleases: boolean;
+  // TV Series notifications
+  seriesSeasonAnnouncements: boolean;
+  seriesEpisodeReleases: boolean;
+  // App updates / release notes
+  appUpdates: boolean;
+  preferredReleaseRegion: ReleaseRegion;
 }
 
 interface NotificationsState extends NotificationSettings {
@@ -22,6 +34,13 @@ interface NotificationsState extends NotificationSettings {
 
 const defaultSettings: NotificationSettings = {
   watchReminders: true,
+  upcomingAnnouncements: true,
+  upcomingTheatricalReleases: true,
+  upcomingDigitalReleases: true,
+  seriesSeasonAnnouncements: true,
+  seriesEpisodeReleases: true,
+  appUpdates: true,
+  preferredReleaseRegion: 'US',
 };
 
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -64,6 +83,13 @@ export const useNotificationsStore = create<NotificationsState>()(
           const data = await response.json();
           set({
             watchReminders: data.watchReminders ?? true,
+            upcomingAnnouncements: data.upcomingAnnouncements ?? true,
+            upcomingTheatricalReleases: data.upcomingTheatricalReleases ?? true,
+            upcomingDigitalReleases: data.upcomingDigitalReleases ?? true,
+            seriesSeasonAnnouncements: data.seriesSeasonAnnouncements ?? true,
+            seriesEpisodeReleases: data.seriesEpisodeReleases ?? true,
+            appUpdates: data.appUpdates ?? true,
+            preferredReleaseRegion: data.preferredReleaseRegion ?? 'US',
             isLoaded: true,
             isLoading: false,
             lastFetched: Date.now(),
@@ -94,6 +120,13 @@ export const useNotificationsStore = create<NotificationsState>()(
             // Revert on error
             set({
               watchReminders: previousState.watchReminders,
+              upcomingAnnouncements: previousState.upcomingAnnouncements,
+              upcomingTheatricalReleases: previousState.upcomingTheatricalReleases,
+              upcomingDigitalReleases: previousState.upcomingDigitalReleases,
+              seriesSeasonAnnouncements: previousState.seriesSeasonAnnouncements,
+              seriesEpisodeReleases: previousState.seriesEpisodeReleases,
+              appUpdates: previousState.appUpdates,
+              preferredReleaseRegion: previousState.preferredReleaseRegion,
               isLoading: false,
             });
             throw new Error('Failed to update settings');
@@ -107,6 +140,13 @@ export const useNotificationsStore = create<NotificationsState>()(
           console.error('Failed to update notification settings:', error);
           set({
             watchReminders: previousState.watchReminders,
+            upcomingAnnouncements: previousState.upcomingAnnouncements,
+            upcomingTheatricalReleases: previousState.upcomingTheatricalReleases,
+            upcomingDigitalReleases: previousState.upcomingDigitalReleases,
+            seriesSeasonAnnouncements: previousState.seriesSeasonAnnouncements,
+            seriesEpisodeReleases: previousState.seriesEpisodeReleases,
+            appUpdates: previousState.appUpdates,
+            preferredReleaseRegion: previousState.preferredReleaseRegion,
             isLoading: false,
           });
         }
@@ -122,6 +162,13 @@ export const useNotificationsStore = create<NotificationsState>()(
       name: 'filmber-notifications',
       partialize: (state) => ({
         watchReminders: state.watchReminders,
+        upcomingAnnouncements: state.upcomingAnnouncements,
+        upcomingTheatricalReleases: state.upcomingTheatricalReleases,
+        upcomingDigitalReleases: state.upcomingDigitalReleases,
+        seriesSeasonAnnouncements: state.seriesSeasonAnnouncements,
+        seriesEpisodeReleases: state.seriesEpisodeReleases,
+        appUpdates: state.appUpdates,
+        preferredReleaseRegion: state.preferredReleaseRegion,
         lastFetched: state.lastFetched,
         isLoaded: state.isLoaded,
       }),
@@ -135,6 +182,20 @@ export const useNotificationsStore = create<NotificationsState>()(
 // Selectors
 export const useWatchReminders = () =>
   useNotificationsStore((state) => state.watchReminders);
+export const useUpcomingAnnouncements = () =>
+  useNotificationsStore((state) => state.upcomingAnnouncements);
+export const useUpcomingTheatricalReleases = () =>
+  useNotificationsStore((state) => state.upcomingTheatricalReleases);
+export const useUpcomingDigitalReleases = () =>
+  useNotificationsStore((state) => state.upcomingDigitalReleases);
+export const useSeriesSeasonAnnouncements = () =>
+  useNotificationsStore((state) => state.seriesSeasonAnnouncements);
+export const useSeriesEpisodeReleases = () =>
+  useNotificationsStore((state) => state.seriesEpisodeReleases);
+export const useAppUpdates = () =>
+  useNotificationsStore((state) => state.appUpdates);
+export const usePreferredReleaseRegion = () =>
+  useNotificationsStore((state) => state.preferredReleaseRegion);
 export const useNotificationsLoaded = () =>
   useNotificationsStore((state) => state.isLoaded);
 export const useNotificationsLoading = () =>

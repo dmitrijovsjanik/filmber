@@ -186,7 +186,22 @@
     "botMessages": "Сообщения от бота",
     "watchReminders": "Напоминания о просмотре",
     "watchRemindersDesc": "Напоминать оценить фильм после просмотра",
-    "info": "Уведомления отправляются через Telegram-бота. Убедитесь, что вы запустили бота."
+    "info": "Уведомления отправляются через Telegram-бота. Убедитесь, что вы запустили бота.",
+    "upcomingMovies": "Новинки кино",
+    "announcements": "Анонсы новых фильмов",
+    "announcementsDesc": "Уведомлять о новых ожидаемых фильмах",
+    "theatricalReleases": "Премьеры в кино",
+    "theatricalReleasesDesc": "Уведомлять о выходе фильмов в кинотеатрах",
+    "digitalReleases": "Цифровые релизы",
+    "digitalReleasesDesc": "Уведомлять, когда фильмы становятся доступны онлайн",
+    "tvSeries": "Сериалы",
+    "seasonAnnouncements": "Новые сезоны",
+    "seasonAnnouncementsDesc": "Уведомлять о новых сезонах просмотренных сериалов",
+    "episodeReleases": "Новые серии",
+    "episodeReleasesDesc": "Уведомлять о выходе новых серий (с задержкой на озвучку)",
+    "appUpdatesSection": "Обновления",
+    "appUpdates": "Что нового",
+    "appUpdatesDesc": "Уведомлять о новых версиях и функциях приложения"
   },
   "nav": {
     "home": "Главная",

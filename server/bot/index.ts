@@ -6,9 +6,13 @@ import {
   watchPrompts,
   movies,
   bugReports,
+  notificationSettings,
+  upcomingMovies,
   MOVIE_STATUS,
+  MOVIE_SOURCE,
 } from '../../src/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { tmdb } from '../../src/lib/api/tmdb';
 
 // Types
 export type BotContext = Context;
@@ -393,6 +397,221 @@ For the full experience, use the Mini App!`;
       await ctx.answerCallbackQuery({
         text: isRussian ? 'Произошла ошибка' : 'An error occurred',
       });
+    }
+  });
+
+  // Callback query: Add movie to want_to_watch list (from upcoming notifications)
+  bot.callbackQuery(/^addlist:(\d+)$/, async (ctx) => {
+    const tmdbId = parseInt(ctx.match[1], 10);
+    const telegramId = ctx.from.id;
+    const isRussian = ctx.from.language_code === 'ru';
+
+    try {
+      // Get user
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.telegramId, telegramId));
+
+      if (!user) {
+        await ctx.answerCallbackQuery({
+          text: isRussian ? 'Пользователь не найден' : 'User not found',
+        });
+        return;
+      }
+
+      // Check if movie exists in our database
+      let [movie] = await db
+        .select()
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
+
+      // If movie not in database, fetch from TMDB and create
+      if (!movie) {
+        try {
+          const tmdbMovie = await tmdb.getMovieDetails(tmdbId, 'en-US');
+          const tmdbMovieRu = await tmdb.getMovieDetails(tmdbId, 'ru-RU');
+
+          const [created] = await db
+            .insert(movies)
+            .values({
+              tmdbId,
+              title: tmdbMovie.title,
+              titleRu: tmdbMovieRu.title || null,
+              overview: tmdbMovie.overview,
+              overviewRu: tmdbMovieRu.overview || null,
+              posterPath: tmdbMovie.poster_path,
+              backdropPath: tmdbMovie.backdrop_path,
+              releaseDate: tmdbMovie.release_date,
+              runtime: tmdbMovie.runtime,
+              genres: JSON.stringify(tmdbMovie.genres.map((g) => g.name)),
+              tmdbRating: String(tmdbMovie.vote_average),
+              tmdbVoteCount: tmdbMovie.vote_count,
+              imdbId: tmdbMovie.imdb_id,
+              primarySource: 'tmdb',
+            })
+            .returning();
+          movie = created;
+        } catch (fetchError) {
+          console.error('Failed to fetch movie from TMDB:', fetchError);
+          await ctx.answerCallbackQuery({
+            text: isRussian ? 'Не удалось добавить фильм' : 'Failed to add movie',
+          });
+          return;
+        }
+      }
+
+      // Check if already in list
+      const [existing] = await db
+        .select()
+        .from(userMovieLists)
+        .where(
+          and(
+            eq(userMovieLists.userId, user.id),
+            eq(userMovieLists.tmdbId, tmdbId)
+          )
+        );
+
+      if (existing) {
+        await ctx.answerCallbackQuery({
+          text: isRussian ? 'Уже в вашем списке!' : 'Already in your list!',
+        });
+        return;
+      }
+
+      // Add to want_to_watch
+      await db.insert(userMovieLists).values({
+        userId: user.id,
+        tmdbId,
+        unifiedMovieId: movie.id,
+        status: MOVIE_STATUS.WANT_TO_WATCH,
+        source: MOVIE_SOURCE.MANUAL,
+      });
+
+      await ctx.answerCallbackQuery({
+        text: isRussian ? '✅ Добавлено в «Хочу посмотреть»!' : '✅ Added to "Want to Watch"!',
+      });
+    } catch (error) {
+      console.error('Error handling addlist callback:', error);
+      await ctx.answerCallbackQuery({
+        text: isRussian ? 'Произошла ошибка' : 'An error occurred',
+      });
+    }
+  });
+
+  // Callback query: Toggle notification settings - show confirmation dialog
+  bot.callbackQuery(/^toggle:(announcements|releases|digital|updates)$/, async (ctx) => {
+    const settingType = ctx.match[1];
+    const isRussian = ctx.from.language_code === 'ru';
+
+    const settingName = {
+      announcements: isRussian ? 'анонсы фильмов' : 'movie announcements',
+      releases: isRussian ? 'премьеры в кино' : 'theatrical releases',
+      digital: isRussian ? 'цифровые релизы' : 'digital releases',
+      updates: isRussian ? 'обновления приложения' : 'app updates',
+    }[settingType];
+
+    const keyboard = new InlineKeyboard()
+      .text(isRussian ? '✅ Да, отключить' : '✅ Yes, disable', `confirm_toggle:${settingType}`)
+      .text(isRussian ? '❌ Нет, оставить' : '❌ No, keep', 'cancel_toggle');
+
+    const confirmText = isRussian
+      ? `🔕 Отключить уведомления о <b>${settingName}</b>?\n\nВключить обратно можно на странице профиля в разделе «Уведомления».`
+      : `🔕 Disable <b>${settingName}</b> notifications?\n\nYou can re-enable them in your profile under "Notifications".`;
+
+    try {
+      await ctx.reply(confirmText, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      });
+      await ctx.answerCallbackQuery();
+    } catch (error) {
+      console.error('Error showing confirmation dialog:', error);
+      await ctx.answerCallbackQuery({
+        text: isRussian ? 'Произошла ошибка' : 'An error occurred',
+      });
+    }
+  });
+
+  // Callback query: Confirm toggle - actually disable the setting
+  bot.callbackQuery(/^confirm_toggle:(announcements|releases|digital|updates)$/, async (ctx) => {
+    const settingType = ctx.match[1];
+    const telegramId = ctx.from.id;
+    const isRussian = ctx.from.language_code === 'ru';
+
+    try {
+      // Get user
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.telegramId, telegramId));
+
+      if (!user) {
+        await ctx.answerCallbackQuery({
+          text: isRussian ? 'Пользователь не найден' : 'User not found',
+        });
+        return;
+      }
+
+      // Map setting type to column
+      const settingColumn = {
+        announcements: 'upcomingAnnouncements',
+        releases: 'upcomingTheatricalReleases',
+        digital: 'upcomingDigitalReleases',
+        updates: 'appUpdates',
+      }[settingType] as 'upcomingAnnouncements' | 'upcomingTheatricalReleases' | 'upcomingDigitalReleases' | 'appUpdates';
+
+      // Get current settings
+      const [settings] = await db
+        .select()
+        .from(notificationSettings)
+        .where(eq(notificationSettings.userId, user.id));
+
+      // Disable the setting
+      if (settings) {
+        await db
+          .update(notificationSettings)
+          .set({
+            [settingColumn]: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(notificationSettings.userId, user.id));
+      } else {
+        await db.insert(notificationSettings).values({
+          userId: user.id,
+          [settingColumn]: false,
+        });
+      }
+
+      const settingName = {
+        announcements: isRussian ? 'анонсы' : 'announcements',
+        releases: isRussian ? 'премьеры' : 'releases',
+        digital: isRussian ? 'цифровые релизы' : 'digital releases',
+        updates: isRussian ? 'обновления' : 'app updates',
+      }[settingType];
+
+      // Delete the confirmation message
+      await ctx.deleteMessage();
+
+      await ctx.answerCallbackQuery({
+        text: isRussian ? `🔕 Уведомления о ${settingName} отключены` : `🔕 ${settingName} notifications disabled`,
+      });
+    } catch (error) {
+      console.error('Error handling confirm toggle callback:', error);
+      await ctx.answerCallbackQuery({
+        text: isRussian ? 'Произошла ошибка' : 'An error occurred',
+      });
+    }
+  });
+
+  // Callback query: Cancel toggle - just delete the confirmation message
+  bot.callbackQuery('cancel_toggle', async (ctx) => {
+    try {
+      await ctx.deleteMessage();
+      await ctx.answerCallbackQuery();
+    } catch (error) {
+      console.error('Error handling cancel toggle callback:', error);
+      await ctx.answerCallbackQuery();
     }
   });
 

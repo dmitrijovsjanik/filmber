@@ -111,6 +111,7 @@ export interface Movie {
 export interface TMDBMovie {
   id: number;
   title: string;
+  original_title: string;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -126,6 +127,41 @@ export interface TMDBMovieDetails extends TMDBMovie {
   imdb_id: string | null;
   runtime: number;
   genres: { id: number; name: string }[];
+}
+
+// ============================================
+// TMDB RELEASE DATES TYPES
+// ============================================
+
+// Release type enum from TMDB:
+// 1 = Premiere, 2 = Theatrical (limited), 3 = Theatrical, 4 = Digital, 5 = Physical, 6 = TV
+export type TMDBReleaseType = 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface TMDBReleaseDate {
+  certification: string;
+  descriptors: string[];
+  iso_639_1: string; // Language code
+  note: string;
+  release_date: string; // ISO date format
+  type: TMDBReleaseType;
+}
+
+export interface TMDBReleaseDateResult {
+  iso_3166_1: string; // Country code (US, RU, etc.)
+  release_dates: TMDBReleaseDate[];
+}
+
+export interface TMDBReleaseDates {
+  id: number;
+  results: TMDBReleaseDateResult[];
+}
+
+// Parsed release dates for easier use
+export interface ParsedReleaseDates {
+  theatricalUs: string | null;
+  theatricalRu: string | null;
+  digitalUs: string | null;
+  digitalRu: string | null;
 }
 
 // ============================================
@@ -160,6 +196,7 @@ export interface TMDBTVSeriesDetails extends TMDBTVSeries {
 }
 
 export interface TMDBEpisode {
+  id: number;
   episode_number: number;
   name: string;
   overview: string;

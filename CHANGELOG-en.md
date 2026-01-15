@@ -4,6 +4,23 @@ All notable changes to Filmber will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.9.0] - 2026-01-16 — Movie & TV Series Notifications
+
+### Added
+- Movie announcement notifications via Telegram bot
+- Theatrical release notifications (by region US/RU)
+- Digital release notifications
+- New season notifications for series in "Watched" list
+- New episode notifications with 7-day dubbing delay
+- Auto-move series to "Want to Watch" when new season detected
+- Admin panel for notification management and statistics
+- Notification settings in user profile
+
+### Changed
+- Extended database schema for TV series tracking
+- Added cron jobs for sync and notification delivery
+- Added rate limits and silent hours (23:00-08:00 MSK)
+
 ## [2.8.0] - 2026-01-15 — Fullscreen Movie Details
 
 ### Added

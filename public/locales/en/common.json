@@ -186,7 +186,22 @@
     "botMessages": "Bot Messages",
     "watchReminders": "Watch reminders",
     "watchRemindersDesc": "Remind me to rate movies after watching",
-    "info": "Notifications are sent via Telegram bot. Make sure you have started the bot."
+    "info": "Notifications are sent via Telegram bot. Make sure you have started the bot.",
+    "upcomingMovies": "Upcoming Movies",
+    "announcements": "New movie announcements",
+    "announcementsDesc": "Get notified when new anticipated movies are added",
+    "theatricalReleases": "Theatrical releases",
+    "theatricalReleasesDesc": "Get notified when movies hit theaters",
+    "digitalReleases": "Digital releases",
+    "digitalReleasesDesc": "Get notified when movies become available online",
+    "tvSeries": "TV Series",
+    "seasonAnnouncements": "New seasons",
+    "seasonAnnouncementsDesc": "Get notified when new seasons are available for your watched series",
+    "episodeReleases": "New episodes",
+    "episodeReleasesDesc": "Get notified when new episodes are released (with dubbing delay)",
+    "appUpdatesSection": "App Updates",
+    "appUpdates": "Release notes",
+    "appUpdatesDesc": "Get notified about new app versions and features"
   },
   "nav": {
     "home": "Home",
