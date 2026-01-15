@@ -80,11 +80,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'filmber-auth',
-      // Persist token and user data for faster initial load
+      // Persist token, user data, and isInitialized for faster initial load
       partialize: (state) => ({
         token: state.token,
         expiresAt: state.expiresAt,
         user: state.user,
+        isInitialized: state.isInitialized,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

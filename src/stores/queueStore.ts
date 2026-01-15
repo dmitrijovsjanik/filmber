@@ -31,6 +31,7 @@ interface QueueState {
   // Loading state
   isLoading: boolean;
   isInitialized: boolean;
+  isFetchingMore: boolean;
 
   // Actions
   initializeQueue: (
@@ -43,8 +44,10 @@ interface QueueState {
   consumeNext: () => void;
   appendMovies: (items: QueueItem[], meta: QueueMeta) => void;
   setLoading: (loading: boolean) => void;
+  setFetchingMore: (fetching: boolean) => void;
   getCurrentMovie: () => QueueItem | null;
   getVisibleMovies: (count?: number) => QueueItem[];
+  shouldFetchMore: () => boolean;
   reset: () => void;
 }
 
@@ -56,7 +59,11 @@ const initialState = {
   userSlot: null,
   isLoading: false,
   isInitialized: false,
+  isFetchingMore: false,
 };
+
+// Threshold: fetch more when remaining items drops below this
+const FETCH_MORE_THRESHOLD = 5;
 
 export const useQueueStore = create<QueueState>()(
   persist(
@@ -107,6 +114,10 @@ export const useQueueStore = create<QueueState>()(
         set({ isLoading: loading });
       },
 
+      setFetchingMore: (fetching) => {
+        set({ isFetchingMore: fetching });
+      },
+
       getCurrentMovie: () => {
         const { queue, currentIndex } = get();
         return queue[currentIndex] ?? null;
@@ -115,6 +126,15 @@ export const useQueueStore = create<QueueState>()(
       getVisibleMovies: (count = 3) => {
         const { queue, currentIndex } = get();
         return queue.slice(currentIndex, currentIndex + count);
+      },
+
+      shouldFetchMore: () => {
+        const { queue, currentIndex, meta, isFetchingMore } = get();
+        if (isFetchingMore) return false;
+        if (!meta?.hasMore) return false;
+
+        const remaining = queue.length - currentIndex;
+        return remaining <= FETCH_MORE_THRESHOLD;
       },
 
       reset: () => {
@@ -141,3 +161,6 @@ export const useRemainingCount = () =>
   useQueueStore((state) => state.queue.length - state.currentIndex);
 export const useIsQueueLoading = () => useQueueStore((state) => state.isLoading);
 export const useIsQueueInitialized = () => useQueueStore((state) => state.isInitialized);
+export const useIsFetchingMore = () => useQueueStore((state) => state.isFetchingMore);
+export const useShouldFetchMore = () => useQueueStore((state) => state.shouldFetchMore());
+export const useQueueMeta = () => useQueueStore((state) => state.meta);

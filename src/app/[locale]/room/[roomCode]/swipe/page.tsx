@@ -9,9 +9,14 @@ import { MatchFound } from '@/components/room/MatchFound';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
 import { useSwipeStore } from '@/stores/swipeStore';
-import { useQueueStore } from '@/stores/queueStore';
+import { useQueueStore, useShouldFetchMore, useQueueMeta } from '@/stores/queueStore';
 import { useSocket } from '@/hooks/useSocket';
 import type { Movie } from '@/types/movie';
+
+// Initial load: 20 movies (10 per user in the bidirectional pool)
+const INITIAL_LIMIT = 20;
+// Fetch more: 10 movies at a time
+const FETCH_MORE_LIMIT = 10;
 
 export default function SwipePage() {
   const t = useTranslations();
@@ -34,7 +39,9 @@ export default function SwipePage() {
   } = useRoomStore();
 
   const { reset: resetSwipe } = useSwipeStore();
-  const { initializeQueue, reset: resetQueue, queue, currentIndex } = useQueueStore();
+  const { initializeQueue, appendMovies, setFetchingMore, reset: resetQueue, queue, currentIndex } = useQueueStore();
+  const shouldFetchMore = useShouldFetchMore();
+  const queueMeta = useQueueMeta();
 
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +59,7 @@ export default function SwipePage() {
     try {
       // Use new queue API for personalized movie order
       const response = await fetch(
-        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=50`
+        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${INITIAL_LIMIT}`
       );
       const data = await response.json();
 
@@ -114,6 +121,34 @@ export default function SwipePage() {
     }
   }, [moviePoolSeed, userSlot, roomCode, initializeQueue, currentIndex]);
 
+  // Fetch more movies when approaching end of queue
+  const fetchMoreMovies = useCallback(async () => {
+    if (!userSlot || !queueMeta?.hasMore) return;
+
+    setFetchingMore(true);
+    try {
+      const offset = queue.length;
+      const response = await fetch(
+        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${FETCH_MORE_LIMIT}&offset=${offset}`
+      );
+      const data = await response.json();
+
+      if (response.ok && data.movies?.length > 0) {
+        const newItems = data.movies.map(
+          (item: { movie: Movie; source: string }) => ({
+            movie: item.movie,
+            source: item.source,
+          })
+        );
+        appendMovies(newItems, data.meta);
+      }
+    } catch (err) {
+      console.error('Failed to fetch more movies:', err);
+    } finally {
+      setFetchingMore(false);
+    }
+  }, [userSlot, roomCode, queue.length, queueMeta?.hasMore, appendMovies, setFetchingMore]);
+
   // Initial queue fetch
   useEffect(() => {
     if (!moviePoolSeed || !userSlot) {
@@ -133,6 +168,13 @@ export default function SwipePage() {
       setPartnerHasWatchlist(false);
     }
   }, [partnerHasWatchlist, fetchQueue, setPartnerHasWatchlist]);
+
+  // Lazy load more movies when approaching end of queue
+  useEffect(() => {
+    if (shouldFetchMore) {
+      fetchMoreMovies();
+    }
+  }, [shouldFetchMore, fetchMoreMovies]);
 
   // Find matched movie from queue or movies array
   const matchedMovie =

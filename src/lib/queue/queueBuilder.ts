@@ -4,12 +4,10 @@ import {
   userMovieLists,
   deckSettings,
   swipes,
-  movies,
   MOVIE_STATUS,
 } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { generateMoviePool, enhanceMovieData } from '../api/moviePool';
-import { TMDBClient } from '../api/tmdb';
+import { generatePaginatedMoviePool, getMoviesByIds } from '../api/moviePool';
 import type { Movie } from '@/types/movie';
 
 export interface QueueItem {
@@ -86,7 +84,6 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
 
   // PRIORITY 1: Partner's likes (from swipes in this room)
   // PRIORITY 2: Partner's "want to watch" list
-  // OPTIMIZED: Batch fetch all priority movies in a single query
   if (partnerId) {
     // Get partner likes
     const partnerLikes = await db
@@ -133,7 +130,7 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
       .map((w) => w.tmdbId);
     const allPriorityIds = [...new Set([...likeIds, ...wantToWatchIds])];
 
-    // Batch fetch all priority movies from DB
+    // Batch fetch all priority movies
     const priorityMoviesMap = await getMoviesByIds(allPriorityIds);
 
     // Add partner likes to queue (priority 1)
@@ -162,94 +159,57 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
   // Count priority items
   const priorityCount = queue.length;
 
-  // BASE POOL: Shuffled movie pool with bidirectional traversal
-  const moviePool = await generateMoviePool(room.moviePoolSeed);
+  // Calculate how many base pool items we need
+  const priorityInThisPage = Math.min(priorityCount, Math.max(0, priorityCount - offset));
+  const baseNeeded = limit - priorityInThisPage;
+  const baseOffset = Math.max(0, offset - priorityCount);
+
+  // BASE POOL: Paginated movie pool - only fetch what we need!
+  // Request extra items to account for exclusions
+  const bufferMultiplier = 2;
+  const { movies: basePoolMovies, totalCount, hasMore: poolHasMore } = await generatePaginatedMoviePool(
+    room.moviePoolSeed,
+    0, // Always start from 0, we'll filter and track progress
+    Math.max(baseNeeded * bufferMultiplier, 50), // Fetch enough to cover exclusions
+    'all' // TODO: use userDeckSettings?.mediaTypeFilter
+  );
 
   // User A goes from start (index 0), User B goes from end
-  const startIndex = userSlot === 'A' ? 0 : moviePool.length - 1;
-  const step = userSlot === 'A' ? 1 : -1;
+  const orderedPool = userSlot === 'A' ? basePoolMovies : [...basePoolMovies].reverse();
 
   let basePoolCount = 0;
-  for (
-    let i = startIndex;
-    i >= 0 && i < moviePool.length;
-    i += step
-  ) {
-    const movie = moviePool[i];
+  let skipped = 0;
+  for (const movie of orderedPool) {
     if (!excludeIds.has(movie.tmdbId)) {
+      // Skip items before our offset
+      if (skipped < baseOffset) {
+        skipped++;
+        continue;
+      }
       queue.push({ movie, source: 'base' });
       excludeIds.add(movie.tmdbId);
       basePoolCount++;
+
+      // Stop when we have enough
+      if (basePoolCount >= baseNeeded) {
+        break;
+      }
     }
   }
 
-  // Apply pagination
+  // Apply pagination to the final queue
   const paginatedQueue = queue.slice(offset, offset + limit);
-  const totalRemaining = queue.length - offset;
+  const totalRemaining = priorityCount + totalCount - offset;
 
   return {
     movies: paginatedQueue,
     meta: {
       priorityQueueRemaining: Math.max(0, priorityCount - offset),
-      basePoolRemaining: Math.max(0, basePoolCount - Math.max(0, offset - priorityCount)),
-      totalRemaining,
-      hasMore: totalRemaining > limit,
+      basePoolRemaining: Math.max(0, totalCount - baseOffset - basePoolCount),
+      totalRemaining: Math.max(0, totalRemaining),
+      hasMore: poolHasMore || basePoolCount >= baseNeeded,
     },
   };
-}
-
-// OPTIMIZED: Batch fetch multiple movies by IDs
-async function getMoviesByIds(tmdbIds: number[]): Promise<Map<number, Movie>> {
-  const result = new Map<number, Movie>();
-  if (tmdbIds.length === 0) return result;
-
-  // Batch fetch from DB
-  const cachedMovies = await db
-    .select()
-    .from(movies)
-    .where(inArray(movies.tmdbId, tmdbIds));
-
-  const foundIds = new Set<number>();
-  for (const cached of cachedMovies) {
-    if (!cached.tmdbId) continue;
-    foundIds.add(cached.tmdbId);
-    result.set(cached.tmdbId, {
-      tmdbId: cached.tmdbId,
-      title: cached.title,
-      titleRu: cached.titleRu,
-      overview: cached.overview || '',
-      overviewRu: cached.overviewRu,
-      posterUrl: TMDBClient.getSmartPosterUrl(
-        cached.localPosterPath,
-        cached.posterPath,
-        cached.posterUrl
-      ),
-      releaseDate: cached.releaseDate || '',
-      ratings: {
-        tmdb: cached.tmdbRating || '0',
-        imdb: cached.imdbRating,
-        kinopoisk: cached.kinopoiskRating,
-        rottenTomatoes: cached.rottenTomatoesRating,
-        metacritic: cached.metacriticRating,
-      },
-      genres: JSON.parse(cached.genres || '[]'),
-      runtime: cached.runtime,
-      mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
-      numberOfSeasons: cached.numberOfSeasons,
-      numberOfEpisodes: cached.numberOfEpisodes,
-    });
-  }
-
-  // Fetch missing movies from external API (can't batch external calls)
-  const missingIds = tmdbIds.filter((id) => !foundIds.has(id));
-  for (const tmdbId of missingIds) {
-    const movie = await enhanceMovieData(tmdbId);
-    if (movie) {
-      result.set(tmdbId, movie);
-    }
-  }
-
-  return result;
 }
 
 // Inject a partner-liked movie into the queue (for real-time updates)

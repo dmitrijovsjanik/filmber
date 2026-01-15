@@ -1,8 +1,7 @@
 import { tmdb, TMDBClient } from './tmdb';
-import { omdb, OMDBClient } from './omdb';
 import { db } from '../db';
 import { movies } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { shuffle } from '../utils/shuffle';
 import type { Movie, MediaTypeFilter } from '@/types/movie';
 
@@ -13,10 +12,22 @@ interface PoolItem {
   mediaType: 'movie' | 'tv';
 }
 
-export async function generateMoviePool(
-  seed: number,
-  mediaTypeFilter: MediaTypeFilter = 'all'
-): Promise<Movie[]> {
+// Cache for pool items to avoid refetching TMDB lists
+const poolCache = new Map<string, { items: PoolItem[]; timestamp: number }>();
+const POOL_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Generate pool item IDs without enhancement (fast).
+ * Uses caching to avoid repeated TMDB list calls.
+ */
+async function generatePoolItems(mediaTypeFilter: MediaTypeFilter = 'all'): Promise<PoolItem[]> {
+  const cacheKey = `pool-${mediaTypeFilter}`;
+  const cached = poolCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < POOL_CACHE_TTL) {
+    return cached.items;
+  }
+
   const poolItems: PoolItem[] = [];
 
   // Fetch movies if filter allows
@@ -36,12 +47,12 @@ export async function generateMoviePool(
       Promise.all(releasesPromises),
     ]);
 
-    const movies = [
+    const moviesList = [
       ...topRatedResults.flat().slice(0, 100),
       ...releasesResults.flat().slice(0, 40),
     ];
 
-    poolItems.push(...movies.map((m) => ({ id: m.id, mediaType: 'movie' as const })));
+    poolItems.push(...moviesList.map((m) => ({ id: m.id, mediaType: 'movie' as const })));
   }
 
   // Fetch TV series if filter allows
@@ -63,8 +74,59 @@ export async function generateMoviePool(
     ...new Map(poolItems.map((item) => [`${item.mediaType}-${item.id}`, item])).values(),
   ];
 
-  // Shuffle with seed for consistent ordering between users
-  const shuffled = shuffle(uniqueItems, seed);
+  // Cache the result
+  poolCache.set(cacheKey, { items: uniqueItems, timestamp: Date.now() });
+
+  return uniqueItems;
+}
+
+/**
+ * Generate a paginated movie pool - only enhances the requested batch.
+ * Much faster than generating the full pool upfront.
+ */
+export async function generatePaginatedMoviePool(
+  seed: number,
+  offset: number = 0,
+  limit: number = 20,
+  mediaTypeFilter: MediaTypeFilter = 'all'
+): Promise<{ movies: Movie[]; totalCount: number; hasMore: boolean }> {
+  // Get all pool items (fast, cached)
+  const poolItems = await generatePoolItems(mediaTypeFilter);
+
+  // Shuffle with seed for consistent ordering
+  const shuffled = shuffle(poolItems, seed);
+
+  // Get the slice we need
+  const slice = shuffled.slice(offset, offset + limit);
+
+  // Enhance only the slice (this is the expensive part)
+  const enhanced = await Promise.all(
+    slice.map((item) =>
+      item.mediaType === 'movie'
+        ? enhanceMovieData(item.id)
+        : enhanceTVData(item.id)
+    )
+  );
+
+  const validMovies = enhanced.filter((m): m is Movie => m !== null);
+
+  return {
+    movies: validMovies,
+    totalCount: shuffled.length,
+    hasMore: offset + limit < shuffled.length,
+  };
+}
+
+/**
+ * @deprecated Use generatePaginatedMoviePool instead for better performance.
+ * This function is kept for backward compatibility but enhances ALL movies upfront.
+ */
+export async function generateMoviePool(
+  seed: number,
+  mediaTypeFilter: MediaTypeFilter = 'all'
+): Promise<Movie[]> {
+  const poolItems = await generatePoolItems(mediaTypeFilter);
+  const shuffled = shuffle(poolItems, seed);
 
   // Enhance with detailed info (cached)
   const enhanced = await Promise.all(
@@ -94,17 +156,11 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
   }
 
   try {
-    // Fetch fresh data from TMDB
+    // Fetch fresh data from TMDB only
     const [detailsEn, detailsRu] = await Promise.all([
       tmdb.getMovieDetails(tmdbId, 'en-US'),
       tmdb.getMovieDetails(tmdbId, 'ru-RU'),
     ]);
-
-    // Fetch OMDB data if IMDB ID is available
-    let omdbData = null;
-    if (detailsEn.imdb_id) {
-      omdbData = await omdb.getByImdbId(detailsEn.imdb_id);
-    }
 
     const movieEntry = {
       tmdbId,
@@ -120,11 +176,9 @@ export async function enhanceMovieData(tmdbId: number): Promise<Movie | null> {
       tmdbVoteCount: detailsEn.vote_count,
       tmdbPopularity: detailsEn.popularity.toString(),
       imdbId: detailsEn.imdb_id,
-      imdbRating: omdbData?.imdbRating || null,
-      rottenTomatoesRating: omdbData
-        ? OMDBClient.getRottenTomatoesRating(omdbData.Ratings)
-        : null,
-      metacriticRating: omdbData?.Metascore || null,
+      imdbRating: null, // No longer fetching from OMDB
+      rottenTomatoesRating: null,
+      metacriticRating: null,
       genres: JSON.stringify(detailsEn.genres),
       runtime: detailsEn.runtime,
       originalLanguage: detailsEn.original_language || null,
@@ -185,7 +239,7 @@ export async function enhanceTVData(tmdbId: number): Promise<Movie | null> {
       releaseDate: detailsEn.first_air_date || '',
       ratings: {
         tmdb: detailsEn.vote_average.toString(),
-        imdb: detailsEn.external_ids?.imdb_id || null,
+        imdb: null,
         kinopoisk: null,
         rottenTomatoes: null,
         metacritic: null,
@@ -256,84 +310,36 @@ function formatCachedMovie(cached: CachedMovieData): Movie {
   };
 }
 
-// Get a simplified movie list without full details (for faster initial load)
-export async function getSimpleMoviePool(
-  seed: number,
-  mediaTypeFilter: MediaTypeFilter = 'all'
-): Promise<Movie[]> {
-  const items: Movie[] = [];
+/**
+ * Batch fetch movies by IDs - used for priority queue items.
+ */
+export async function getMoviesByIds(tmdbIds: number[]): Promise<Map<number, Movie>> {
+  const result = new Map<number, Movie>();
+  if (tmdbIds.length === 0) return result;
 
-  // Fetch movies if filter allows
-  if (mediaTypeFilter === 'all' || mediaTypeFilter === 'movie') {
-    const [page1, page2, page3] = await Promise.all([
-      tmdb.getPopular('en-US', 1),
-      tmdb.getPopular('en-US', 2),
-      tmdb.getTopRated('en-US', 1),
-    ]);
+  // Batch fetch from DB
+  const cachedMovies = await db
+    .select()
+    .from(movies)
+    .where(inArray(movies.tmdbId, tmdbIds));
 
-    const allMovies = [...page1, ...page2, ...page3];
-    const uniqueMovies = [...new Map(allMovies.map((m) => [m.id, m])).values()];
-
-    items.push(
-      ...uniqueMovies.map((movie) => ({
-        tmdbId: movie.id,
-        title: movie.title,
-        titleRu: null,
-        overview: movie.overview,
-        overviewRu: null,
-        posterUrl: TMDBClient.getPosterUrl(movie.poster_path),
-        releaseDate: movie.release_date,
-        ratings: {
-          tmdb: movie.vote_average.toString(),
-          imdb: null,
-          kinopoisk: null,
-          rottenTomatoes: null,
-          metacritic: null,
-        },
-        genres: [],
-        runtime: null,
-        mediaType: 'movie' as const,
-        numberOfSeasons: null,
-        numberOfEpisodes: null,
-      }))
-    );
+  const foundIds = new Set<number>();
+  for (const cached of cachedMovies) {
+    if (!cached.tmdbId) continue;
+    foundIds.add(cached.tmdbId);
+    result.set(cached.tmdbId, formatCachedMovie(cached));
   }
 
-  // Fetch TV series if filter allows
-  if (mediaTypeFilter === 'all' || mediaTypeFilter === 'tv') {
-    const [tvPage1, tvPage2, tvPage3] = await Promise.all([
-      tmdb.getPopularTV('en-US', 1),
-      tmdb.getPopularTV('en-US', 2),
-      tmdb.getTopRatedTV('en-US', 1),
-    ]);
+  // Fetch missing movies from external API
+  const missingIds = tmdbIds.filter((id) => !foundIds.has(id));
+  const missingPromises = missingIds.map((id) => enhanceMovieData(id));
+  const missingResults = await Promise.all(missingPromises);
 
-    const allTV = [...tvPage1, ...tvPage2, ...tvPage3];
-    const uniqueTV = [...new Map(allTV.map((tv) => [tv.id, tv])).values()];
+  missingResults.forEach((movie, index) => {
+    if (movie) {
+      result.set(missingIds[index], movie);
+    }
+  });
 
-    items.push(
-      ...uniqueTV.map((tv) => ({
-        tmdbId: tv.id,
-        title: tv.name,
-        titleRu: null,
-        overview: tv.overview,
-        overviewRu: null,
-        posterUrl: TMDBClient.getPosterUrl(tv.poster_path),
-        releaseDate: tv.first_air_date,
-        ratings: {
-          tmdb: tv.vote_average.toString(),
-          imdb: null,
-          kinopoisk: null,
-          rottenTomatoes: null,
-          metacritic: null,
-        },
-        genres: [],
-        runtime: null,
-        mediaType: 'tv' as const,
-        numberOfSeasons: null,
-        numberOfEpisodes: null,
-      }))
-    );
-  }
-
-  return shuffle(items, seed);
+  return result;
 }
