@@ -167,7 +167,7 @@ class MovieService {
         backdropPath: detailsEn.backdrop_path,
         releaseDate: detailsEn.release_date,
         runtime: detailsEn.runtime,
-        genres: JSON.stringify(detailsEn.genres || []),
+        genres: JSON.stringify((detailsEn.genres || []).map((g) => g.name)),
         originalLanguage: detailsEn.original_language || null,
         tmdbRating: detailsEn.vote_average?.toString(),
         tmdbVoteCount: detailsEn.vote_count,
