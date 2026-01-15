@@ -7,7 +7,7 @@ import {
   MOVIE_STATUS,
 } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { generatePaginatedMoviePool, getMoviesByIds } from '../api/moviePool';
+import { generatePaginatedMoviePool, getMoviesByIds, type SupportedLocale } from '../api/moviePool';
 import type { Movie } from '@/types/movie';
 
 export interface QueueItem {
@@ -21,6 +21,7 @@ export interface QueueBuildParams {
   userId?: string;
   limit?: number;
   offset?: number;
+  locale?: SupportedLocale;
 }
 
 export interface QueueResponse {
@@ -34,7 +35,7 @@ export interface QueueResponse {
 }
 
 export async function buildQueue(params: QueueBuildParams): Promise<QueueResponse> {
-  const { roomCode, userSlot, userId, limit = 20, offset = 0 } = params;
+  const { roomCode, userSlot, userId, limit = 20, offset = 0, locale = 'en' } = params;
 
   // Get room info
   const [room] = await db.select().from(rooms).where(eq(rooms.code, roomCode));
@@ -131,7 +132,7 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
     const allPriorityIds = [...new Set([...likeIds, ...wantToWatchIds])];
 
     // Batch fetch all priority movies
-    const priorityMoviesMap = await getMoviesByIds(allPriorityIds);
+    const priorityMoviesMap = await getMoviesByIds(allPriorityIds, locale);
 
     // Add partner likes to queue (priority 1)
     for (const like of partnerLikes) {
@@ -171,7 +172,8 @@ export async function buildQueue(params: QueueBuildParams): Promise<QueueRespons
     room.moviePoolSeed,
     0, // Always start from 0, we'll filter and track progress
     Math.max(baseNeeded * bufferMultiplier, 50), // Fetch enough to cover exclusions
-    'all' // TODO: use userDeckSettings?.mediaTypeFilter
+    'all', // TODO: use userDeckSettings?.mediaTypeFilter
+    locale
   );
 
   // User A goes from start (index 0), User B goes from end

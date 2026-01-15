@@ -73,7 +73,7 @@ export default function SoloSwipePage() {
     const fetchMovies = async () => {
       try {
         const response = await fetch(
-          `/api/movies?seed=${moviePoolSeed}&mediaType=${mediaTypeFilter}`
+          `/api/movies?seed=${moviePoolSeed}&mediaType=${mediaTypeFilter}&locale=${locale}`
         );
         const data = await response.json();
 
@@ -90,7 +90,7 @@ export default function SoloSwipePage() {
     };
 
     fetchMovies();
-  }, [moviePoolSeed, mediaTypeFilter, isLoaded]);
+  }, [moviePoolSeed, mediaTypeFilter, locale, isLoaded]);
 
   const setTopCardRef = useCallback((instance: MovieCardRef | null) => {
     if (instance !== null) {

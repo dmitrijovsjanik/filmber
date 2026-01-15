@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateMoviePool } from '@/lib/api/moviePool';
+import { generatePaginatedMoviePool, type SupportedLocale } from '@/lib/api/moviePool';
 import type { MediaTypeFilter } from '@/types/movie';
 
-// Get movie pool for a room
+// Get movie pool for a room (solo mode)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const seed = parseInt(searchParams.get('seed') || '0', 10);
     const mediaTypeParam = searchParams.get('mediaType');
+    const localeParam = searchParams.get('locale');
 
     // Validate mediaType parameter
     const validMediaTypes: MediaTypeFilter[] = ['all', 'movie', 'tv'];
@@ -16,6 +17,9 @@ export async function GET(request: NextRequest) {
         ? (mediaTypeParam as MediaTypeFilter)
         : 'all';
 
+    // Parse locale
+    const locale: SupportedLocale = localeParam === 'ru' ? 'ru' : 'en';
+
     if (!seed) {
       return NextResponse.json(
         { error: 'Seed parameter is required' },
@@ -23,7 +27,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const movies = await generateMoviePool(seed, mediaTypeFilter);
+    // Use paginated pool with larger limit for solo mode (fewer API calls needed)
+    const { movies } = await generatePaginatedMoviePool(seed, 0, 100, mediaTypeFilter, locale);
 
     return NextResponse.json(
       { movies },

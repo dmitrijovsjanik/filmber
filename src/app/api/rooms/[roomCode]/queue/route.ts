@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildQueue, type QueueBuildParams } from '@/lib/queue/queueBuilder';
 import { getAuthUser } from '@/lib/auth/middleware';
+import type { SupportedLocale } from '@/lib/api/moviePool';
 
 interface RouteParams {
   params: Promise<{ roomCode: string }>;
@@ -15,6 +16,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const userSlot = searchParams.get('userSlot') as 'A' | 'B' | null;
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
+    // Get locale from query param, default to 'en'
+    const localeParam = searchParams.get('locale');
+    const locale: SupportedLocale = localeParam === 'ru' ? 'ru' : 'en';
 
     if (!userSlot || !['A', 'B'].includes(userSlot)) {
       return NextResponse.json(
@@ -32,6 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       userId: user?.id,
       limit,
       offset,
+      locale,
     };
 
     const result = await buildQueue(queueParams);

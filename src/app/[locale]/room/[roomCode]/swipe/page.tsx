@@ -58,8 +58,9 @@ export default function SwipePage() {
 
     try {
       // Use new queue API for personalized movie order
+      // Pass locale to fetch correct language data
       const response = await fetch(
-        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${INITIAL_LIMIT}`
+        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${INITIAL_LIMIT}&locale=${locale}`
       );
       const data = await response.json();
 
@@ -119,7 +120,7 @@ export default function SwipePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [moviePoolSeed, userSlot, roomCode, initializeQueue, currentIndex]);
+  }, [moviePoolSeed, userSlot, roomCode, locale, initializeQueue, currentIndex]);
 
   // Fetch more movies when approaching end of queue
   const fetchMoreMovies = useCallback(async () => {
@@ -129,7 +130,7 @@ export default function SwipePage() {
     try {
       const offset = queue.length;
       const response = await fetch(
-        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${FETCH_MORE_LIMIT}&offset=${offset}`
+        `/api/rooms/${roomCode}/queue?userSlot=${userSlot}&limit=${FETCH_MORE_LIMIT}&offset=${offset}&locale=${locale}`
       );
       const data = await response.json();
 
@@ -147,7 +148,7 @@ export default function SwipePage() {
     } finally {
       setFetchingMore(false);
     }
-  }, [userSlot, roomCode, queue.length, queueMeta?.hasMore, appendMovies, setFetchingMore]);
+  }, [userSlot, roomCode, locale, queue.length, queueMeta?.hasMore, appendMovies, setFetchingMore]);
 
   // Initial queue fetch
   useEffect(() => {
