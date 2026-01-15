@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
@@ -9,6 +11,7 @@ import { MovieListSkeleton } from './MovieListSkeleton';
 import { ListFilter } from './ListFilter';
 import { SearchResultItem } from './SearchResultItem';
 import { SearchFilters } from './SearchFilters';
+import { MovieDetailModal } from './MovieDetailModal';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
 import { ScrollFadeContainer } from '@/components/ui/ScrollFadeContainer';
@@ -19,11 +22,91 @@ import type { ListItem } from '@/stores/listStore';
 
 interface MovieListGridProps {
   initialStatus?: MovieStatus | 'all';
+  openMovieId?: number;
+  openMovieType?: 'movie' | 'tv';
 }
 
-export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
+export function MovieListGrid({ initialStatus = 'all', openMovieId, openMovieType }: MovieListGridProps) {
   const t = useTranslations('lists');
   const locale = useLocale();
+  const router = useRouter();
+
+  // Shared movie modal state - using the same shape as MovieDetailModal expects
+  interface SharedMovieData {
+    title: string;
+    titleRu: string | null;
+    posterPath: string | null;
+    posterUrl?: string | null;
+    releaseDate: string | null;
+    voteAverage: string | null;
+    genres: string | null;
+    runtime: number | null;
+    overview: string | null;
+    overviewRu: string | null;
+    imdbRating: string | null;
+    kinopoiskRating?: string | null;
+    rottenTomatoesRating: string | null;
+    mediaType?: 'movie' | 'tv';
+    numberOfSeasons?: number | null;
+    numberOfEpisodes?: number | null;
+  }
+
+  const [sharedMovie, setSharedMovie] = useState<SharedMovieData | null>(null);
+  const [isSharedModalOpen, setIsSharedModalOpen] = useState(false);
+  const [isLoadingShared, setIsLoadingShared] = useState(false);
+
+  // Fetch and show shared movie from URL params
+  useEffect(() => {
+    if (!openMovieId) return;
+
+    const fetchSharedMovie = async () => {
+      setIsLoadingShared(true);
+      try {
+        const response = await fetch(`/api/movies/${openMovieId}?type=${openMovieType || 'movie'}`);
+        if (response.ok) {
+          const data = await response.json();
+          const movie = data.movie;
+          // Transform Movie to MovieData format
+          setSharedMovie({
+            title: movie.title,
+            titleRu: movie.titleRu,
+            posterPath: null,
+            posterUrl: movie.posterUrl,
+            releaseDate: movie.releaseDate,
+            voteAverage: movie.ratings?.tmdb || null,
+            genres: Array.isArray(movie.genres) ? movie.genres.join(',') : movie.genres,
+            runtime: movie.runtime,
+            overview: movie.overview,
+            overviewRu: movie.overviewRu,
+            imdbRating: movie.ratings?.imdb || null,
+            kinopoiskRating: movie.ratings?.kinopoisk || null,
+            rottenTomatoesRating: movie.ratings?.rottenTomatoes || null,
+            mediaType: movie.mediaType,
+            numberOfSeasons: movie.numberOfSeasons,
+            numberOfEpisodes: movie.numberOfEpisodes,
+          });
+          // Small delay to ensure smooth animation
+          setTimeout(() => setIsSharedModalOpen(true), 100);
+        }
+      } catch (error) {
+        console.error('Failed to fetch shared movie:', error);
+      } finally {
+        setIsLoadingShared(false);
+      }
+    };
+
+    fetchSharedMovie();
+  }, [openMovieId, openMovieType]);
+
+  // Close shared movie modal and clear URL params
+  const handleCloseSharedModal = useCallback(() => {
+    setIsSharedModalOpen(false);
+    // Clear URL params after animation
+    setTimeout(() => {
+      router.replace(`/${locale}/lists`, { scroll: false });
+      setSharedMovie(null);
+    }, 500);
+  }, [router, locale]);
 
   const {
     // State
@@ -148,6 +231,26 @@ export function MovieListGrid({ initialStatus = 'all' }: MovieListGridProps) {
           />
         )}
       </ScrollFadeContainer>
+
+      {/* Loading indicator for shared movie */}
+      {isLoadingShared && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Loader size="lg" />
+        </div>
+      )}
+
+      {/* Shared movie modal */}
+      {openMovieId && sharedMovie && (
+        <MovieDetailModal
+          isOpen={isSharedModalOpen}
+          onClose={handleCloseSharedModal}
+          tmdbId={openMovieId}
+          movie={sharedMovie}
+          status={null}
+          rating={null}
+          canAddToList={true}
+        />
+      )}
     </div>
   );
 }

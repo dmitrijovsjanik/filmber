@@ -46,6 +46,10 @@ interface ListState {
   // Cached data
   cache: ListCache | null;
 
+  // Memoized lookup map for O(1) item access by tmdbId
+  // Not persisted - rebuilt from cache on changes
+  _tmdbIdMap: Map<number, ListItem>;
+
   // Cache settings
   cacheVersion: number;
   cacheTTL: number; // in milliseconds
@@ -78,6 +82,15 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const STALE_TTL = 30 * 1000; // 30 seconds - show cached but refetch in background
 const CACHE_VERSION = 1;
 
+// Helper to build the tmdbId lookup map from items array
+function buildTmdbIdMap(items: ListItem[]): Map<number, ListItem> {
+  const map = new Map<number, ListItem>();
+  for (const item of items) {
+    map.set(item.tmdbId, item);
+  }
+  return map;
+}
+
 const defaultCounts: FilterCounts = {
   all: 0,
   wantToWatch: 0,
@@ -89,6 +102,7 @@ export const useListStore = create<ListState>()(
   persist(
     (set, get) => ({
       cache: null,
+      _tmdbIdMap: new Map(),
       cacheVersion: CACHE_VERSION,
       cacheTTL: CACHE_TTL,
       isLoading: false,
@@ -102,13 +116,14 @@ export const useListStore = create<ListState>()(
             counts,
             lastFetched: Date.now(),
           },
+          _tmdbIdMap: buildTmdbIdMap(items),
           isLoading: false,
           isFetching: false,
         });
       },
 
       updateItem: (tmdbId, updates) => {
-        const { cache } = get();
+        const { cache, _tmdbIdMap } = get();
         if (!cache) return;
 
         const updatedItems = cache.items.map((item) =>
@@ -118,42 +133,59 @@ export const useListStore = create<ListState>()(
         // Recalculate counts
         const counts = calculateCounts(updatedItems);
 
+        // Update the map entry
+        const existingItem = _tmdbIdMap.get(tmdbId);
+        const newMap = new Map(_tmdbIdMap);
+        if (existingItem) {
+          newMap.set(tmdbId, { ...existingItem, ...updates });
+        }
+
         set({
           cache: {
             ...cache,
             items: updatedItems,
             counts,
           },
+          _tmdbIdMap: newMap,
         });
       },
 
       removeItem: (tmdbId) => {
-        const { cache } = get();
+        const { cache, _tmdbIdMap } = get();
         if (!cache) return;
 
         const updatedItems = cache.items.filter((item) => item.tmdbId !== tmdbId);
         const counts = calculateCounts(updatedItems);
 
+        // Remove from map
+        const newMap = new Map(_tmdbIdMap);
+        newMap.delete(tmdbId);
+
         set({
           cache: {
             ...cache,
             items: updatedItems,
             counts,
           },
+          _tmdbIdMap: newMap,
         });
       },
 
       addItem: (item) => {
-        const { cache } = get();
+        const { cache, _tmdbIdMap } = get();
 
         const currentItems = cache?.items || [];
         // Check if already exists
-        if (currentItems.some((i) => i.tmdbId === item.tmdbId)) {
+        if (_tmdbIdMap.has(item.tmdbId)) {
           return;
         }
 
         const updatedItems = [item, ...currentItems];
         const counts = calculateCounts(updatedItems);
+
+        // Add to map
+        const newMap = new Map(_tmdbIdMap);
+        newMap.set(item.tmdbId, item);
 
         set({
           cache: {
@@ -161,6 +193,7 @@ export const useListStore = create<ListState>()(
             counts,
             lastFetched: cache?.lastFetched || Date.now(),
           },
+          _tmdbIdMap: newMap,
         });
       },
 
@@ -186,7 +219,7 @@ export const useListStore = create<ListState>()(
       },
 
       invalidateCache: () => {
-        set({ cache: null });
+        set({ cache: null, _tmdbIdMap: new Map() });
       },
 
       getCachedItems: () => {
@@ -206,8 +239,14 @@ export const useListStore = create<ListState>()(
         cache: state.cache,
         cacheVersion: state.cacheVersion,
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
+      onRehydrateStorage: () => (state, error) => {
+        if (!error && state) {
+          // Rebuild the lookup map from persisted cache
+          if (state.cache?.items) {
+            state._tmdbIdMap = buildTmdbIdMap(state.cache.items);
+          }
+          state.setHasHydrated(true);
+        }
       },
       migrate: (persistedState, version) => {
         // Handle version migrations
@@ -258,6 +297,6 @@ export const useListLoading = () => useListStore((state) => state.isLoading);
 export const useListFetching = () => useListStore((state) => state.isFetching);
 export const useListHasHydrated = () => useListStore((state) => state.hasHydrated);
 
-// Find item by tmdbId
+// Find item by tmdbId - O(1) lookup using memoized map
 export const useListItemByTmdbId = (tmdbId: number) =>
-  useListStore((state) => state.cache?.items.find((item) => item.tmdbId === tmdbId) || null);
+  useListStore((state) => state._tmdbIdMap.get(tmdbId) ?? null);

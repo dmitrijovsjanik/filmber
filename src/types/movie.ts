@@ -179,6 +179,16 @@ export interface TMDBSeason {
   episodes?: TMDBEpisode[];
 }
 
+export interface TMDBVideo {
+  id: string;
+  key: string; // YouTube video ID
+  name: string;
+  site: string; // 'YouTube'
+  type: string; // 'Trailer', 'Teaser', 'Clip', etc.
+  official: boolean;
+  published_at: string;
+}
+
 export interface OMDBRating {
   Source: string;
   Value: string;

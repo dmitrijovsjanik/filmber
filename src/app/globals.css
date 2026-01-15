@@ -155,6 +155,43 @@
   padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0));
 }
 
+/* Telegram WebApp safe area insets for fullscreen mode */
+/* These CSS variables are set by telegram-web-app.js */
+.tg-safe-area-inset {
+  padding-top: calc(
+    var(--tg-safe-area-inset-top, 0px) +
+    var(--tg-content-safe-area-inset-top, 0px)
+  );
+  padding-bottom: calc(
+    var(--tg-safe-area-inset-bottom, 0px) +
+    var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+  padding-left: calc(
+    var(--tg-safe-area-inset-left, 0px) +
+    var(--tg-content-safe-area-inset-left, 0px)
+  );
+  padding-right: calc(
+    var(--tg-safe-area-inset-right, 0px) +
+    var(--tg-content-safe-area-inset-right, 0px)
+  );
+}
+
+/* Top-only safe area for headers */
+.tg-safe-area-top {
+  padding-top: calc(
+    var(--tg-safe-area-inset-top, 0px) +
+    var(--tg-content-safe-area-inset-top, 0px)
+  );
+}
+
+/* Bottom-only safe area for footers/navbars */
+.tg-safe-area-bottom {
+  padding-bottom: calc(
+    var(--tg-safe-area-inset-bottom, 0px) +
+    var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+}
+
 /* Scroll container with gradient fade edges */
 .scroll-fade-container {
   position: relative;
@@ -206,4 +243,21 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
   /* Prevent moving with keyboard on iOS */
   transform: translateZ(0);
+}
+
+/* Touch-safe button styles - hover only on devices with mouse/trackpad */
+/* Prevents accidental hover highlight when releasing touch on mobile */
+.btn-touch-safe {
+  transition: background-color 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-touch-safe:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Active state for touch feedback on all devices */
+.btn-touch-safe:active {
+  background-color: rgba(255, 255, 255, 0.25);
 }

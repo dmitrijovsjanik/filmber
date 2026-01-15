@@ -70,7 +70,8 @@
     "backToHome": "Вернуться на главную",
     "loading": "Загружаем фильмы...",
     "cancel": "Отменить",
-    "back": "Назад"
+    "back": "Назад",
+    "share": "Поделиться"
   },
   "consent": {
     "title": "Мы используем cookies",
@@ -123,7 +124,11 @@
     "noExpandedResults": "Дополнительных результатов не найдено",
     "loadingMore": "Загрузка...",
     "overview": "Описание",
-    "seasonsTab": "Сезоны"
+    "seasonsTab": "Сезоны",
+    "watchTrailer": "Смотреть трейлер",
+    "compactView": "Компактный вид",
+    "expandedView": "Расширенный вид",
+    "scrollForMore": "Листайте"
   },
   "prompts": {
     "didYouWatch": "Вы посмотрели",

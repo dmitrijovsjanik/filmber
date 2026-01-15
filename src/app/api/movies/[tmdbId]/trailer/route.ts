@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enhanceMovieData, enhanceTVData } from '@/lib/api/moviePool';
+import { tmdb } from '@/lib/api/tmdb';
 
-// Get movie or TV series by TMDB ID
+// Get trailer for a movie or TV series
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tmdbId: string }> }
@@ -19,29 +19,38 @@ export async function GET(
       );
     }
 
-    const movie = mediaType === 'tv'
-      ? await enhanceTVData(tmdbId)
-      : await enhanceMovieData(tmdbId);
+    const videos = mediaType === 'tv'
+      ? await tmdb.getTVVideos(tmdbId)
+      : await tmdb.getMovieVideos(tmdbId);
 
-    if (!movie) {
+    if (!videos.length) {
       return NextResponse.json(
-        { error: 'Movie not found' },
+        { error: 'No trailer found' },
         { status: 404 }
       );
     }
 
+    // Return the best trailer (first one after sorting)
+    const trailer = videos[0];
+
     return NextResponse.json(
-      { movie },
+      {
+        trailer: {
+          key: trailer.key,
+          name: trailer.name,
+          type: trailer.type,
+        }
+      },
       {
         headers: {
-          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+          'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
         },
       }
     );
   } catch (error) {
-    console.error('Failed to get movie:', error);
+    console.error('Failed to get trailer:', error);
     return NextResponse.json(
-      { error: 'Failed to get movie' },
+      { error: 'Failed to get trailer' },
       { status: 500 }
     );
   }

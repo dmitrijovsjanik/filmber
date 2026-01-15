@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, memo } from 'react';
 import { MovieListItem } from './MovieListItem';
 import { useListItemByTmdbId } from '@/stores/listStore';
 import type { SearchResult } from '@/types/movie';
@@ -10,8 +10,10 @@ interface SearchResultItemProps extends SearchResult {
   showMediaTypeBadge?: boolean;
 }
 
-export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps>(
-  function SearchResultItem(
+// Wrapped with memo to prevent unnecessary rerenders when list state changes
+// Combined with O(1) _tmdbIdMap lookup in listStore for optimal performance
+export const SearchResultItem = memo(
+  forwardRef<HTMLDivElement, SearchResultItemProps>(function SearchResultItem(
     {
       tmdbId,
       imdbId,
@@ -82,5 +84,7 @@ export const SearchResultItem = forwardRef<HTMLDivElement, SearchResultItemProps
         />
       </div>
     );
-  }
+  })
 );
+
+SearchResultItem.displayName = 'SearchResultItem';

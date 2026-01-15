@@ -1,5 +1,15 @@
-import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails, TMDBSeason } from '@/types/movie';
+import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails, TMDBSeason, TMDBVideo } from '@/types/movie';
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
+import {
+  POSTER_SIZES,
+  getPosterUrl,
+  getBackdropUrl,
+  type PosterSize,
+  type TMDBPosterSize,
+} from './poster';
+
+// Re-export poster utilities for backward compatibility with server-side code
+export { POSTER_SIZES, getPosterUrl, getBackdropUrl, type PosterSize, type TMDBPosterSize };
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -309,25 +319,51 @@ class TMDBClient {
     };
   }
 
-  // Build poster URL - uses proxy endpoint on server to bypass geo-blocking
-  static getPosterUrl(
-    path: string | null,
-    size: 'w185' | 'w342' | 'w500' | 'original' = 'w500'
-  ): string {
-    if (!path) return '/images/no-poster.svg';
-    // Use proxy endpoint to route through server's v2ray
-    return `/api/tmdb-image?path=${encodeURIComponent(path)}&size=${size}`;
+  // Get videos (trailers) for a movie
+  async getMovieVideos(movieId: number): Promise<TMDBVideo[]> {
+    const data = await this.fetch<{ results: TMDBVideo[] }>(`/movie/${movieId}/videos`);
+    // Filter to only YouTube trailers, prioritize official trailers
+    return data.results
+      .filter(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+      .sort((a, b) => {
+        // Official trailers first
+        if (a.official && !b.official) return -1;
+        if (!a.official && b.official) return 1;
+        // Then by type (Trailer > Teaser)
+        if (a.type === 'Trailer' && b.type !== 'Trailer') return -1;
+        if (a.type !== 'Trailer' && b.type === 'Trailer') return 1;
+        return 0;
+      });
   }
 
+  // Get videos (trailers) for a TV series
+  async getTVVideos(tvId: number): Promise<TMDBVideo[]> {
+    const data = await this.fetch<{ results: TMDBVideo[] }>(`/tv/${tvId}/videos`);
+    return data.results
+      .filter(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+      .sort((a, b) => {
+        if (a.official && !b.official) return -1;
+        if (!a.official && b.official) return 1;
+        if (a.type === 'Trailer' && b.type !== 'Trailer') return -1;
+        if (a.type !== 'Trailer' && b.type === 'Trailer') return 1;
+        return 0;
+      });
+  }
+
+  // Static methods delegate to standalone functions from poster.ts
+  // Kept for backward compatibility with existing code
+  static getPosterUrl = getPosterUrl;
+  static getBackdropUrl = getBackdropUrl;
+
   /**
-   * Get smart poster URL with fallback logic
+   * Get smart poster URL with fallback logic (server-side only)
    * Priority: local file (if exists) > TMDB proxy > direct URL > fallback
    */
   static getSmartPosterUrl(
     localPosterPath: string | null | undefined,
     posterPath: string | null | undefined,
     posterUrl: string | null | undefined,
-    size: 'w185' | 'w342' | 'w500' | 'original' = 'w500'
+    size: PosterSize | TMDBPosterSize = 'medium'
   ): string {
     // Check local poster - verify file exists on server
     if (localPosterPath && typeof window === 'undefined') {
@@ -347,7 +383,7 @@ class TMDBClient {
 
     // Use TMDB proxy if we have posterPath
     if (posterPath) {
-      return TMDBClient.getPosterUrl(posterPath, size);
+      return getPosterUrl(posterPath, size);
     }
 
     // Direct URL (e.g. Kinopoisk)
@@ -356,16 +392,6 @@ class TMDBClient {
     }
 
     return '/images/no-poster.svg';
-  }
-
-  // Build backdrop URL - uses proxy endpoint on server to bypass geo-blocking
-  static getBackdropUrl(
-    path: string | null,
-    size: 'w780' | 'w1280' | 'original' = 'w1280'
-  ): string {
-    if (!path) return '/images/no-backdrop.png';
-    // Use proxy endpoint to route through server's v2ray
-    return `/api/tmdb-image?path=${encodeURIComponent(path)}&size=${size}`;
   }
 }
 

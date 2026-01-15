@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
-import { translateGenres } from '@/lib/genres';
+import { useGenres } from '@/hooks/useGenres';
+import { getPosterUrl } from '@/lib/api/poster';
 import { calculateAverageRatingFromStrings } from '@/lib/utils/rating';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreHorizontalIcon, Film02Icon } from '@hugeicons/core-free-icons';
-import { FadeImage } from '@/components/ui/FadeImage';
+import { OptimizedFadeImage } from '@/components/ui/OptimizedFadeImage';
 import { MovieBadges } from '@/components/molecules/MovieBadges';
 import { RatingBadge as UserRatingBadge } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
@@ -86,33 +87,15 @@ export function MovieListItem({
   const [isLoading, setIsLoading] = useState(false);
 
 
-  // Handle poster URL - prefer TMDB path via proxy, then direct URL (Kinopoisk), then placeholder
+  // Handle poster URL - use semantic 'thumbnail' size for list items
   const posterUrl = movie?.posterPath
-    ? `/api/tmdb-image?path=${encodeURIComponent(movie.posterPath)}&size=w342`
+    ? getPosterUrl(movie.posterPath, 'thumbnail')
     : movie?.posterUrl
       ? movie.posterUrl
       : '/placeholder-poster.png';
 
-  // Parse and translate genres from JSON string
-  // Handle both old format [{id, name}] and new format ["Drama", "Action"]
-  let rawGenres: string[] = [];
-  if (movie?.genres) {
-    try {
-      const parsed = JSON.parse(movie.genres);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (typeof parsed[0] === 'object' && parsed[0] !== null && 'name' in parsed[0]) {
-          // Old format: [{id, name}]
-          rawGenres = parsed.map((g: { name: string }) => g.name);
-        } else {
-          // New format: ["Drama", "Action"]
-          rawGenres = parsed;
-        }
-      }
-    } catch {
-      rawGenres = [];
-    }
-  }
-  const genres = translateGenres(rawGenres, locale);
+  // Parse and translate genres using memoized hook
+  const genres = useGenres(movie?.genres ?? null, locale);
 
   // Check if watch timer is complete
   const isWatchComplete = useWatchProgress(watchStartedAt, movie?.runtime || null);
@@ -162,10 +145,13 @@ export function MovieListItem({
       >
         {/* Poster */}
         <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
-          {movie?.posterPath ? (
-            <FadeImage
+          {movie?.posterPath || movie?.posterUrl ? (
+            <OptimizedFadeImage
               src={posterUrl}
               alt={displayTitle}
+              width={80}
+              height={112}
+              sizes="80px"
               className="h-full w-full object-cover"
               fallback={
                 <div className="flex h-full w-full items-center justify-center text-muted-foreground">

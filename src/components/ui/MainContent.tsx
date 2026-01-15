@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { cn } from '@/lib/utils';
 
 interface MainContentProps {
@@ -14,6 +15,7 @@ export function MainContent({ children }: MainContentProps) {
   const pathname = usePathname();
   const { isAuthenticated, isInitialized } = useAuth();
   const isKeyboardVisible = useKeyboardVisible();
+  const { isTelegramMiniApp } = useTelegramWebApp();
 
   // Check if navbar should be hidden (same logic as BottomNav)
   const hideOnPaths = ['/swipe', '/room/'];
@@ -27,6 +29,8 @@ export function MainContent({ children }: MainContentProps) {
     <main
       className={cn(
         'h-full flex flex-col overflow-hidden transition-[padding] duration-150',
+        // Apply Telegram safe area insets in fullscreen mode
+        isTelegramMiniApp && 'tg-safe-area-top',
         needsNavbarPadding ? 'pb-navbar' : 'pb-0'
       )}
     >

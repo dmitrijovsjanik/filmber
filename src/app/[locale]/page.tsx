@@ -23,6 +23,14 @@ function parseRoomParam(startParam?: string): { code: string; pin: string } | nu
   return { code: match[1].toUpperCase(), pin: match[2] };
 }
 
+// Parse movie params from startapp parameter (format: movie_{tmdbId} or tv_{tmdbId})
+function parseMovieParam(startParam?: string): { tmdbId: string; type: 'movie' | 'tv' } | null {
+  if (!startParam) return null;
+  const match = startParam.match(/^(movie|tv)_(\d+)$/i);
+  if (!match) return null;
+  return { type: match[1].toLowerCase() as 'movie' | 'tv', tmdbId: match[2] };
+}
+
 type Mode = 'solo' | 'pair';
 
 export default function HomePage() {
@@ -75,6 +83,17 @@ export default function HomePage() {
 
     joinRoom();
   }, [isTgReady, startParam, locale, router, setRoom]);
+
+  // Handle movie/tv startapp parameter - redirect to lists page with movie modal
+  useEffect(() => {
+    if (!isTgReady || joinAttemptedRef.current) return;
+
+    const movieParams = parseMovieParam(startParam);
+    if (!movieParams) return;
+
+    joinAttemptedRef.current = true;
+    router.push(`/${locale}/lists?openMovie=${movieParams.tmdbId}&type=${movieParams.type}`);
+  }, [isTgReady, startParam, locale, router]);
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
 

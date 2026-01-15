@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
         pathname: '/uploads/**',
       },
     ],
+    // Responsive breakpoints matching TMDB poster sizes
+    deviceSizes: [320, 420, 768, 1024, 1200],
+    imageSizes: [92, 154, 185, 342, 500, 780],
   },
   env: {
     NEXT_PUBLIC_BUILD_ID: getGitCommitHash(),

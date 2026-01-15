@@ -8,6 +8,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Home01Icon, Film02Icon, User03Icon } from '@hugeicons/core-free-icons';
 import { useTriggerClearSearch } from '@/stores/searchStore';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
+import { cn } from '@/lib/utils';
 
 interface NavItem {
   href: string;
@@ -21,6 +23,7 @@ export function BottomNav() {
   const t = useTranslations('nav');
   const { isAuthenticated, isInitialized } = useAuth();
   const isKeyboardVisible = useKeyboardVisible();
+  const { isTelegramMiniApp } = useTelegramWebApp();
   const triggerClearSearch = useTriggerClearSearch();
 
   const navItems: NavItem[] = [
@@ -51,7 +54,11 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-white safe-area-pb">
+    <nav className={cn(
+      'fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-white safe-area-pb',
+      // Apply Telegram safe area insets in fullscreen mode
+      isTelegramMiniApp && 'tg-safe-area-bottom'
+    )}>
       <div className="mx-auto flex max-w-lg items-center justify-around px-4">
         {navItems.map((item) => {
           const isActive =

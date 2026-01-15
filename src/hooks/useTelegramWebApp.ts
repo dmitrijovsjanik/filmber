@@ -81,6 +81,7 @@ export interface TelegramWebApp {
   headerColor: string;
   backgroundColor: string;
   isClosingConfirmationEnabled: boolean;
+  isFullscreen?: boolean;
   MainButton: MainButton;
   BackButton: BackButton;
   HapticFeedback: HapticFeedback;
@@ -106,6 +107,9 @@ export interface TelegramWebApp {
   disableVerticalSwipes?: () => void;
   enableVerticalSwipes?: () => void;
   isVerticalSwipesEnabled?: boolean;
+  // Fullscreen mode (available since Bot API 8.0)
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
 }
 
 declare global {
@@ -138,6 +142,15 @@ export function useTelegramWebApp() {
       // Available since Telegram WebApp API v7.7
       if (typeof tg.disableVerticalSwipes === 'function') {
         tg.disableVerticalSwipes();
+      }
+
+      // Request fullscreen mode on mobile platforms
+      // Available since Bot API 8.0
+      if (
+        (tg.platform === 'android' || tg.platform === 'ios') &&
+        typeof tg.requestFullscreen === 'function'
+      ) {
+        tg.requestFullscreen();
       }
 
       // Set header/background colors to match app theme for seamless look
@@ -188,6 +201,7 @@ export function useTelegramWebApp() {
     webApp,
     isReady,
     isTelegramMiniApp: !!webApp,
+    isFullscreen: webApp?.isFullscreen ?? false,
     initData: webApp?.initData || '',
     user: webApp?.initDataUnsafe?.user,
     startParam: webApp?.initDataUnsafe?.start_param,

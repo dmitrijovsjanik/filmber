@@ -70,7 +70,8 @@
     "backToHome": "Back to Home",
     "loading": "Loading movies...",
     "cancel": "Cancel",
-    "back": "Back"
+    "back": "Back",
+    "share": "Share"
   },
   "consent": {
     "title": "We use cookies",
@@ -123,7 +124,11 @@
     "noExpandedResults": "No additional results found",
     "loadingMore": "Loading more...",
     "overview": "Overview",
-    "seasonsTab": "Seasons"
+    "seasonsTab": "Seasons",
+    "watchTrailer": "Watch trailer",
+    "compactView": "Compact view",
+    "expandedView": "Expanded view",
+    "scrollForMore": "Scroll"
   },
   "prompts": {
     "didYouWatch": "Did you watch",
