@@ -4,6 +4,24 @@ All notable changes to Filmber will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.0] - 2026-01-15 — Fullscreen Movie Details
+
+### Added
+- Fullscreen movie detail view with parallax effect
+- Swipe-to-close gesture in movie modal
+- Telegram fullscreen mode integration
+- Trailer modal with smooth animations
+- Seasons and episodes accordion for TV series
+
+### Changed
+- Redesigned movie detail card to fullscreen layout
+- Optimized movie caching (single locale fetch)
+- Improved API request deduplication
+
+### Fixed
+- Fixed genre rendering error (React error #31)
+- Fixed store hydration issues
+
 ## [2.7.0] - 2026-01-15 — Advanced Search Filters
 
 ### Added
