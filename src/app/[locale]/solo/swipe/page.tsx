@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { AnimatePresence } from 'framer-motion';
@@ -8,9 +8,10 @@ import { MovieCard, MovieCardRef } from '@/components/movie/MovieCard';
 import { MatchFound } from '@/components/room/MatchFound';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
-import { useSwipeStore } from '@/stores/swipeStore';
+import { useSwipeStore, useSwipeStoreHydrated } from '@/stores/swipeStore';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
 import { useDeckSettingsStore } from '@/stores/deckSettingsStore';
+import { useCardStackHeight } from '@/hooks/useCardStackHeight';
 import type { Movie } from '@/types/movie';
 
 export default function SoloSwipePage() {
@@ -26,13 +27,14 @@ export default function SoloSwipePage() {
     setMatchFound,
     setMatchedMovieId,
     reset: resetRoom,
+    hasHydrated,
   } = useRoomStore();
 
-  const { addSwipe, reset: resetSwipe } = useSwipeStore();
+  const { addSwipe, swipedMovieIds, reset: resetSwipe } = useSwipeStore();
+  const swipeStoreHydrated = useSwipeStoreHydrated();
   const { mediaTypeFilter, loadSettings, isLoaded } = useDeckSettingsStore();
+  const cardStackHeight = useCardStackHeight();
 
-  // Local state for current index in solo mode
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Auth state for saving liked movies
   const isAuthenticated = useIsAuthenticated();
@@ -56,12 +58,13 @@ export default function SoloSwipePage() {
     authRef.current = { isAuthenticated, token };
   });
 
-  // Redirect if not in solo mode
+  // Redirect if not in solo mode (wait for hydration first)
   useEffect(() => {
+    if (!hasHydrated) return; // Wait for store to hydrate from localStorage
     if (!isSoloMode || !moviePoolSeed) {
       router.push(`/${locale}`);
     }
-  }, [isSoloMode, moviePoolSeed, locale, router]);
+  }, [hasHydrated, isSoloMode, moviePoolSeed, locale, router]);
 
   // Fetch movies
   useEffect(() => {
@@ -98,8 +101,8 @@ export default function SoloSwipePage() {
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', movieId: number) => {
       const isLike = direction === 'right';
+      // Adding to swipedMovieIds automatically updates remainingMovies via filter
       addSwipe(movieId, isLike);
-      setCurrentIndex((prev) => prev + 1);
 
       // If authenticated and liked, save to list with watch timer
       if (isLike) {
@@ -127,8 +130,14 @@ export default function SoloSwipePage() {
     [addSwipe, setMatchFound, setMatchedMovieId]
   );
 
+  // Filter out already-swiped movies to restore progress on page reload
+  const remainingMovies = useMemo(
+    () => movies.filter((m) => !swipedMovieIds.includes(m.tmdbId)),
+    [movies, swipedMovieIds]
+  );
+
   const handleButtonClick = (direction: 'left' | 'right') => {
-    const visibleMovies = movies.slice(currentIndex, currentIndex + 3);
+    const visibleMovies = remainingMovies.slice(0, 3);
     if (topCardRef.current && visibleMovies[0]) {
       topCardRef.current.swipe(direction);
     }
@@ -137,7 +146,6 @@ export default function SoloSwipePage() {
   const handleLeave = () => {
     resetRoom();
     resetSwipe();
-    setCurrentIndex(0);
     router.push(`/${locale}`);
   };
 
@@ -159,8 +167,8 @@ export default function SoloSwipePage() {
     );
   }
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (including hydration of both stores)
+  if (!hasHydrated || !swipeStoreHydrated || isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <Loader size="lg" />
@@ -186,11 +194,11 @@ export default function SoloSwipePage() {
     );
   }
 
-  // Get visible cards
-  const visibleMovies = movies.slice(currentIndex, currentIndex + 3);
+  // Get visible cards from remaining (non-swiped) movies
+  const visibleMovies = remainingMovies.slice(0, 3);
 
   // No more movies
-  if (currentIndex >= movies.length) {
+  if (remainingMovies.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="text-center">
@@ -235,7 +243,7 @@ export default function SoloSwipePage() {
 
       {/* Card stack */}
       <div className="flex flex-col items-center gap-8">
-        <div className="relative w-[340px] h-[520px]">
+        <div className="relative w-[min(340px,calc(100vw-32px))]" style={{ height: cardStackHeight }}>
           <AnimatePresence mode="popLayout">
             {[...visibleMovies].reverse().map((movie, index) => {
               const isTop = index === visibleMovies.length - 1;
@@ -260,11 +268,11 @@ export default function SoloSwipePage() {
         <div className="flex gap-8">
           <button
             onClick={() => handleButtonClick('left')}
-            className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 transition-transform hover:scale-110 active:scale-95"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 transition-transform hover:scale-110 active:scale-95"
             aria-label="Skip"
           >
             <svg
-              className="w-8 h-8 text-white"
+              className="w-7 h-7 sm:w-8 sm:h-8 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -280,11 +288,11 @@ export default function SoloSwipePage() {
 
           <button
             onClick={() => handleButtonClick('right')}
-            className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/25 transition-transform hover:scale-110 active:scale-95"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/25 transition-transform hover:scale-110 active:scale-95"
             aria-label="Like"
           >
             <svg
-              className="w-8 h-8 text-white"
+              className="w-7 h-7 sm:w-8 sm:h-8 text-white"
               fill="currentColor"
               viewBox="0 0 24 24"
             >

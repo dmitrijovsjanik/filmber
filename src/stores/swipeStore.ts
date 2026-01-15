@@ -17,10 +17,14 @@ interface SwipeState {
   // Anonymous swipes for import after login
   anonymousSwipes: AnonymousSwipe[];
 
+  // Hydration state
+  hasHydrated: boolean;
+
   addSwipe: (movieId: number, liked: boolean) => void;
   hasSwipedMovie: (movieId: number) => boolean;
   hasLikedMovie: (movieId: number) => boolean;
   reset: () => void;
+  setHasHydrated: (hydrated: boolean) => void;
 
   // Anonymous swipe management
   getAnonymousSwipes: () => AnonymousSwipe[];
@@ -33,6 +37,7 @@ export const useSwipeStore = create<SwipeState>()(
       swipedMovieIds: [],
       likedMovieIds: [],
       anonymousSwipes: [],
+      hasHydrated: false,
 
       addSwipe: (movieId, liked) =>
         set((state) => ({
@@ -60,6 +65,8 @@ export const useSwipeStore = create<SwipeState>()(
           // Keep anonymousSwipes for potential import
         }),
 
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
+
       getAnonymousSwipes: () => get().anonymousSwipes,
 
       clearAnonymousSwipes: () =>
@@ -69,16 +76,21 @@ export const useSwipeStore = create<SwipeState>()(
     }),
     {
       name: 'filmber-swipes',
-      // Only persist anonymous swipes and liked movies
+      // Persist swipe progress for session restoration
       partialize: (state) => ({
-        anonymousSwipes: state.anonymousSwipes,
+        swipedMovieIds: state.swipedMovieIds,
         likedMovieIds: state.likedMovieIds,
+        anonymousSwipes: state.anonymousSwipes,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
 
-// Selector for anonymous swipe count
+// Selectors
 export const useAnonymousSwipeCount = () => useSwipeStore((state) => state.anonymousSwipes.length);
 export const useLikedMovieCount = () => useSwipeStore((state) => state.likedMovieIds.length);
 export const useSwipedMovieIds = () => useSwipeStore((state) => state.swipedMovieIds);
+export const useSwipeStoreHydrated = () => useSwipeStore((state) => state.hasHydrated);

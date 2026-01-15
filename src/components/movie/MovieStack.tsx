@@ -10,6 +10,7 @@ import { useSwipeStore } from '@/stores/swipeStore';
 import { useQueueStore } from '@/stores/queueStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useCardStackHeight } from '@/hooks/useCardStackHeight';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
 import type { Movie } from '@/types/movie';
 import type { UserSlot } from '@/types/room';
@@ -27,6 +28,7 @@ export function MovieStack({
 }: MovieStackProps) {
   const t = useTranslations('swipe');
   const locale = useLocale();
+  const cardStackHeight = useCardStackHeight();
   const { addSwipe } = useSwipeStore();
   const { getVisibleMovies, consumeNext, currentIndex, queue, isInitialized } = useQueueStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
@@ -98,7 +100,7 @@ export function MovieStack({
   const totalMovies = isInitialized ? queue.length : movies.length;
   if (currentIndex >= totalMovies) {
     return (
-      <div className="flex flex-col items-center justify-center h-[520px] text-center px-4">
+      <div className="flex flex-col items-center justify-center text-center px-4" style={{ height: cardStackHeight }}>
         <div className="mb-4 text-muted-foreground">
           <HugeiconsIcon icon={Film02Icon} size={64} />
         </div>
@@ -115,7 +117,7 @@ export function MovieStack({
   return (
     <div className="flex flex-col items-center gap-8">
       {/* Card stack */}
-      <div className="relative w-[340px] h-[520px]">
+      <div className="relative w-[min(340px,calc(100vw-32px))]" style={{ height: cardStackHeight }}>
         <AnimatePresence mode="popLayout">
           {/* Render in reverse order so top card is rendered last (on top) */}
           {[...visibleMovies].reverse().map((movie, index) => {
@@ -141,7 +143,7 @@ export function MovieStack({
       <div className="flex gap-8">
         <button
           onClick={() => handleButtonClick('left')}
-          className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 transition-transform hover:scale-110 active:scale-95"
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 transition-transform hover:scale-110 active:scale-95"
           aria-label="Skip"
         >
           <HugeiconsIcon icon={Cancel01Icon} size={32} className="text-white" strokeWidth={2.5} />
@@ -149,7 +151,7 @@ export function MovieStack({
 
         <button
           onClick={() => handleButtonClick('right')}
-          className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/25 transition-transform hover:scale-110 active:scale-95"
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/25 transition-transform hover:scale-110 active:scale-95"
           aria-label="Like"
         >
           <HugeiconsIcon icon={FavouriteIcon} size={32} className="text-white" fill="currentColor" />

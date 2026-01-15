@@ -93,7 +93,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
   return (
     <motion.div
-      className="absolute w-full max-w-[340px] cursor-grab active:cursor-grabbing touch-none origin-bottom"
+      className="absolute left-0 right-0 top-0 bottom-0 cursor-grab active:cursor-grabbing touch-none origin-bottom"
       style={{ x, rotate, opacity }}
       initial={{
         scale: stackScale - 0.05,
@@ -121,7 +121,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
       whileTap={{ cursor: 'grabbing' }}
     >
       <div
-        className="relative w-full h-[520px] rounded-2xl overflow-hidden bg-gray-900 transition-shadow duration-300"
+        className="relative w-full h-full rounded-2xl overflow-hidden bg-gray-900 transition-shadow duration-300"
         style={{
           boxShadow: stackIndex === 0
             ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
@@ -134,8 +134,9 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
           alt={title}
           fill
           className="object-cover"
-          sizes="340px"
+          sizes="(max-width: 372px) calc(100vw - 32px), 340px"
           priority={isTop}
+          draggable={false}
         />
 
         {/* Like overlay */}
@@ -160,6 +161,14 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+
+        {/* Stack depth overlay - white tint for cards behind the top one (must be after gradient) */}
+        <motion.div
+          className="absolute inset-0 bg-white pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: stackIndex === 0 ? 0 : stackIndex === 1 ? 0.08 : 0.18 }}
+          transition={{ duration: 0.3 }}
+        />
 
         {/* Expanded description overlay */}
         <AnimatePresence>
