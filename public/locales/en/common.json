@@ -69,7 +69,8 @@
   "common": {
     "backToHome": "Back to Home",
     "loading": "Loading movies...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "back": "Back"
   },
   "consent": {
     "title": "We use cookies",
@@ -120,7 +121,9 @@
     "showMore": "Show more results",
     "maybeYouLookingFor": "Maybe you're looking for \"{query}\"",
     "noExpandedResults": "No additional results found",
-    "loadingMore": "Loading more..."
+    "loadingMore": "Loading more...",
+    "overview": "Overview",
+    "seasonsTab": "Seasons"
   },
   "prompts": {
     "didYouWatch": "Did you watch",

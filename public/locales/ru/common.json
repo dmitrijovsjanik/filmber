@@ -69,7 +69,8 @@
   "common": {
     "backToHome": "Вернуться на главную",
     "loading": "Загружаем фильмы...",
-    "cancel": "Отменить"
+    "cancel": "Отменить",
+    "back": "Назад"
   },
   "consent": {
     "title": "Мы используем cookies",
@@ -120,7 +121,9 @@
     "showMore": "Показать ещё",
     "maybeYouLookingFor": "Возможно, вы ищете \"{query}\"",
     "noExpandedResults": "Дополнительных результатов не найдено",
-    "loadingMore": "Загрузка..."
+    "loadingMore": "Загрузка...",
+    "overview": "Описание",
+    "seasonsTab": "Сезоны"
   },
   "prompts": {
     "didYouWatch": "Вы посмотрели",

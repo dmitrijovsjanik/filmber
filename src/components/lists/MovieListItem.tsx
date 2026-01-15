@@ -13,7 +13,7 @@ import { RatingBadge as UserRatingBadge } from './RatingStars';
 import { Badge } from '@/components/ui/badge';
 import { WatchTimer, useWatchProgress } from './WatchTimer';
 import { WatchCompletePrompt } from './WatchCompletePrompt';
-import { MovieDetailSheet } from './MovieDetailSheet';
+import { MovieDetailModal } from './MovieDetailModal';
 import { Large } from '@/components/ui/typography';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 
@@ -251,8 +251,8 @@ export function MovieListItem({
         )}
       </AnimatePresence>
 
-      {/* Detail Sheet */}
-      <MovieDetailSheet
+      {/* Detail Modal */}
+      <MovieDetailModal
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         tmdbId={tmdbId}
