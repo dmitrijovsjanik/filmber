@@ -94,7 +94,24 @@ export function MovieListItem({
       : '/placeholder-poster.png';
 
   // Parse and translate genres from JSON string
-  const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  // Handle both old format [{id, name}] and new format ["Drama", "Action"]
+  let rawGenres: string[] = [];
+  if (movie?.genres) {
+    try {
+      const parsed = JSON.parse(movie.genres);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && 'name' in parsed[0]) {
+          // Old format: [{id, name}]
+          rawGenres = parsed.map((g: { name: string }) => g.name);
+        } else {
+          // New format: ["Drama", "Action"]
+          rawGenres = parsed;
+        }
+      }
+    } catch {
+      rawGenres = [];
+    }
+  }
   const genres = translateGenres(rawGenres, locale);
 
   // Check if watch timer is complete

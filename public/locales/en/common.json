@@ -224,5 +224,12 @@
     "apply": "Apply",
     "close": "Close",
     "rating": "Rating"
+  },
+  "seasons": {
+    "title": "Seasons",
+    "season": "Season {number}",
+    "episodeCount": "{count} episodes",
+    "noEpisodes": "No episodes available",
+    "loadError": "Failed to load episodes"
   }
 }

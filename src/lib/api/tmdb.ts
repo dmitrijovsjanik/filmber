@@ -1,4 +1,4 @@
-import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails } from '@/types/movie';
+import type { TMDBMovie, TMDBMovieDetails, TMDBTVSeries, TMDBTVSeriesDetails, TMDBSeason } from '@/types/movie';
 import { ProxyAgent, fetch as proxyFetch } from 'undici';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -221,6 +221,17 @@ class TMDBClient {
     return this.fetch<TMDBTVSeriesDetails>(`/tv/${tvId}`, {
       language,
       append_to_response: 'external_ids',
+    });
+  }
+
+  // Get TV season details with episodes
+  async getSeasonDetails(
+    tvId: number,
+    seasonNumber: number,
+    language: 'en-US' | 'ru-RU' = 'en-US'
+  ): Promise<TMDBSeason> {
+    return this.fetch<TMDBSeason>(`/tv/${tvId}/season/${seasonNumber}`, {
+      language,
     });
   }
 

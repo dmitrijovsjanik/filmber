@@ -159,6 +159,26 @@ export interface TMDBTVSeriesDetails extends TMDBTVSeries {
   type: string;
 }
 
+export interface TMDBEpisode {
+  episode_number: number;
+  name: string;
+  overview: string;
+  air_date: string | null;
+  runtime: number | null;
+  vote_average: number;
+  still_path: string | null;
+}
+
+export interface TMDBSeason {
+  season_number: number;
+  name: string;
+  overview: string;
+  air_date: string | null;
+  episode_count: number;
+  poster_path: string | null;
+  episodes?: TMDBEpisode[];
+}
+
 export interface OMDBRating {
   Source: string;
   Value: string;

@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
 // import { SimilarMoviesSection } from './SimilarMoviesSection'; // TODO: Move to separate page
+import { SeasonsAccordion } from '@/components/movie/SeasonsAccordion';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { Muted, Small } from '@/components/ui/typography';
 import { useAuthToken } from '@/stores/authStore';
@@ -128,7 +129,23 @@ export function MovieDetailSheet({
       ? movie.posterUrl
       : null;
 
-  const rawGenres: string[] = movie?.genres ? JSON.parse(movie.genres) : [];
+  // Parse and translate genres from JSON string
+  // Handle both old format [{id, name}] and new format ["Drama", "Action"]
+  let rawGenres: string[] = [];
+  if (movie?.genres) {
+    try {
+      const parsed = JSON.parse(movie.genres);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && 'name' in parsed[0]) {
+          rawGenres = parsed.map((g: { name: string }) => g.name);
+        } else {
+          rawGenres = parsed;
+        }
+      }
+    } catch {
+      rawGenres = [];
+    }
+  }
   const genres = translateGenres(rawGenres, locale);
 
   // Add movie to list (for search mode)
@@ -309,6 +326,14 @@ export function MovieDetailSheet({
               <Small className="text-foreground font-normal leading-relaxed">
                 {displayOverview}
               </Small>
+            )}
+
+            {/* Seasons accordion for TV series */}
+            {movie?.mediaType === 'tv' && movie.numberOfSeasons && movie.numberOfSeasons > 0 && (
+              <SeasonsAccordion
+                tvId={tmdbId}
+                numberOfSeasons={movie.numberOfSeasons}
+              />
             )}
 
             {/* TODO: Similar movies moved to separate page */}

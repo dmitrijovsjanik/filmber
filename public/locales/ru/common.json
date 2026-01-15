@@ -224,5 +224,12 @@
     "apply": "Применить",
     "close": "Закрыть",
     "rating": "Рейтинг"
+  },
+  "seasons": {
+    "title": "Сезоны",
+    "season": "Сезон {number}",
+    "episodeCount": "{count} эпизодов",
+    "noEpisodes": "Эпизоды недоступны",
+    "loadError": "Не удалось загрузить эпизоды"
   }
 }
