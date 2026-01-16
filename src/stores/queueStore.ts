@@ -83,10 +83,16 @@ export const useQueueStore = create<QueueState>()(
       },
 
       injectPartnerLike: (movie) => {
+        // Validate movie object
+        if (!movie || typeof movie.tmdbId !== 'number') {
+          console.error('injectPartnerLike: invalid movie object', movie);
+          return;
+        }
+
         const { queue, currentIndex } = get();
 
         // Check if movie is already in queue or already swiped
-        const isInQueue = queue.some((item) => item.movie.tmdbId === movie.tmdbId);
+        const isInQueue = queue.some((item) => item.movie?.tmdbId === movie.tmdbId);
         if (isInQueue) return;
 
         // Insert right after the current position

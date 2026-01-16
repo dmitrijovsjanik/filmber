@@ -48,8 +48,8 @@ export function ProfilePageLayout({
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 h-16 min-h-16 border-b">
+        {/* Header - with Telegram safe area for fullscreen mode */}
+        <div className="flex items-center justify-between px-2 py-4 border-b tg-safe-area-top">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -64,8 +64,8 @@ export function ProfilePageLayout({
           {headerAction}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        {/* Content - with Telegram safe area bottom for fullscreen mode */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 tg-safe-area-bottom">
           <div className="max-w-lg mx-auto">
             {children}
           </div>

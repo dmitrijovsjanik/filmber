@@ -8,6 +8,7 @@ import { Loader } from '@/components/ui/Loader';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Share01Icon } from '@hugeicons/core-free-icons';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 
 interface ShareLinkProps {
   roomCode: string;
@@ -19,6 +20,7 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const t = useTranslations('room');
   const tCommon = useTranslations('common');
   const { trackShareRoom } = useAnalytics();
+  const { webApp, isTelegramMiniApp } = useTelegramWebApp();
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
 
@@ -29,23 +31,34 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
 
   const handleShare = async () => {
     trackShareRoom();
+
+    // Build share URL with both message text and link
+    const shareText = `${t('shareMessage')}\n${tgAppUrl}`;
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(t('shareMessage'))}`;
+
+    // In Telegram Mini App, use openTelegramLink for native share dialog
+    if (isTelegramMiniApp && webApp?.openTelegramLink) {
+      webApp.openTelegramLink(telegramShareUrl);
+      return;
+    }
+
+    // On other platforms, try native share API
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Filmber',
-          text: t('shareMessage'),
-          url: tgAppUrl,
+          text: shareText,
         });
+        return;
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('Share failed:', err);
         }
       }
-    } else {
-      // Fallback: open Telegram share
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(t('shareMessage'))}`;
-      window.open(shareUrl, '_blank');
     }
+
+    // Fallback: open Telegram share in new window
+    window.open(telegramShareUrl, '_blank');
   };
 
   return (

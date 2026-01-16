@@ -272,6 +272,20 @@ async function handleUserLeave(
   }
 }
 
+// Parse genres from JSON safely - handles both old format (strings) and new format ({id, name} objects)
+function parseGenres(genresJson: string | null): string[] {
+  if (!genresJson) return [];
+  try {
+    const parsed = JSON.parse(genresJson);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((g: { name: string } | string) =>
+      typeof g === 'string' ? g : g.name
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function getMovieById(tmdbId: number): Promise<Movie | null> {
   try {
     // Check movies table first
@@ -300,7 +314,7 @@ async function getMovieById(tmdbId: number): Promise<Movie | null> {
           rottenTomatoes: cached.rottenTomatoesRating,
           metacritic: cached.metacriticRating,
         },
-        genres: JSON.parse(cached.genres || '[]'),
+        genres: parseGenres(cached.genres),
         runtime: cached.runtime,
         mediaType: (cached.mediaType as 'movie' | 'tv') || 'movie',
         numberOfSeasons: cached.numberOfSeasons,
@@ -308,8 +322,13 @@ async function getMovieById(tmdbId: number): Promise<Movie | null> {
       };
     }
 
-    // Fetch and cache if not found
-    return enhanceMovieData(tmdbId);
+    // Fetch and cache if not found - try movie first, then TV
+    const movieData = await enhanceMovieData(tmdbId);
+    if (movieData) return movieData;
+
+    // If movie fetch failed, try as TV series
+    const { enhanceTVData } = await import('../api/moviePool');
+    return enhanceTVData(tmdbId);
   } catch (error) {
     console.error(`Failed to get movie ${tmdbId}:`, error);
     return null;

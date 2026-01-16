@@ -428,6 +428,8 @@ export async function GET(request: NextRequest) {
       [...tmdbTVDataRu.results, ...tmdbTVDataRuNorm.results].map((r) => [r.id, { name: r.name, overview: r.overview }])
     );
     const allUniqueTV = [...allTVEnResults, ...allTVRuResults];
+    // Filter out TV series that already exist in local database
+    const newTmdbTV = allUniqueTV.filter((r) => !localTmdbIds.has(r.id));
 
     // Fetch genre mappings for both movies and TV (in parallel)
     const [movieGenresEn, movieGenresRu, tvGenresEn, tvGenresRu] = await Promise.all([
@@ -488,7 +490,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format new TMDB TV results with genre names (seasons/episodes will be fetched after sorting)
-    const tmdbTVSearchResults: SearchResult[] = allUniqueTV.map((r) => {
+    const tmdbTVSearchResults: SearchResult[] = newTmdbTV.map((r) => {
       const ruData = tvRuDataMap.get(r.id);
       return {
         tmdbId: r.id,

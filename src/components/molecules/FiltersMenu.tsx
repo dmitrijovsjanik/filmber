@@ -287,8 +287,8 @@ export function FiltersMenu({
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 h-16 min-h-16 border-b">
+            {/* Header - with Telegram safe area for fullscreen mode */}
+            <div className="flex items-center justify-between px-2 py-4 border-b tg-safe-area-top">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -593,8 +593,8 @@ export function FiltersMenu({
               </div>
             </div>
 
-            {/* Footer with Apply/Close button */}
-            <div className="border-t px-4 py-3">
+            {/* Footer with Apply/Close button - with Telegram safe area for fullscreen mode */}
+            <div className="border-t px-4 py-3 tg-safe-area-bottom">
               <div className="max-w-lg mx-auto">
                 <Button
                   variant={activeFiltersCount > 0 ? 'default' : 'secondary'}
