@@ -363,7 +363,7 @@ export function MovieDetailModal({
     }
   }, [isOpen]);
 
-  const isSearchMode = status === null;
+  const isSearchMode = status == null;
   const currentStatus = isSearchMode ? localStatus : status;
   const isTvSeries = movie?.mediaType === 'tv';
 

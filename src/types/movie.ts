@@ -291,8 +291,8 @@ export type SortOption = 'relevance' | 'popularity' | 'rating' | 'date_desc' | '
 // Original language codes (ISO 639-1)
 export type OriginalLanguage = 'en' | 'ru' | 'ko' | 'ja' | 'fr' | 'de' | 'es' | 'it' | 'zh' | 'hi' | 'tr';
 
-// Default languages for filtering (EN + RU)
-export const DEFAULT_LANGUAGES: OriginalLanguage[] = ['en', 'ru'];
+// Default languages for filtering (empty = all languages)
+export const DEFAULT_LANGUAGES: OriginalLanguage[] = [];
 
 export interface SearchFilters {
   genres: number[];
