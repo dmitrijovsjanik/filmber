@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Movie } from '@/types/movie';
 
 export type QueueItemSource = 'priority' | 'base' | 'partner_like';
@@ -95,9 +95,10 @@ export const useQueueStore = create<QueueState>()(
         const isInQueue = queue.some((item) => item.movie?.tmdbId === movie.tmdbId);
         if (isInQueue) return;
 
-        // Insert right after the current position
+        // Insert AFTER visible cards (3 cards shown) to avoid visual glitches
+        // This ensures partner's likes don't cause sudden card shifts
         const newQueue = [...queue];
-        const insertIndex = currentIndex + 1;
+        const insertIndex = Math.min(currentIndex + 4, newQueue.length);
         newQueue.splice(insertIndex, 0, { movie, source: 'partner_like' });
 
         set({ queue: newQueue });
@@ -149,6 +150,9 @@ export const useQueueStore = create<QueueState>()(
     }),
     {
       name: 'filmber-queue',
+      // Use sessionStorage to prevent cross-tab sync (each tab has its own queue state)
+      // This prevents partner's swipes from affecting your cards in pair mode
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         queue: state.queue,
         currentIndex: state.currentIndex,

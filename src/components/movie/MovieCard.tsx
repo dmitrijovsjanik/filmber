@@ -22,6 +22,7 @@ interface MovieCardProps {
   movie: Movie;
   onSwipe: (direction: 'left' | 'right', movieId: number) => void;
   isTop?: boolean;
+  isSwipeLocked?: boolean; // Global lock from parent to prevent multiple swipes
   locale?: string;
   stackIndex?: number; // 0 = top card, 1 = second, 2 = third
 }
@@ -31,7 +32,7 @@ export interface MovieCardRef {
 }
 
 export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function MovieCard(
-  { movie, onSwipe, isTop = false, locale = 'en', stackIndex = 0 },
+  { movie, onSwipe, isTop = false, isSwipeLocked = false, locale = 'en', stackIndex = 0 },
   ref
 ) {
   const x = useMotionValue(0);
@@ -63,7 +64,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
   // Animate swipe for button clicks (with blocking)
   const animateSwipe = async (direction: 'left' | 'right') => {
-    if (isSwiping) return; // Already swiping - ignore repeated clicks
+    if (isSwiping || isSwipeLocked) return; // Already swiping or globally locked
 
     setIsSwiping(true);
     setExitDirection(direction);
@@ -74,10 +75,10 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
   // Expose swipe method via ref for button clicks
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId, isSwiping]);
+  useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId, isSwiping, isSwipeLocked]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (isSwiping) return; // Already swiping - ignore
+    if (isSwiping || isSwipeLocked) return; // Already swiping or globally locked
 
     const threshold = 100;
     if (info.offset.x > threshold) {
@@ -114,7 +115,7 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
         scale: 0.95,
         transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
       }}
-      drag={isTop ? 'x' : false}
+      drag={isTop && !isSwipeLocked ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
       onDragEnd={handleDragEnd}

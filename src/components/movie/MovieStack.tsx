@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -35,14 +35,18 @@ export function MovieStack({
   const { trackSwipe } = useAnalytics();
   const topCardRef = useRef<MovieCardRef | null>(null);
 
+  // Global swipe lock to prevent multiple cards swiping at once
+  const [isSwipeLocked, setIsSwipeLocked] = useState(false);
+  const swipeLockRef = useRef(false);
+
   // Auth state for saving liked movies
   const isAuthenticated = useIsAuthenticated();
   const token = useAuthToken();
 
   // Refs to hold latest values for stable callback
-  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext });
+  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked });
   useEffect(() => {
-    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext };
+    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked };
   });
 
   // Callback ref to ensure proper assignment
@@ -55,7 +59,13 @@ export function MovieStack({
   // Stable callback that reads from refs
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', movieId: number) => {
-      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext } = stateRef.current;
+      // Check and set swipe lock synchronously to prevent race conditions
+      if (swipeLockRef.current) return;
+      swipeLockRef.current = true;
+
+      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked } = stateRef.current;
+      setIsSwipeLocked(true);
+
       const action = direction === 'right' ? 'like' : 'skip';
       addSwipe(movieId, action === 'like');
       emitSwipe(movieId, action);
@@ -79,6 +89,12 @@ export function MovieStack({
       }
 
       consumeNext();
+
+      // Unlock after exit animation completes (350ms exit duration + buffer)
+      setTimeout(() => {
+        swipeLockRef.current = false;
+        setIsSwipeLocked(false);
+      }, 400);
     },
     []
   );
@@ -91,6 +107,7 @@ export function MovieStack({
     : movies.slice(currentIndex, currentIndex + 3);
 
   const handleButtonClick = (direction: 'left' | 'right') => {
+    if (swipeLockRef.current) return; // Prevent button clicks during animation
     if (topCardRef.current && visibleMovies[0]) {
       topCardRef.current.swipe(direction);
     }
@@ -131,6 +148,7 @@ export function MovieStack({
                 movie={movie}
                 onSwipe={handleSwipe}
                 isTop={isTop}
+                isSwipeLocked={isSwipeLocked}
                 locale={locale}
                 stackIndex={stackIndex}
               />
