@@ -61,7 +61,7 @@ export function RatingStars({
             <HugeiconsIcon
               icon={config.icon}
               size={iconSize}
-              className={isActive ? config.activeColor : 'text-muted-foreground/30'}
+              className={isActive ? config.activeColor : 'text-muted-foreground/70'}
             />
           </motion.button>
         );
