@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enhanceMovieData, enhanceTVData } from '@/lib/api/moviePool';
+import { db } from '@/lib/db';
+import { movies } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Get movie or TV series by TMDB ID
 export async function GET(
@@ -10,7 +13,7 @@ export async function GET(
     const { tmdbId: tmdbIdStr } = await params;
     const tmdbId = parseInt(tmdbIdStr, 10);
     const { searchParams } = new URL(request.url);
-    const mediaType = searchParams.get('type') || 'movie';
+    const typeParam = searchParams.get('type');
 
     if (!tmdbId || isNaN(tmdbId)) {
       return NextResponse.json(
@@ -19,9 +22,29 @@ export async function GET(
       );
     }
 
-    const movie = mediaType === 'tv'
-      ? await enhanceTVData(tmdbId)
-      : await enhanceMovieData(tmdbId);
+    // Determine media type: use param if provided, otherwise check database
+    let mediaType = typeParam;
+    if (!mediaType) {
+      const [cached] = await db
+        .select({ mediaType: movies.mediaType })
+        .from(movies)
+        .where(eq(movies.tmdbId, tmdbId));
+      mediaType = cached?.mediaType || null;
+    }
+
+    // Fetch movie data based on media type
+    let movie = null;
+    if (mediaType === 'tv') {
+      movie = await enhanceTVData(tmdbId);
+    } else if (mediaType === 'movie') {
+      movie = await enhanceMovieData(tmdbId);
+    } else {
+      // Unknown type - try movie first, then TV as fallback
+      movie = await enhanceMovieData(tmdbId);
+      if (!movie) {
+        movie = await enhanceTVData(tmdbId);
+      }
+    }
 
     if (!movie) {
       return NextResponse.json(
