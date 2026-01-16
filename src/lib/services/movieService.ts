@@ -20,6 +20,7 @@ interface FindOrCreateParams extends ExternalIds {
   title?: string;
   titleRu?: string;
   source?: MovieSource;
+  mediaType?: 'movie' | 'tv';
 }
 
 class MovieService {
@@ -96,9 +97,13 @@ class MovieService {
   private async createFromSource(params: FindOrCreateParams): Promise<Movie | null> {
     let movieData: NewMovie | null = null;
 
-    // Try TMDB first
+    // Try TMDB first (check mediaType for TV series)
     if (params.tmdbId) {
-      movieData = await this.fetchFromTMDB(params.tmdbId);
+      if (params.mediaType === 'tv') {
+        movieData = await this.fetchFromTMDBTV(params.tmdbId);
+      } else {
+        movieData = await this.fetchFromTMDB(params.tmdbId);
+      }
     }
 
     // Try Kinopoisk if no TMDB data
@@ -179,6 +184,57 @@ class MovieService {
       };
     } catch (error) {
       console.error('Failed to fetch from TMDB:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch TV series data from TMDB
+   */
+  private async fetchFromTMDBTV(tmdbId: number): Promise<NewMovie | null> {
+    try {
+      const [detailsEn, detailsRu] = await Promise.all([
+        tmdb.getTVSeriesDetails(tmdbId, 'en-US'),
+        tmdb.getTVSeriesDetails(tmdbId, 'ru-RU'),
+      ]);
+
+      // Get OMDB data for additional ratings
+      let omdbData = null;
+      const imdbId = detailsEn.external_ids?.imdb_id;
+      if (imdbId) {
+        omdbData = await omdb.getByImdbId(imdbId);
+      }
+
+      // Use first episode runtime if available
+      const runtime = detailsEn.episode_run_time?.[0] || null;
+
+      return {
+        tmdbId,
+        imdbId: imdbId || null,
+        title: detailsEn.name,
+        titleRu: detailsRu.name !== detailsEn.name ? detailsRu.name : null,
+        titleOriginal: detailsEn.name,
+        overview: detailsEn.overview,
+        overviewRu: detailsRu.overview !== detailsEn.overview ? detailsRu.overview : null,
+        posterPath: detailsEn.poster_path,
+        backdropPath: detailsEn.backdrop_path,
+        releaseDate: detailsEn.first_air_date,
+        runtime,
+        genres: JSON.stringify((detailsEn.genres || []).map((g) => g.name)),
+        originalLanguage: detailsEn.original_language || null,
+        tmdbRating: detailsEn.vote_average?.toString(),
+        tmdbVoteCount: detailsEn.vote_count,
+        tmdbPopularity: detailsEn.popularity?.toString(),
+        imdbRating: omdbData?.imdbRating || null,
+        rottenTomatoesRating: omdbData ? OMDBClient.getRottenTomatoesRating(omdbData.Ratings) : null,
+        metacriticRating: omdbData ? OMDBClient.getMetacriticRating(omdbData.Ratings) : null,
+        primarySource: 'tmdb',
+        mediaType: 'tv',
+        numberOfSeasons: detailsEn.number_of_seasons,
+        numberOfEpisodes: detailsEn.number_of_episodes,
+      };
+    } catch (error) {
+      console.error('Failed to fetch TV series from TMDB:', error);
       return null;
     }
   }

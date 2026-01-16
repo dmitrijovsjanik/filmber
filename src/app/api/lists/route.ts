@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { tmdbId, status, rating, source, notes } = body;
+    const { tmdbId, status, rating, source, notes, mediaType } = body;
 
     // Validate required fields
     if (!tmdbId || typeof tmdbId !== 'number') {
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     if (!movie) {
       // Fetch and cache movie data
-      movie = await movieService.findOrCreate({ tmdbId, source: 'tmdb' });
+      movie = await movieService.findOrCreate({ tmdbId, source: 'tmdb', mediaType });
     }
 
     if (!movie) {

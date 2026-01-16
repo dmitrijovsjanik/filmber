@@ -396,6 +396,7 @@ export function MovieDetailModal({
           tmdbId,
           status: newStatus,
           source: 'manual',
+          mediaType: movie?.mediaType,
         }),
       });
       if (response.ok) {
@@ -410,7 +411,7 @@ export function MovieDetailModal({
     } finally {
       setIsLoading(false);
     }
-  }, [token, tmdbId, trackMovieAddedToWatchlist, onAddedToList]);
+  }, [token, tmdbId, trackMovieAddedToWatchlist, onAddedToList, movie?.mediaType]);
 
   // Add with rating (for search mode "watched" selection)
   const addToListWithRating = useCallback(async (selectedRating: number) => {
@@ -432,6 +433,7 @@ export function MovieDetailModal({
           status: MOVIE_STATUS.WATCHED,
           rating: selectedRating,
           source: 'manual',
+          mediaType: movie?.mediaType,
         }),
       });
       if (response.ok) {
@@ -448,7 +450,7 @@ export function MovieDetailModal({
     } finally {
       setIsLoading(false);
     }
-  }, [token, tmdbId, trackMovieRated, onAddedToList, rating, status]);
+  }, [token, tmdbId, trackMovieRated, onAddedToList, rating, status, movie?.mediaType]);
 
   const handleStatusClick = (newStatus: MovieStatus) => {
     if (isSearchMode) {
