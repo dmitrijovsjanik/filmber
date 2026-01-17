@@ -2,7 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 
 export type SearchService = 'tmdb' | 'omdb' | 'kinopoisk';
 
@@ -38,7 +39,7 @@ export function SearchServiceTabs({
       <TabsList>
         <TabsTrigger value="tmdb" className="relative">
           {!sourceStatus.tmdb && (
-            <AlertCircle className="w-3 h-3 text-yellow-500 mr-1" />
+            <HugeiconsIcon icon={AlertCircleIcon} size={12} className="text-yellow-500 mr-1" />
           )}
           {t('searchTmdb', { defaultValue: 'TMDB' })}
           <span className="ml-1 opacity-70">
@@ -47,7 +48,7 @@ export function SearchServiceTabs({
         </TabsTrigger>
         <TabsTrigger value="kinopoisk" className="relative">
           {!sourceStatus.kinopoisk && (
-            <AlertCircle className="w-3 h-3 text-yellow-500 mr-1" />
+            <HugeiconsIcon icon={AlertCircleIcon} size={12} className="text-yellow-500 mr-1" />
           )}
           {t('searchKinopoisk', { defaultValue: 'Kinopoisk' })}
           <span className="ml-1 opacity-70">
@@ -56,7 +57,7 @@ export function SearchServiceTabs({
         </TabsTrigger>
         <TabsTrigger value="omdb" className="relative">
           {!sourceStatus.omdb && (
-            <AlertCircle className="w-3 h-3 text-yellow-500 mr-1" />
+            <HugeiconsIcon icon={AlertCircleIcon} size={12} className="text-yellow-500 mr-1" />
           )}
           {t('searchOmdb', { defaultValue: 'OMDB' })}
           <span className="ml-1 opacity-70">
