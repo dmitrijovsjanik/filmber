@@ -24,12 +24,23 @@ export interface MovieNotificationData {
 const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
 /**
- * Get Mini App URL for movie details
+ * Get Mini App URL for movie details with locale
+ * Format: startapp=ru_movie_123 or startapp=en_movie_123
  */
-function getMovieAppUrl(tmdbId: number): string {
+function getMovieAppUrl(tmdbId: number, locale: 'ru' | 'en' = 'ru'): string {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
   const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'app';
-  return `https://t.me/${botUsername}/${miniAppName}?startapp=movie_${tmdbId}`;
+  return `https://t.me/${botUsername}/${miniAppName}?startapp=${locale}_movie_${tmdbId}`;
+}
+
+/**
+ * Get Mini App URL for TV series details with locale
+ * Format: startapp=ru_tv_123 or startapp=en_tv_123
+ */
+function getSeriesAppUrl(tmdbId: number, locale: 'ru' | 'en' = 'ru'): string {
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
+  const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'app';
+  return `https://t.me/${botUsername}/${miniAppName}?startapp=${locale}_tv_${tmdbId}`;
 }
 
 /**
@@ -53,14 +64,15 @@ export function formatAnnouncementMessage(
   }
 
   const formattedDate = formatReleaseDate(releaseDate, isRussian ? 'ru' : 'en');
+  const locale = isRussian ? 'ru' : 'en';
 
   const text = isRussian
     ? `🎬 <b>Новый анонс!</b>\n\n<b>${escapeHtml(title)}</b>\n\n📅 Премьера: ${formattedDate}\n\n${truncateText(escapeHtml(overview || ''), 800)}`
     : `🎬 <b>New Announcement!</b>\n\n<b>${escapeHtml(title)}</b>\n\n📅 Release: ${formattedDate}\n\n${truncateText(escapeHtml(overview || ''), 800)}`;
 
   const keyboard = new InlineKeyboard()
-    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId))
-    .text(isRussian ? '📋 В список' : '📋 Add to list', `addlist:${movie.tmdbId}`)
+    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId, locale))
+    .text(isRussian ? '📋 Хочу посмотреть' : '📋 Want to watch', `addlist:${movie.tmdbId}`)
     .row()
     .text(isRussian ? '🔕 Отписаться' : '🔕 Unsubscribe', 'toggle:announcements');
 
@@ -79,14 +91,15 @@ export function formatTheatricalReleaseMessage(
   isRussian: boolean
 ): NotificationMessage {
   const title = isRussian && movie.titleRu ? movie.titleRu : movie.title;
+  const locale = isRussian ? 'ru' : 'en';
 
   const text = isRussian
     ? `🎥 <b>Сегодня в кино!</b>\n\n<b>${escapeHtml(title)}</b>\n\nФильм вышел в прокат. Приятного просмотра!`
     : `🎥 <b>Now in Theaters!</b>\n\n<b>${escapeHtml(title)}</b>\n\nThis movie is now playing in theaters. Enjoy!`;
 
   const keyboard = new InlineKeyboard()
-    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId))
-    .text(isRussian ? '📋 В список' : '📋 Add to list', `addlist:${movie.tmdbId}`)
+    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId, locale))
+    .text(isRussian ? '📋 Хочу посмотреть' : '📋 Want to watch', `addlist:${movie.tmdbId}`)
     .row()
     .text(isRussian ? '🔕 Отписаться' : '🔕 Unsubscribe', 'toggle:releases');
 
@@ -105,14 +118,15 @@ export function formatDigitalReleaseMessage(
   isRussian: boolean
 ): NotificationMessage {
   const title = isRussian && movie.titleRu ? movie.titleRu : movie.title;
+  const locale = isRussian ? 'ru' : 'en';
 
   const text = isRussian
     ? `📺 <b>Доступен в цифре!</b>\n\n<b>${escapeHtml(title)}</b>\n\nФильм теперь доступен для онлайн-просмотра. Дубляж уже должен быть готов!`
     : `📺 <b>Now Available Digitally!</b>\n\n<b>${escapeHtml(title)}</b>\n\nThis movie is now available for streaming online.`;
 
   const keyboard = new InlineKeyboard()
-    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId))
-    .text(isRussian ? '📋 В список' : '📋 Add to list', `addlist:${movie.tmdbId}`)
+    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(movie.tmdbId, locale))
+    .text(isRussian ? '📋 Хочу посмотреть' : '📋 Want to watch', `addlist:${movie.tmdbId}`)
     .row()
     .text(isRussian ? '🔕 Отписаться' : '🔕 Unsubscribe', 'toggle:digital');
 
@@ -168,13 +182,14 @@ export function formatSeasonAnnouncementMessage(
   isRussian: boolean
 ): NotificationMessage {
   const title = isRussian && series.titleRu ? series.titleRu : series.title;
+  const locale = isRussian ? 'ru' : 'en';
 
   const text = isRussian
     ? `📺 <b>Новый сезон!</b>\n\n<b>${escapeHtml(title)}</b>\n\nСезон ${series.seasonNumber} уже доступен! Сериал перемещён в "Хочу посмотреть".`
     : `📺 <b>New Season!</b>\n\n<b>${escapeHtml(title)}</b>\n\nSeason ${series.seasonNumber} is now available! The series has been moved to your watchlist.`;
 
   const keyboard = new InlineKeyboard()
-    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(series.tmdbId))
+    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getSeriesAppUrl(series.tmdbId, locale))
     .row()
     .text(isRussian ? '🔕 Отписаться' : '🔕 Unsubscribe', 'toggle:series_seasons');
 
@@ -193,6 +208,7 @@ export function formatEpisodeReleaseMessage(
   isRussian: boolean
 ): NotificationMessage {
   const title = isRussian && series.titleRu ? series.titleRu : series.title;
+  const locale = isRussian ? 'ru' : 'en';
   const epLabel = `S${series.seasonNumber}E${series.episodeNumber}${series.episodeName ? ': ' + series.episodeName : ''}`;
 
   const text = isRussian
@@ -200,7 +216,7 @@ export function formatEpisodeReleaseMessage(
     : `🎬 <b>New Episode!</b>\n\n<b>${escapeHtml(title)}</b>\n${escapeHtml(epLabel)}\n\nNow available for streaming!`;
 
   const keyboard = new InlineKeyboard()
-    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getMovieAppUrl(series.tmdbId))
+    .url(isRussian ? '🎬 Подробнее' : '🎬 Details', getSeriesAppUrl(series.tmdbId, locale))
     .row()
     .text(isRussian ? '🔕 Отписаться' : '🔕 Unsubscribe', 'toggle:series_episodes');
 

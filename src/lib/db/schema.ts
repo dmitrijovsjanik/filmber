@@ -821,6 +821,65 @@ export const notificationLogRelations = relations(notificationLog, ({ one }) => 
 }));
 
 // ============================================
+// SCHEDULED_NOTIFICATIONS - Queue for distributed notifications
+// ============================================
+export const scheduledNotifications = pgTable(
+  'scheduled_notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // Content reference
+    type: varchar('type', { length: 30 }).notNull(), // 'announcement' | 'theatrical_release' | 'digital_release' | 'season_announcement' | 'episode_release'
+    upcomingMovieId: uuid('upcoming_movie_id').references(() => upcomingMovies.id, { onDelete: 'cascade' }),
+    trackedSeriesId: uuid('tracked_series_id').references(() => trackedSeries.id, { onDelete: 'cascade' }),
+    trackedEpisodeId: uuid('tracked_episode_id').references(() => trackedEpisodes.id, { onDelete: 'cascade' }),
+    tmdbId: integer('tmdb_id').notNull(),
+
+    // Scheduling
+    period: varchar('period', { length: 10 }).notNull(), // 'day' (06:00-18:00 MSK) | 'evening' (18:00-06:00 MSK)
+    scheduledDate: varchar('scheduled_date', { length: 10 }).notNull(), // YYYY-MM-DD
+    scheduledHour: integer('scheduled_hour').notNull(), // 0-23 UTC hour
+    scheduledMinute: integer('scheduled_minute').notNull().default(0), // 0 or 30
+
+    // Priority for ordering within same slot (lower = higher priority)
+    priority: integer('priority').notNull().default(100),
+
+    // Status
+    status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'sending' | 'sent' | 'failed'
+    sentAt: timestamp('sent_at'),
+    successCount: integer('success_count'),
+    failureCount: integer('failure_count'),
+    errorDetails: text('error_details'),
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('scheduled_notifications_date_hour_idx').on(table.scheduledDate, table.scheduledHour, table.scheduledMinute),
+    index('scheduled_notifications_status_idx').on(table.status),
+    index('scheduled_notifications_type_idx').on(table.type),
+    index('scheduled_notifications_tmdb_idx').on(table.tmdbId),
+    // Unique constraint to prevent duplicate scheduling
+    uniqueIndex('scheduled_notifications_unique_idx').on(table.type, table.tmdbId, table.scheduledDate),
+  ]
+);
+
+export const scheduledNotificationsRelations = relations(scheduledNotifications, ({ one }) => ({
+  upcomingMovie: one(upcomingMovies, {
+    fields: [scheduledNotifications.upcomingMovieId],
+    references: [upcomingMovies.id],
+  }),
+  trackedSeries: one(trackedSeries, {
+    fields: [scheduledNotifications.trackedSeriesId],
+    references: [trackedSeries.id],
+  }),
+  trackedEpisode: one(trackedEpisodes, {
+    fields: [scheduledNotifications.trackedEpisodeId],
+    references: [trackedEpisodes.id],
+  }),
+}));
+
+// ============================================
 // ENUMS/CONSTANTS
 // ============================================
 export const MOVIE_STATUS = {
@@ -926,3 +985,7 @@ export type TrackedSeries = typeof trackedSeries.$inferSelect;
 export type NewTrackedSeries = typeof trackedSeries.$inferInsert;
 export type TrackedEpisode = typeof trackedEpisodes.$inferSelect;
 export type NewTrackedEpisode = typeof trackedEpisodes.$inferInsert;
+
+// Scheduled notifications types
+export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
+export type NewScheduledNotification = typeof scheduledNotifications.$inferInsert;

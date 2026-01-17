@@ -23,9 +23,24 @@ function parseRoomParam(startParam?: string): { code: string; pin: string } | nu
   return { code: match[1].toUpperCase(), pin: match[2] };
 }
 
-// Parse movie params from startapp parameter (format: movie_{tmdbId} or tv_{tmdbId})
-function parseMovieParam(startParam?: string): { tmdbId: string; type: 'movie' | 'tv' } | null {
+// Parse movie params from startapp parameter
+// Supports formats:
+// - movie_{tmdbId} or tv_{tmdbId} (legacy)
+// - {locale}_movie_{tmdbId} or {locale}_tv_{tmdbId} (new with locale)
+function parseMovieParam(startParam?: string): { tmdbId: string; type: 'movie' | 'tv'; locale?: string } | null {
   if (!startParam) return null;
+
+  // Try new format with locale: ru_movie_123 or en_tv_456
+  const matchWithLocale = startParam.match(/^(ru|en)_(movie|tv)_(\d+)$/i);
+  if (matchWithLocale) {
+    return {
+      locale: matchWithLocale[1].toLowerCase(),
+      type: matchWithLocale[2].toLowerCase() as 'movie' | 'tv',
+      tmdbId: matchWithLocale[3],
+    };
+  }
+
+  // Try legacy format: movie_123 or tv_456
   const match = startParam.match(/^(movie|tv)_(\d+)$/i);
   if (!match) return null;
   return { type: match[1].toLowerCase() as 'movie' | 'tv', tmdbId: match[2] };
@@ -92,7 +107,9 @@ export default function HomePage() {
     if (!movieParams) return;
 
     joinAttemptedRef.current = true;
-    router.push(`/${locale}/lists?openMovie=${movieParams.tmdbId}&type=${movieParams.type}`);
+    // Use locale from startapp if provided, otherwise use current locale
+    const targetLocale = movieParams.locale || locale;
+    router.push(`/${targetLocale}/lists?openMovie=${movieParams.tmdbId}&type=${movieParams.type}`);
   }, [isTgReady, startParam, locale, router]);
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';

@@ -1,0 +1,72 @@
+# ========================================
+# Filmber Crontab Configuration
+# ========================================
+#
+# This file is managed via GitHub Actions deployment.
+# Do NOT edit manually on the server.
+# All times are in UTC (MSK = UTC+3)
+#
+# Schedule Overview (MSK times):
+# - 03:00 MSK (00:00 UTC): Database backup
+# - 04:00 MSK (01:00 UTC): Sync upcoming movies from TMDB
+# - 05:00 MSK (02:00 UTC): Sync TV series
+# - 06:00 MSK (03:00 UTC): Period 1 starts - prepare day batch
+# - 06:00-18:00 MSK: Hourly content notifications (announcements, releases, digital)
+# - 18:00 MSK (15:00 UTC): Period 2 starts - prepare evening batch
+# - 18:00-06:00 MSK: Hourly content notifications (silent mode 23:00-08:00)
+#
+# ========================================
+
+# Filmber Database Backup (daily at 03:00 MSK = 00:00 UTC)
+0 0 * * * curl -s -X POST 'http://localhost:3000/api/cron/backup-trigger' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/backup_cron.log 2>&1
+
+# Sync upcoming movies from TMDB (daily at 04:00 MSK = 01:00 UTC)
+0 1 * * * curl -s -X POST 'http://localhost:3000/api/cron/sync-upcoming' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-sync-upcoming.log 2>&1
+
+# Sync TV series (daily at 05:00 MSK = 02:00 UTC)
+0 2 * * * curl -s -X POST 'http://localhost:3000/api/cron/sync-series' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-sync-series.log 2>&1
+
+# ========================================
+# Period 1: Day (06:00-18:00 MSK = 03:00-15:00 UTC)
+# ========================================
+
+# Prepare day batch at 06:00 MSK (03:00 UTC)
+0 3 * * * curl -s -X POST 'http://localhost:3000/api/cron/prepare-batch?period=day' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-prepare-batch.log 2>&1
+
+# Send scheduled notifications every hour from 06:00 to 17:00 MSK (03:00-14:00 UTC)
+# This processes pre-scheduled notifications for the current hour
+0 3-14 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+
+# Also send at :30 for periods with more than 12 items
+30 3-14 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled?slot=30' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+
+# ========================================
+# Period 2: Evening/Night (18:00-06:00 MSK = 15:00-03:00 UTC)
+# ========================================
+
+# Prepare evening batch at 18:00 MSK (15:00 UTC)
+0 15 * * * curl -s -X POST 'http://localhost:3000/api/cron/prepare-batch?period=evening' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-prepare-batch.log 2>&1
+
+# Send scheduled notifications every hour from 18:00 to 05:00 MSK (15:00-02:00 UTC)
+0 15-23 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+0 0-2 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+
+# Also send at :30 for periods with more than 12 items
+30 15-23 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled?slot=30' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+30 0-2 * * * curl -s -X POST 'http://localhost:3000/api/cron/send-scheduled?slot=30' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-send-scheduled.log 2>&1
+
+# ========================================
+# TV Series Notifications (using same scheduled system)
+# ========================================
+
+# Season and episode notifications are included in prepare-batch
+
+# ========================================
+# Maintenance
+# ========================================
+
+# Watch reminders - check if users finished watching (hourly at :40)
+40 * * * * curl -s -X POST 'http://localhost:3000/api/cron/watch-reminders' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-watch-reminders.log 2>&1
+
+# Cleanup old data (daily at 02:00 MSK = 23:00 UTC previous day)
+0 23 * * * curl -s -X POST 'http://localhost:3000/api/cron/cleanup' -H 'Authorization: Bearer __CRON_SECRET__' >> /var/www/filmber/logs/cron-cleanup.log 2>&1

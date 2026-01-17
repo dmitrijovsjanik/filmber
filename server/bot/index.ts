@@ -406,6 +406,8 @@ For the full experience, use the Mini App!`;
     const telegramId = ctx.from.id;
     const isRussian = ctx.from.language_code === 'ru';
 
+    console.log(`[addlist] tmdbId=${tmdbId}, telegramId=${telegramId}`);
+
     try {
       // Get user
       const [user] = await db
@@ -414,11 +416,15 @@ For the full experience, use the Mini App!`;
         .where(eq(users.telegramId, telegramId));
 
       if (!user) {
+        console.log(`[addlist] User not found for telegramId=${telegramId}`);
         await ctx.answerCallbackQuery({
-          text: isRussian ? 'Пользователь не найден' : 'User not found',
+          text: isRussian ? 'Пользователь не найден. Откройте приложение для регистрации.' : 'User not found. Open the app to register.',
+          show_alert: true,
         });
         return;
       }
+
+      console.log(`[addlist] Found user ${user.id}`);
 
       // Check if movie exists in our database
       let [movie] = await db
@@ -480,6 +486,7 @@ For the full experience, use the Mini App!`;
       }
 
       // Add to want_to_watch
+      console.log(`[addlist] Adding movie ${tmdbId} to user ${user.id} list`);
       await db.insert(userMovieLists).values({
         userId: user.id,
         tmdbId,
@@ -488,13 +495,16 @@ For the full experience, use the Mini App!`;
         source: MOVIE_SOURCE.MANUAL,
       });
 
+      console.log(`[addlist] Successfully added movie ${tmdbId} to list`);
       await ctx.answerCallbackQuery({
         text: isRussian ? '✅ Добавлено в «Хочу посмотреть»!' : '✅ Added to "Want to Watch"!',
+        show_alert: true,
       });
     } catch (error) {
-      console.error('Error handling addlist callback:', error);
+      console.error('[addlist] Error handling addlist callback:', error);
       await ctx.answerCallbackQuery({
         text: isRussian ? 'Произошла ошибка' : 'An error occurred',
+        show_alert: true,
       });
     }
   });

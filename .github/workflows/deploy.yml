@@ -52,6 +52,7 @@ jobs:
             ecosystem.config.js \
             server \
             src \
+            deployment \
             drizzle.config.ts \
             tsconfig.json \
             node_modules \
@@ -186,6 +187,23 @@ jobs:
 
             pm2 start ecosystem.config.js --env production
             pm2 save
+
+            # Install crontab from deployment/crontab.txt
+            echo "Installing crontab..."
+            if [ -f "${APP_DIR}/current/deployment/crontab.txt" ]; then
+              CRON_SECRET=$(grep -E "^CRON_SECRET=" "${APP_DIR}/shared/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "")
+              if [ -n "$CRON_SECRET" ]; then
+                TEMP_CRONTAB=$(mktemp)
+                sed "s/__CRON_SECRET__/${CRON_SECRET}/g" "${APP_DIR}/current/deployment/crontab.txt" > "$TEMP_CRONTAB"
+                crontab "$TEMP_CRONTAB"
+                rm -f "$TEMP_CRONTAB"
+                echo "Crontab installed successfully"
+              else
+                echo "Warning: CRON_SECRET not found, skipping crontab installation"
+              fi
+            else
+              echo "Warning: deployment/crontab.txt not found"
+            fi
 
             # Очистка старых релизов (оставляем 5)
             cd "${APP_DIR}/releases"

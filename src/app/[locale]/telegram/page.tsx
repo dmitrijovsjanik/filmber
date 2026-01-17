@@ -17,6 +17,29 @@ function parseRoomParam(startParam?: string): { code: string; pin: string } | nu
   return { code: match[1].toUpperCase(), pin: match[2] };
 }
 
+// Parse movie params from startapp parameter
+// Supports formats:
+// - movie_{tmdbId} or tv_{tmdbId} (legacy)
+// - {locale}_movie_{tmdbId} or {locale}_tv_{tmdbId} (new with locale)
+function parseMovieParam(startParam?: string): { tmdbId: string; type: 'movie' | 'tv'; locale?: string } | null {
+  if (!startParam) return null;
+
+  // Try new format with locale: ru_movie_123 or en_tv_456
+  const matchWithLocale = startParam.match(/^(ru|en)_(movie|tv)_(\d+)$/i);
+  if (matchWithLocale) {
+    return {
+      locale: matchWithLocale[1].toLowerCase(),
+      type: matchWithLocale[2].toLowerCase() as 'movie' | 'tv',
+      tmdbId: matchWithLocale[3],
+    };
+  }
+
+  // Try legacy format: movie_123 or tv_456
+  const match = startParam.match(/^(movie|tv)_(\d+)$/i);
+  if (!match) return null;
+  return { type: match[1].toLowerCase() as 'movie' | 'tv', tmdbId: match[2] };
+}
+
 export default function TelegramEntryPage() {
   const router = useRouter();
   const locale = useLocale();
@@ -27,41 +50,52 @@ export default function TelegramEntryPage() {
   const [authAttempted, setAuthAttempted] = useState(false);
   const [roomJoinAttempted, setRoomJoinAttempted] = useState(false);
 
-  // Handle room join after authentication
+  // Handle room join or movie redirect after authentication
   useEffect(() => {
     if (!isReady || !isAuthenticated || roomJoinAttempted) return;
 
+    // Check for room params first
     const roomParams = parseRoomParam(startParam);
-    if (!roomParams) {
-      // No room param, just go home
-      router.replace('/');
+    if (roomParams) {
+      setRoomJoinAttempted(true);
+
+      const joinRoom = async () => {
+        try {
+          const response = await fetch(`/api/rooms/${roomParams.code}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: roomParams.pin, viaLink: true }),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to join room');
+          }
+
+          setRoom(roomParams.code, roomParams.pin, data.userSlot, data.moviePoolSeed);
+          router.replace(`/${locale}/room/${roomParams.code}/swipe`);
+        } catch (err) {
+          console.error('Auto-join failed:', err);
+          setError(err instanceof Error ? err.message : 'Failed to join room');
+        }
+      };
+
+      joinRoom();
       return;
     }
 
-    setRoomJoinAttempted(true);
+    // Check for movie params
+    const movieParams = parseMovieParam(startParam);
+    if (movieParams) {
+      setRoomJoinAttempted(true);
+      // Use locale from startapp if provided, otherwise use current locale
+      const targetLocale = movieParams.locale || locale;
+      router.replace(`/${targetLocale}/lists?openMovie=${movieParams.tmdbId}&type=${movieParams.type}`);
+      return;
+    }
 
-    const joinRoom = async () => {
-      try {
-        const response = await fetch(`/api/rooms/${roomParams.code}/join`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: roomParams.pin, viaLink: true }),
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to join room');
-        }
-
-        setRoom(roomParams.code, roomParams.pin, data.userSlot, data.moviePoolSeed);
-        router.replace(`/${locale}/room/${roomParams.code}/swipe`);
-      } catch (err) {
-        console.error('Auto-join failed:', err);
-        setError(err instanceof Error ? err.message : 'Failed to join room');
-      }
-    };
-
-    joinRoom();
+    // No special params, just go home
+    router.replace('/');
   }, [isReady, isAuthenticated, startParam, roomJoinAttempted, locale, router, setRoom]);
 
   useEffect(() => {
