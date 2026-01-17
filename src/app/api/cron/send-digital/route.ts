@@ -8,7 +8,7 @@ import {
   notificationConfig,
   NOTIFICATION_TYPE,
 } from '@/lib/db/schema';
-import { eq, isNull, or, and, lte, inArray } from 'drizzle-orm';
+import { eq, isNull, or, and, lte } from 'drizzle-orm';
 import { getBot } from '../../../../../server/bot';
 import { formatDigitalReleaseMessage } from '../../../../../server/bot/notifications';
 

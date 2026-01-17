@@ -14,7 +14,6 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 // Default configuration
 const DEFAULT_EPISODE_DELAY_DAYS = 7;
-const ARCHIVE_AFTER_DAYS = 30;
 
 interface SyncResult {
   newSeries: number;

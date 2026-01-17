@@ -1,11 +1,10 @@
-import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { users, rooms, movies, userMovieLists, userSwipeHistory, userSessions, swipes } from '@/lib/db/schema';
+import { users, rooms, movies, userMovieLists, userSwipeHistory, userSessions } from '@/lib/db/schema';
 import { sql, count, eq, gte, and } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
 
-export const GET = withAdmin(async (_request: NextRequest) => {
+export const GET = withAdmin(async () => {
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

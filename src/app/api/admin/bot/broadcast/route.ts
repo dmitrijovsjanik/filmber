@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { gte, sql } from 'drizzle-orm';
+import { gte } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success, badRequest } from '@/lib/auth/middleware';
 

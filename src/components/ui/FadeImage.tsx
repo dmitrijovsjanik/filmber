@@ -38,10 +38,11 @@ export function FadeImage({
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Check if image is already cached by browser (complete before onLoad fires)
+  // This is intentional - we need to sync with browser cache state on mount
   useEffect(() => {
     if (imgRef.current?.complete && imgRef.current.naturalWidth > 0 && srcString) {
       loadedImages.add(srcString);
-      setIsLoaded(true);
+      setIsLoaded(true); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [srcString]);
 

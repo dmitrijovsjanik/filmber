@@ -136,9 +136,8 @@ async function handleSync(request: NextRequest) {
  * Fetch upcoming movies from TMDB (multiple pages, both EN and RU)
  */
 async function fetchUpcomingMovies(pages: number) {
-  const allMovies = new Map<number, (typeof moviesFromTmdb)[0]>();
   type MovieType = Awaited<ReturnType<typeof tmdb.getUpcomingMovies>>['results'][0];
-  const moviesFromTmdb: MovieType[] = [];
+  const allMovies = new Map<number, MovieType>();
 
   // Fetch from both regions
   for (const region of ['US', 'RU'] as const) {

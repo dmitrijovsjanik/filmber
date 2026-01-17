@@ -41,7 +41,9 @@ export function MovieStack({
   const token = useAuthToken();
 
   // Refs to hold latest values for stable callback
+  // This pattern intentionally omits dependencies to always capture latest values
   const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes };
   });
@@ -115,14 +117,6 @@ export function MovieStack({
   const visibleItems = isInitialized ? getVisibleMovies(3) : [];
   const visibleMovies = visibleItems.map((item) => item.movie);
 
-  // Log render with visible movies
-  console.log('[RENDER] MovieStack', {
-    currentIndex,
-    queueLength: queue.length,
-    visibleMovieIds: visibleMovies.map(m => m.tmdbId),
-    isSwipeLocked,
-    swipeLockRef: swipeLockRef.current
-  });
 
   const handleButtonClick = (direction: 'left' | 'right') => {
     console.log('[BUTTON] Click', { direction, swipeLockRef: swipeLockRef.current });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Image, { ImageProps } from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -15,17 +15,10 @@ type OptimizedFadeImageProps = Omit<ImageProps, 'onLoad' | 'onError'> & {
 };
 
 /**
- * Optimized Image component using next/image with fade-in animation.
- * Benefits over plain img:
- * - Automatic WebP/AVIF conversion
- * - Lazy loading by default
- * - Responsive sizing with sizes prop
- * - Blur placeholder support
- *
- * Note: For API route URLs (like /api/tmdb-image), use unoptimized={true}
- * since Next.js cannot optimize images served through API routes.
+ * Internal component that handles the actual image rendering.
+ * Using a separate component allows React to reset state when src changes via key prop.
  */
-export function OptimizedFadeImage({
+function OptimizedFadeImageInner({
   src,
   alt,
   className,
@@ -34,26 +27,14 @@ export function OptimizedFadeImage({
   onLoad,
   onError,
   fill,
+  srcString,
   ...props
-}: OptimizedFadeImageProps) {
-  const srcString = typeof src === 'string' ? src : '';
-
+}: OptimizedFadeImageProps & { srcString: string }) {
   // Check if image was already loaded in this session
   const isAlreadyLoaded = srcString ? loadedImages.has(srcString) : false;
 
   const [isLoaded, setIsLoaded] = useState(isAlreadyLoaded);
   const [hasError, setHasError] = useState(false);
-
-  // Reset state when src changes
-  useEffect(() => {
-    if (srcString && loadedImages.has(srcString)) {
-      setIsLoaded(true);
-      setHasError(false);
-    } else {
-      setIsLoaded(false);
-      setHasError(false);
-    }
-  }, [srcString]);
 
   const handleLoad = useCallback(() => {
     if (srcString) {
@@ -106,5 +87,33 @@ export function OptimizedFadeImage({
         {...props}
       />
     </div>
+  );
+}
+
+/**
+ * Optimized Image component using next/image with fade-in animation.
+ * Benefits over plain img:
+ * - Automatic WebP/AVIF conversion
+ * - Lazy loading by default
+ * - Responsive sizing with sizes prop
+ * - Blur placeholder support
+ *
+ * Note: For API route URLs (like /api/tmdb-image), use unoptimized={true}
+ * since Next.js cannot optimize images served through API routes.
+ */
+export function OptimizedFadeImage({
+  src,
+  ...props
+}: OptimizedFadeImageProps) {
+  const srcString = typeof src === 'string' ? src : '';
+
+  // Use key to reset internal component state when src changes
+  return (
+    <OptimizedFadeImageInner
+      key={srcString}
+      src={src}
+      srcString={srcString}
+      {...props}
+    />
   );
 }

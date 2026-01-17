@@ -133,9 +133,6 @@ async function main() {
   console.log('\n\n💡 Recommendations:');
   console.log('─'.repeat(50));
 
-  const withRussianThreshold = movies.filter(m => m.popularity >= 10).length;
-  const withoutShlag = movies.filter(m => m.popularity >= 5).length;
-
   console.log(`\nAt popularity >= 50: ${movies.filter(m => m.popularity >= 50).length} movies`);
   console.log(`At popularity >= 20: ${movies.filter(m => m.popularity >= 20).length} movies`);
   console.log(`At popularity >= 10: ${movies.filter(m => m.popularity >= 10).length} movies`);

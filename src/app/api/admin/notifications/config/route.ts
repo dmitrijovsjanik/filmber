@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { notificationConfig } from '@/lib/db/schema';
+import { notificationConfig, type User } from '@/lib/db/schema';
 import { withAdmin } from '@/lib/auth/admin';
 import { success, badRequest } from '@/lib/auth/middleware';
 import { eq } from 'drizzle-orm';
-import type { User } from '@/lib/db/schema';
 
 // Default configuration values
 const DEFAULT_CONFIG = {
@@ -17,7 +16,7 @@ const DEFAULT_CONFIG = {
 };
 
 // GET /api/admin/notifications/config - Get all notification config
-export const GET = withAdmin(async (_request: NextRequest, _user: User) => {
+export const GET = withAdmin(async () => {
   const configs = await db.select().from(notificationConfig);
 
   // Merge with defaults

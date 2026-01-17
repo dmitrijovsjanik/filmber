@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { rooms, swipes, users } from '@/lib/db/schema';
-import { sql, eq, and, gte, isNotNull, isNull, count } from 'drizzle-orm';
+import { rooms, swipes } from '@/lib/db/schema';
+import { sql, and, gte, isNotNull, count } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
 
@@ -20,7 +19,7 @@ function getTimeRanges(): TimeRange[] {
   ];
 }
 
-export const GET = withAdmin(async (request: NextRequest) => {
+export const GET = withAdmin(async () => {
   const timeRanges = getTimeRanges();
   const analytics: Record<string, unknown> = {};
 

@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { bugReports, User } from '@/lib/db/schema';
+import { bugReports } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminUser } from '@/lib/auth/admin';
-import { success, unauthorized, forbidden, notFound, badRequest } from '@/lib/auth/middleware';
+import { success, unauthorized, notFound, badRequest } from '@/lib/auth/middleware';
 
 // POST /api/admin/bug-reports/[id] - Reply to a bug report
 export async function POST(

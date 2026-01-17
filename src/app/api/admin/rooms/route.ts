@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { rooms, swipes, users } from '@/lib/db/schema';
-import { sql, desc, count, eq, and } from 'drizzle-orm';
+import { rooms, swipes } from '@/lib/db/schema';
+import { sql, desc, count, eq } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
 

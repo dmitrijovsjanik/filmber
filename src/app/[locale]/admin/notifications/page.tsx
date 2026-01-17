@@ -287,7 +287,7 @@ export default function NotificationsPage() {
         const data = await response.json();
         setConfigResult(`Error: ${data.error}`);
       }
-    } catch (error) {
+    } catch {
       setConfigResult('Failed to save configuration');
     } finally {
       setIsSavingConfig(false);
@@ -322,7 +322,7 @@ export default function NotificationsPage() {
       } else {
         setTestResult(`Error: ${data.error}`);
       }
-    } catch (error) {
+    } catch {
       setTestResult('Failed to send test notification');
     } finally {
       setIsSendingTest(false);
@@ -357,7 +357,7 @@ export default function NotificationsPage() {
       } else {
         setReleaseResult(`Error: ${data.error}`);
       }
-    } catch (error) {
+    } catch {
       setReleaseResult('Failed to send release notes notification');
     } finally {
       setIsSendingRelease(false);

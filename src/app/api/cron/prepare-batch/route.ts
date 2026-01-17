@@ -8,7 +8,7 @@ import {
   notificationConfig,
   NOTIFICATION_TYPE,
 } from '@/lib/db/schema';
-import { eq, isNull, and, lte, gte, or, inArray, gt } from 'drizzle-orm';
+import { eq, isNull, and, lte, or, inArray, gt } from 'drizzle-orm';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -34,9 +34,6 @@ const PERIODS = {
   },
 };
 
-// Silent hours (23:00-08:00 MSK) for evening period
-const SILENT_START_MSK = 23;
-const SILENT_END_MSK = 8;
 
 /**
  * Convert MSK hour to UTC hour
@@ -60,8 +57,7 @@ function getTodayMsk(): string {
  */
 function calculateScheduleSlots(
   itemCount: number,
-  period: 'day' | 'evening',
-  scheduledDate: string
+  period: 'day' | 'evening'
 ): Array<{ hour: number; minute: number }> {
   const periodConfig = PERIODS[period];
   const slots: Array<{ hour: number; minute: number }> = [];
@@ -226,7 +222,7 @@ async function handlePrepareBatch(request: NextRequest) {
     itemsToSchedule.sort((a, b) => a.priority - b.priority);
 
     // Calculate schedule slots
-    const slots = calculateScheduleSlots(itemsToSchedule.length, period, today);
+    const slots = calculateScheduleSlots(itemsToSchedule.length, period);
 
     // Create scheduled notifications
     for (let i = 0; i < itemsToSchedule.length; i++) {

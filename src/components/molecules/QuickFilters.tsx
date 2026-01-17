@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
@@ -81,30 +81,34 @@ export function QuickFilters({
   const [localGenres, setLocalGenres] = useState<number[]>(filters.genres);
   const [localLanguages, setLocalLanguages] = useState<OriginalLanguage[]>(filters.originalLanguages);
 
-  // Sync local state when sheets open
-  useEffect(() => {
-    if (typeSheetOpen) {
+  // Handlers to sync local state when sheets open
+  const handleTypeSheetOpenChange = useCallback((open: boolean) => {
+    if (open) {
       setLocalMediaType(filters.mediaType);
     }
-  }, [typeSheetOpen, filters.mediaType]);
+    setTypeSheetOpen(open);
+  }, [filters.mediaType]);
 
-  useEffect(() => {
-    if (ratingSheetOpen) {
+  const handleRatingSheetOpenChange = useCallback((open: boolean) => {
+    if (open) {
       setLocalRating(filters.ratingMin || 0);
     }
-  }, [ratingSheetOpen, filters.ratingMin]);
+    setRatingSheetOpen(open);
+  }, [filters.ratingMin]);
 
-  useEffect(() => {
-    if (genresSheetOpen) {
+  const handleGenresSheetOpenChange = useCallback((open: boolean) => {
+    if (open) {
       setLocalGenres(filters.genres);
     }
-  }, [genresSheetOpen, filters.genres]);
+    setGenresSheetOpen(open);
+  }, [filters.genres]);
 
-  useEffect(() => {
-    if (languageSheetOpen) {
+  const handleLanguageSheetOpenChange = useCallback((open: boolean) => {
+    if (open) {
       setLocalLanguages(filters.originalLanguages);
     }
-  }, [languageSheetOpen, filters.originalLanguages]);
+    setLanguageSheetOpen(open);
+  }, [filters.originalLanguages]);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -322,7 +326,7 @@ export function QuickFilters({
       />
 
       {/* Type Sheet */}
-      <Sheet open={typeSheetOpen} onOpenChange={setTypeSheetOpen}>
+      <Sheet open={typeSheetOpen} onOpenChange={handleTypeSheetOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-4">
           <SheetHeader className="text-left pb-4">
             <SheetTitle>{t('mediaType')}</SheetTitle>
@@ -371,7 +375,7 @@ export function QuickFilters({
       </Sheet>
 
       {/* Language Sheet */}
-      <Sheet open={languageSheetOpen} onOpenChange={setLanguageSheetOpen}>
+      <Sheet open={languageSheetOpen} onOpenChange={handleLanguageSheetOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-4">
           <SheetHeader className="text-left pb-4">
             <SheetTitle>{t('originalLanguage')}</SheetTitle>
@@ -407,7 +411,7 @@ export function QuickFilters({
       </Sheet>
 
       {/* Genres Sheet */}
-      <Sheet open={genresSheetOpen} onOpenChange={setGenresSheetOpen}>
+      <Sheet open={genresSheetOpen} onOpenChange={handleGenresSheetOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-4 max-h-[70vh]">
           <SheetHeader className="text-left pb-4">
             <SheetTitle>{locale === 'ru' ? 'Жанры' : 'Genres'}</SheetTitle>
@@ -480,7 +484,7 @@ export function QuickFilters({
       </Sheet>
 
       {/* Rating Sheet */}
-      <Sheet open={ratingSheetOpen} onOpenChange={setRatingSheetOpen}>
+      <Sheet open={ratingSheetOpen} onOpenChange={handleRatingSheetOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-4">
           <SheetHeader className="text-left pb-4">
             <SheetTitle>{t('rating')}</SheetTitle>

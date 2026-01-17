@@ -1,5 +1,4 @@
 import { getTranslations } from 'next-intl/server';
-import { parseChangelog } from '@/lib/changelog/parser';
 import { WhatsNewContent } from './WhatsNewContent';
 
 interface Props {
@@ -15,9 +14,6 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function WhatsNewPage({ params }: Props) {
-  const { locale } = await params;
-  const releases = parseChangelog(locale);
-
-  return <WhatsNewContent releases={releases} />;
+export default async function WhatsNewPage() {
+  return <WhatsNewContent />;
 }

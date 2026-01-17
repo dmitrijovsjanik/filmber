@@ -7,7 +7,6 @@ import {
   movies,
   bugReports,
   notificationSettings,
-  upcomingMovies,
   MOVIE_STATUS,
   MOVIE_SOURCE,
 } from '../../src/lib/db/schema';

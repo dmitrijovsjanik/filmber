@@ -27,9 +27,6 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const BATCH_SIZE = 30;
 const BATCH_DELAY_MS = 1000;
 
-// Moscow timezone offset (UTC+3)
-const MSK_OFFSET_HOURS = 3;
-
 // Silent hours (23:00-08:00 MSK = 20:00-05:00 UTC)
 const SILENT_HOUR_START_UTC = 20;
 const SILENT_HOUR_END_UTC = 5;

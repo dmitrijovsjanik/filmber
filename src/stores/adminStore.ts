@@ -39,7 +39,7 @@ interface AdminState {
   fetchStats: (token: string) => Promise<void>;
 }
 
-export const useAdminStore = create<AdminState>((set, get) => ({
+export const useAdminStore = create<AdminState>((set) => ({
   isAdmin: null,
   isLoading: false,
   stats: null,

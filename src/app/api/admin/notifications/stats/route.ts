@@ -1,13 +1,11 @@
-import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { notificationLog, upcomingMovies, NOTIFICATION_TYPE } from '@/lib/db/schema';
+import { notificationLog, upcomingMovies } from '@/lib/db/schema';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
 import { eq, sql, desc, and, gte } from 'drizzle-orm';
-import type { User } from '@/lib/db/schema';
 
 // GET /api/admin/notifications/stats - Get notification statistics
-export const GET = withAdmin(async (_request: NextRequest, _user: User) => {
+export const GET = withAdmin(async () => {
   // Get counts by notification type
   const typeCounts = await db
     .select({

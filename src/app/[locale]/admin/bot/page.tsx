@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from '@/components/ui/Loader';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Megaphone01Icon, Mail01Icon, CheckmarkCircle01Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { Megaphone01Icon, Mail01Icon } from '@hugeicons/core-free-icons';
 
 interface BugReport {
   id: string;
@@ -93,7 +93,7 @@ export default function BotPage() {
       } else {
         setBroadcastResult(`Error: ${data.error}`);
       }
-    } catch (error) {
+    } catch {
       setBroadcastResult('Failed to send broadcast');
     } finally {
       setIsSending(false);
