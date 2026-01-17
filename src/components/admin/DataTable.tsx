@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -35,7 +35,7 @@ export function DataTable<T extends object>({
   columns,
   searchPlaceholder,
 }: DataTableProps<T>) {
-  const token = useAuthStore((state) => state.token);
+  const { token, isInitialized } = useAuth();
   const [data, setData] = useState<T[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -47,7 +47,7 @@ export function DataTable<T extends object>({
   const [search, setSearch] = useState('');
 
   const fetchData = useCallback(async (page: number, searchQuery?: string) => {
-    if (!token) return;
+    if (!token || !isInitialized) return;
 
     setIsLoading(true);
     try {
@@ -76,11 +76,13 @@ export function DataTable<T extends object>({
     } finally {
       setIsLoading(false);
     }
-  }, [token, endpoint]);
+  }, [token, endpoint, isInitialized]);
 
   useEffect(() => {
-    fetchData(1, search);
-  }, [fetchData, search]);
+    if (isInitialized && token) {
+      fetchData(1, search);
+    }
+  }, [fetchData, search, isInitialized, token]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
