@@ -64,12 +64,17 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
 
   // Animate swipe for button clicks (with blocking)
   const animateSwipe = async (direction: 'left' | 'right') => {
-    if (isSwiping || isSwipeLocked) return; // Already swiping or globally locked
+    console.log('[CARD] animateSwipe called', { movieId: movie.tmdbId, direction, isSwiping, isSwipeLocked });
+    if (isSwiping || isSwipeLocked) {
+      console.log('[CARD] animateSwipe BLOCKED', { isSwiping, isSwipeLocked });
+      return;
+    }
 
     setIsSwiping(true);
     setExitDirection(direction);
     const targetX = direction === 'right' ? 150 : -150;
     await animate(x, targetX, { duration: 0.15, ease: 'easeOut' });
+    console.log('[CARD] animateSwipe animation done, calling onSwipe', { movieId: movie.tmdbId, direction });
     onSwipeRef.current(direction, movie.tmdbId);
   };
 
@@ -78,14 +83,20 @@ export const MovieCard = forwardRef<MovieCardRef, MovieCardProps>(function Movie
   useImperativeHandle(ref, () => ({ swipe: animateSwipe }), [movie.tmdbId, isSwiping, isSwipeLocked]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (isSwiping || isSwipeLocked) return; // Already swiping or globally locked
+    console.log('[CARD] handleDragEnd', { movieId: movie.tmdbId, isSwiping, isSwipeLocked, offsetX: info.offset.x });
+    if (isSwiping || isSwipeLocked) {
+      console.log('[CARD] handleDragEnd BLOCKED', { isSwiping, isSwipeLocked });
+      return;
+    }
 
     const threshold = 100;
     if (info.offset.x > threshold) {
+      console.log('[CARD] Drag swipe RIGHT', { movieId: movie.tmdbId });
       setIsSwiping(true);
       setExitDirection('right');
       onSwipeRef.current('right', movie.tmdbId);
     } else if (info.offset.x < -threshold) {
+      console.log('[CARD] Drag swipe LEFT', { movieId: movie.tmdbId });
       setIsSwiping(true);
       setExitDirection('left');
       onSwipeRef.current('left', movie.tmdbId);

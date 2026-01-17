@@ -39,7 +39,7 @@ export default function SwipePage() {
   } = useRoomStore();
 
   const { reset: resetSwipe } = useSwipeStore();
-  const { initializeQueue, appendMovies, setFetchingMore, reset: resetQueue, queue, currentIndex } = useQueueStore();
+  const { initializeQueue, appendMovies, setFetchingMore, reset: resetQueue, queue, currentIndex, isInitialized } = useQueueStore();
   const shouldFetchMore = useShouldFetchMore();
   const queueMeta = useQueueMeta();
 
@@ -150,15 +150,22 @@ export default function SwipePage() {
     }
   }, [userSlot, roomCode, locale, queue.length, queueMeta?.hasMore, appendMovies, setFetchingMore]);
 
-  // Initial queue fetch
+  // Initial queue fetch - only if not already initialized
+  const hasInitialized = useRef(false);
   useEffect(() => {
     if (!moviePoolSeed || !userSlot) {
       router.push(`/${locale}`);
       return;
     }
 
+    // Prevent double initialization (SSR + client hydration, React Strict Mode)
+    if (hasInitialized.current || isInitialized) {
+      return;
+    }
+    hasInitialized.current = true;
+
     fetchQueue();
-  }, [moviePoolSeed, userSlot, locale, router, fetchQueue]);
+  }, [moviePoolSeed, userSlot, locale, router, fetchQueue, isInitialized]);
 
   // Refetch queue when partner joins with watchlist
   useEffect(() => {
@@ -311,8 +318,8 @@ export default function SwipePage() {
       </div>
 
       {/* Movie stack */}
-      {(queue.length > 0 || movies.length > 0) && userSlot && (
-        <MovieStack movies={movies} roomCode={roomCode} userSlot={userSlot} />
+      {userSlot && (
+        <MovieStack roomCode={roomCode} userSlot={userSlot} />
       )}
     </div>
   );

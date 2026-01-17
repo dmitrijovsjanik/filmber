@@ -116,6 +116,7 @@ export function useSocket(roomCode: string | null, userSlot: UserSlot | null) {
     });
 
     socket.on('partner_liked', ({ movie }) => {
+      console.log('[SOCKET] partner_liked received', { movieId: movie?.tmdbId, timestamp: Date.now() });
       // Validate movie object before injecting into queue
       if (!movie || typeof movie.tmdbId !== 'number') {
         console.error('Received invalid movie in partner_liked event:', movie);

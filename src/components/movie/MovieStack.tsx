@@ -12,17 +12,14 @@ import { useSocket } from '@/hooks/useSocket';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useCardStackHeight } from '@/hooks/useCardStackHeight';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
-import type { Movie } from '@/types/movie';
 import type { UserSlot } from '@/types/room';
 
 interface MovieStackProps {
-  movies: Movie[];
   roomCode: string;
   userSlot: UserSlot;
 }
 
 export function MovieStack({
-  movies,
   roomCode,
   userSlot,
 }: MovieStackProps) {
@@ -30,7 +27,7 @@ export function MovieStack({
   const locale = useLocale();
   const cardStackHeight = useCardStackHeight();
   const { addSwipe } = useSwipeStore();
-  const { getVisibleMovies, consumeNext, currentIndex, queue, isInitialized } = useQueueStore();
+  const { getVisibleMovies, consumeNext, currentIndex, queue, isInitialized, setAnimating, processPendingLikes } = useQueueStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
   const { trackSwipe } = useAnalytics();
   const topCardRef = useRef<MovieCardRef | null>(null);
@@ -44,9 +41,9 @@ export function MovieStack({
   const token = useAuthToken();
 
   // Refs to hold latest values for stable callback
-  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked });
+  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes });
   useEffect(() => {
-    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked };
+    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes };
   });
 
   // Callback ref to ensure proper assignment
@@ -60,11 +57,17 @@ export function MovieStack({
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', movieId: number) => {
       // Check and set swipe lock synchronously to prevent race conditions
-      if (swipeLockRef.current) return;
+      if (swipeLockRef.current) {
+        console.log('[SWIPE] Blocked - swipeLockRef is true', { movieId, direction });
+        return;
+      }
       swipeLockRef.current = true;
+      console.log('[SWIPE] Started', { movieId, direction, timestamp: Date.now() });
 
-      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked } = stateRef.current;
+      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes } = stateRef.current;
       setIsSwipeLocked(true);
+      setAnimating(true);
+      console.log('[SWIPE] Locks set', { isSwipeLocked: true, isAnimating: true });
 
       const action = direction === 'right' ? 'like' : 'skip';
       addSwipe(movieId, action === 'like');
@@ -89,33 +92,51 @@ export function MovieStack({
       }
 
       consumeNext();
+      console.log('[SWIPE] consumeNext called, waiting for animation...');
 
       // Unlock after exit animation completes (350ms exit duration + buffer)
       setTimeout(() => {
         swipeLockRef.current = false;
         setIsSwipeLocked(false);
+        setAnimating(false);
+        console.log('[SWIPE] Animation complete, locks released', { timestamp: Date.now() });
+
+        // Process any pending partner likes that arrived during animation
+        const { pendingPartnerLikes } = useQueueStore.getState();
+        console.log('[SWIPE] Processing pending likes', { count: pendingPartnerLikes.length, movies: pendingPartnerLikes.map(m => m.tmdbId) });
+        processPendingLikes();
       }, 400);
     },
     []
   );
 
   // Get visible cards from queue (current + next 2)
-  // Use queue if initialized, fallback to legacy movies prop
+  // Only show cards after queue is initialized to prevent flash of wrong cards
   const visibleItems = isInitialized ? getVisibleMovies(3) : [];
-  const visibleMovies = isInitialized
-    ? visibleItems.map((item) => item.movie)
-    : movies.slice(currentIndex, currentIndex + 3);
+  const visibleMovies = visibleItems.map((item) => item.movie);
+
+  // Log render with visible movies
+  console.log('[RENDER] MovieStack', {
+    currentIndex,
+    queueLength: queue.length,
+    visibleMovieIds: visibleMovies.map(m => m.tmdbId),
+    isSwipeLocked,
+    swipeLockRef: swipeLockRef.current
+  });
 
   const handleButtonClick = (direction: 'left' | 'right') => {
-    if (swipeLockRef.current) return; // Prevent button clicks during animation
+    console.log('[BUTTON] Click', { direction, swipeLockRef: swipeLockRef.current });
+    if (swipeLockRef.current) {
+      console.log('[BUTTON] Click BLOCKED');
+      return;
+    }
     if (topCardRef.current && visibleMovies[0]) {
       topCardRef.current.swipe(direction);
     }
   };
 
-  // Check if we've run out of movies
-  const totalMovies = isInitialized ? queue.length : movies.length;
-  if (currentIndex >= totalMovies) {
+  // Check if we've run out of movies (only check if queue is initialized)
+  if (isInitialized && currentIndex >= queue.length) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-4" style={{ height: cardStackHeight }}>
         <div className="mb-4 text-muted-foreground">
