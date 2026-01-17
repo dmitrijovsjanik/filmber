@@ -13,10 +13,10 @@ export const GET = withAdmin(async (request: NextRequest) => {
   const sortBy = searchParams.get('sortBy') || 'lastSeenAt';
   const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-  // Time boundaries for activity stats
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // Time boundaries for activity stats (as ISO strings for raw SQL)
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // Build order by clause
   const orderByColumn = (() => {
