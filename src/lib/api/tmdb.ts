@@ -424,13 +424,14 @@ class TMDBClient {
     };
   }
 
-  // Get videos (trailers) for a movie
-  async getMovieVideos(movieId: number): Promise<TMDBVideo[]> {
-    const data = await this.fetch<{ results: TMDBVideo[] }>(`/movie/${movieId}/videos`);
-    // Filter to only YouTube trailers, prioritize official trailers
-    return data.results
-      .filter(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+  // Sort videos: Vimeo first (works in Russia), then YouTube, official trailers prioritized
+  private sortVideos(videos: TMDBVideo[]): TMDBVideo[] {
+    return videos
+      .filter(v => (v.site === 'Vimeo' || v.site === 'YouTube') && (v.type === 'Trailer' || v.type === 'Teaser'))
       .sort((a, b) => {
+        // Vimeo first (YouTube is blocked in Russia)
+        if (a.site === 'Vimeo' && b.site !== 'Vimeo') return -1;
+        if (a.site !== 'Vimeo' && b.site === 'Vimeo') return 1;
         // Official trailers first
         if (a.official && !b.official) return -1;
         if (!a.official && b.official) return 1;
@@ -441,18 +442,16 @@ class TMDBClient {
       });
   }
 
+  // Get videos (trailers) for a movie
+  async getMovieVideos(movieId: number): Promise<TMDBVideo[]> {
+    const data = await this.fetch<{ results: TMDBVideo[] }>(`/movie/${movieId}/videos`);
+    return this.sortVideos(data.results);
+  }
+
   // Get videos (trailers) for a TV series
   async getTVVideos(tvId: number): Promise<TMDBVideo[]> {
     const data = await this.fetch<{ results: TMDBVideo[] }>(`/tv/${tvId}/videos`);
-    return data.results
-      .filter(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
-      .sort((a, b) => {
-        if (a.official && !b.official) return -1;
-        if (!a.official && b.official) return 1;
-        if (a.type === 'Trailer' && b.type !== 'Trailer') return -1;
-        if (a.type !== 'Trailer' && b.type === 'Trailer') return 1;
-        return 0;
-      });
+    return this.sortVideos(data.results);
   }
 
   // Static methods delegate to standalone functions from poster.ts

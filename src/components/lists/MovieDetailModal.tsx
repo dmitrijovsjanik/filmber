@@ -113,6 +113,7 @@ export function MovieDetailModal({
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
+  const [trailerSite, setTrailerSite] = useState<'YouTube' | 'Vimeo'>('YouTube');
 
   // Expanded poster mode state - persisted in localStorage
   const [isExpandedPoster, setIsExpandedPoster] = useState(() => {
@@ -176,6 +177,7 @@ export function MovieDetailModal({
         const data = await response.json();
         if (data.trailer?.key) {
           setTrailerKey(data.trailer.key);
+          setTrailerSite(data.trailer.site || 'YouTube');
           setShowTrailer(true);
         }
       }
@@ -813,6 +815,7 @@ export function MovieDetailModal({
         isOpen={showTrailer}
         onClose={() => setShowTrailer(false)}
         videoKey={trailerKey}
+        videoSite={trailerSite}
         title={displayTitle}
       />
     </>

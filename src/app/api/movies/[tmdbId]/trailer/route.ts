@@ -39,6 +39,7 @@ export async function GET(
           key: trailer.key,
           name: trailer.name,
           type: trailer.type,
+          site: trailer.site, // 'YouTube' or 'Vimeo'
         }
       },
       {

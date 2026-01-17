@@ -8,10 +8,20 @@ interface TrailerModalProps {
   isOpen: boolean;
   onClose: () => void;
   videoKey: string | null;
+  videoSite?: 'YouTube' | 'Vimeo';
   title?: string;
 }
 
-export function TrailerModal({ isOpen, onClose, videoKey, title }: TrailerModalProps) {
+// Get embed URL based on video platform
+function getEmbedUrl(videoKey: string, site: 'YouTube' | 'Vimeo'): string {
+  if (site === 'Vimeo') {
+    return `https://player.vimeo.com/video/${videoKey}?autoplay=1&title=0&byline=0&portrait=0`;
+  }
+  // YouTube (default)
+  return `https://www.youtube-nocookie.com/embed/${videoKey}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`;
+}
+
+export function TrailerModal({ isOpen, onClose, videoKey, videoSite = 'YouTube', title }: TrailerModalProps) {
   const tCommon = useTranslations('common');
 
   return (
@@ -62,9 +72,9 @@ export function TrailerModal({ isOpen, onClose, videoKey, title }: TrailerModalP
           <div className="relative w-full aspect-video bg-neutral-900 rounded-lg overflow-hidden">
             {isOpen && videoKey && (
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${videoKey}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`}
+                src={getEmbedUrl(videoKey, videoSite)}
                 className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 title={title || 'Trailer'}
               />
