@@ -61,7 +61,7 @@ export function MovieBadges({
     <>
       {/* Media type badge */}
       {showMediaType && isTv && (
-        <Badge variant={tvBadgeVariant}>{t('tvSeries')}</Badge>
+        <Badge variant={tvBadgeVariant} size={isCard ? 'lg' : 'default'}>{t('tvSeries')}</Badge>
       )}
       {showMediaType && !isTv && variant === 'list' && (
         <Badge variant="movie">{t('film')}</Badge>
@@ -69,32 +69,32 @@ export function MovieBadges({
 
       {/* Year */}
       {year && (
-        <Badge variant={infoBadgeVariant}>{year}</Badge>
+        <Badge variant={infoBadgeVariant} size={isCard ? 'lg' : 'default'}>{year}</Badge>
       )}
 
       {/* Runtime or Seasons/Episodes */}
       {hasTvInfo ? (
-        <Badge variant={infoBadgeVariant}>
+        <Badge variant={infoBadgeVariant} size={isCard ? 'lg' : 'default'}>
           {numberOfSeasons ? `${numberOfSeasons}s` : ''}
           {numberOfSeasons && numberOfEpisodes ? ' · ' : ''}
           {numberOfEpisodes ? `${numberOfEpisodes}ep` : ''}
         </Badge>
       ) : runtime ? (
-        <Badge variant={infoBadgeVariant}>
+        <Badge variant={infoBadgeVariant} size={isCard ? 'lg' : 'default'}>
           {t('runtime', { minutes: runtime })}
         </Badge>
       ) : null}
 
       {/* Genres */}
       {genres.slice(0, maxGenres).map((genre) => (
-        <Badge key={genre} variant={infoBadgeVariant}>
+        <Badge key={genre} variant={infoBadgeVariant} size={isCard ? 'lg' : 'default'}>
           {genre}
         </Badge>
       ))}
 
       {/* Average rating */}
       {averageRating && (
-        <Badge variant="rating">{averageRating}</Badge>
+        <Badge variant="rating" size={isCard ? 'lg' : 'default'}>{averageRating}</Badge>
       )}
     </>
   );

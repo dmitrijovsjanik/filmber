@@ -318,6 +318,7 @@ function ExternalSearchContent({
             {...result}
             onAddedToList={handleAddedFromSearch}
             showMediaTypeBadge={searchFilters.mediaType === 'all'}
+            priority={index === 0}
           />
         ))}
       </div>
@@ -478,7 +479,7 @@ function LocalListContent({
 
   return (
     <div className="space-y-3">
-      {filteredItems.map((item) => (
+      {filteredItems.map((item, index) => (
         <MovieListItem
           key={item.id}
           {...item}
@@ -489,6 +490,7 @@ function LocalListContent({
           onWatchNotYet={() => handleWatchNotYet(item.tmdbId)}
           showStatusBadge={statusFilter === 'all'}
           showRatingBadge={ratingFilter === null}
+          priority={index === 0}
         />
       ))}
     </div>

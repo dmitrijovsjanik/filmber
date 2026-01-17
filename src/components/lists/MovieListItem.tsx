@@ -59,6 +59,8 @@ interface MovieListItemProps {
   showMediaTypeBadge?: boolean;
   canAddToList?: boolean;
   source?: MovieSource;
+  /** Set to true for the first item to prioritize LCP image loading */
+  priority?: boolean;
 }
 
 export function MovieListItem({
@@ -80,6 +82,7 @@ export function MovieListItem({
   showMediaTypeBadge = true,
   canAddToList = true,
   source,
+  priority = false,
 }: MovieListItemProps) {
   const t = useTranslations('lists');
   const locale = useLocale();
@@ -144,15 +147,15 @@ export function MovieListItem({
         onClick={() => setIsSheetOpen(true)}
       >
         {/* Poster */}
-        <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+        <div className="relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
           {movie?.posterPath || movie?.posterUrl ? (
             <OptimizedFadeImage
               src={posterUrl}
               alt={displayTitle}
-              width={80}
-              height={112}
+              fill
               sizes="80px"
-              className="h-full w-full object-cover"
+              className="object-cover"
+              priority={priority}
               fallback={
                 <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                   <HugeiconsIcon icon={Film02Icon} size={32} />

@@ -306,7 +306,7 @@ export function MovieDetailSheet({
           {/* Badges - fixed */}
           <div className="mt-4 flex flex-wrap items-center gap-1.5 flex-shrink-0">
             <MovieBadges
-              variant="list"
+              variant="card"
               mediaType={movie?.mediaType}
               releaseDate={movie?.releaseDate}
               runtime={movie?.runtime}

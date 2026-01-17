@@ -8,6 +8,7 @@ import type { SearchResult } from '@/types/movie';
 interface SearchResultItemProps extends SearchResult {
   onAddedToList?: () => void;
   showMediaTypeBadge?: boolean;
+  priority?: boolean;
 }
 
 // Wrapped with memo to prevent unnecessary rerenders when list state changes
@@ -36,6 +37,7 @@ export const SearchResultItem = memo(
       numberOfEpisodes,
       onAddedToList,
       showMediaTypeBadge = true,
+      priority = false,
     },
     ref
   ) {
@@ -81,6 +83,7 @@ export const SearchResultItem = memo(
           showMediaTypeBadge={showMediaTypeBadge}
           canAddToList={canAddToList}
           source={source}
+          priority={priority}
         />
       </div>
     );
