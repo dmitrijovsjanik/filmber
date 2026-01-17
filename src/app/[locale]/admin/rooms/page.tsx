@@ -1,6 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { DataTable } from '@/components/admin/DataTable';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface RoomData {
   id: string;
@@ -24,6 +27,9 @@ const statusColors: Record<string, string> = {
 };
 
 export default function RoomsPage() {
+  const pathname = usePathname();
+  const locale = pathname.split('/')[1] || 'en';
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('ru-RU', {
@@ -36,7 +42,17 @@ export default function RoomsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Rooms</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Rooms</h2>
+        <Tabs value="list">
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="analytics" asChild>
+              <Link href={`/${locale}/admin/rooms/analytics`}>Analytics</Link>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <DataTable<RoomData>
         endpoint="/api/admin/rooms"
         columns={[

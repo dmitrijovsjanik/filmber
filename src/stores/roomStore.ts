@@ -74,6 +74,9 @@ export const useRoomStore = create<RoomState>()(
           userSlot: slot,
           moviePoolSeed: seed,
           isSoloMode: false,
+          // Reset match state for new session
+          isMatchFound: false,
+          matchedMovieId: null,
         }),
 
       setSoloMode: (seed) =>
@@ -83,6 +86,9 @@ export const useRoomStore = create<RoomState>()(
           roomCode: null,
           pin: null,
           userSlot: null,
+          // Reset match state for new session
+          isMatchFound: false,
+          matchedMovieId: null,
         }),
 
       setConnected: (connected) => set({ isConnected: connected }),

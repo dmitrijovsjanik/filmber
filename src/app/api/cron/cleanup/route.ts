@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rooms, swipes, roomQueues, watchPrompts } from '@/lib/db/schema';
-import { eq, lt, and, or, isNotNull, inArray } from 'drizzle-orm';
+import { eq, lt, and, or, isNotNull, isNull, inArray } from 'drizzle-orm';
 import { cleanupExpiredSessions } from '@/lib/auth/session';
 
 // Cron secret for authentication
@@ -95,6 +95,8 @@ async function handleCleanup(request: NextRequest) {
     }
 
     // 4. Cleanup expired rooms WITHOUT matches (older than 7 days)
+    // Note: expiresAt may be null for rooms closed manually without a match
+    // In that case, use createdAt as fallback
     const expiredRoomsCutoff = new Date(
       Date.now() - EXPIRED_ROOMS_RETENTION_DAYS * 24 * 60 * 60 * 1000
     );
@@ -105,7 +107,14 @@ async function handleCleanup(request: NextRequest) {
       .where(
         and(
           eq(rooms.status, 'expired'),
-          lt(rooms.expiresAt, expiredRoomsCutoff)
+          or(
+            lt(rooms.expiresAt, expiredRoomsCutoff),
+            // For rooms without expiresAt (manually closed), use createdAt
+            and(
+              isNull(rooms.matchedMovieId),
+              lt(rooms.createdAt, expiredRoomsCutoff)
+            )
+          )
         )
       );
 

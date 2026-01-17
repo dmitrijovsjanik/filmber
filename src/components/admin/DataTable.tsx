@@ -51,15 +51,16 @@ export function DataTable<T extends object>({
 
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '20',
-      });
+      // Parse existing params from endpoint URL
+      const [baseUrl, existingParams] = endpoint.split('?');
+      const params = new URLSearchParams(existingParams || '');
+      params.set('page', page.toString());
+      params.set('limit', '20');
       if (searchQuery) {
         params.set('search', searchQuery);
       }
 
-      const response = await fetch(`${endpoint}?${params}`, {
+      const response = await fetch(`${baseUrl}?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

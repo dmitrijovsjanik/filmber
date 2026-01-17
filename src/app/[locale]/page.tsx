@@ -11,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { H1, Lead, Muted } from '@/components/ui/typography';
 import { DeckSettingsSheet } from '@/components/deck/DeckSettingsSheet';
 import { useRoomStore } from '@/stores/roomStore';
+import { useSwipeStore } from '@/stores/swipeStore';
+import { useQueueStore } from '@/stores/queueStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAuth } from '@/hooks/useAuth';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
@@ -53,6 +55,8 @@ export default function HomePage() {
   const locale = useLocale();
   const router = useRouter();
   const { setRoom, setSoloMode } = useRoomStore();
+  const resetSwipe = useSwipeStore((state) => state.reset);
+  const resetQueue = useQueueStore((state) => state.reset);
   const { trackRoomCreated } = useAnalytics();
   const { isAuthenticated, isInitialized } = useAuth();
   const { startParam, isReady: isTgReady } = useTelegramWebApp();
@@ -119,6 +123,10 @@ export default function HomePage() {
   };
 
   const handlePickMovie = async () => {
+    // Reset previous session state before starting new session
+    resetSwipe();
+    resetQueue();
+
     if (mode === 'solo') {
       // Solo mode: generate seed and go directly to swipe
       const seed = Math.floor(Math.random() * 1000000);
