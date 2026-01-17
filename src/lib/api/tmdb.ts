@@ -24,6 +24,26 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 // HTTP proxy for TMDB requests (v2ray on server)
 const TMDB_PROXY_URL = process.env.TMDB_PROXY_URL;
 
+// In-memory genre cache (genres rarely change - cache for 24 hours)
+const GENRE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+interface GenreCache {
+  data: { id: number; name: string }[];
+  timestamp: number;
+}
+const genreCache = new Map<string, GenreCache>();
+
+function getCachedGenres(key: string): { id: number; name: string }[] | null {
+  const cached = genreCache.get(key);
+  if (cached && Date.now() - cached.timestamp < GENRE_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedGenres(key: string, data: { id: number; name: string }[]): void {
+  genreCache.set(key, { data, timestamp: Date.now() });
+}
+
 // Custom fetch that uses proxy if configured
 async function tmdbFetch(url: string, options: RequestInit = {}): Promise<Response> {
   if (TMDB_PROXY_URL) {
@@ -139,14 +159,19 @@ class TMDBClient {
     };
   }
 
-  // Get list of movie genres
+  // Get list of movie genres (cached for 24 hours)
   async getGenres(
     language: 'en-US' | 'ru-RU' = 'en-US'
   ): Promise<{ id: number; name: string }[]> {
+    const cacheKey = `movie:${language}`;
+    const cached = getCachedGenres(cacheKey);
+    if (cached) return cached;
+
     const data = await this.fetch<{ genres: { id: number; name: string }[] }>(
       '/genre/movie/list',
       { language }
     );
+    setCachedGenres(cacheKey, data.genres);
     return data.genres;
   }
 
@@ -338,14 +363,19 @@ class TMDBClient {
     };
   }
 
-  // Get list of TV genres
+  // Get list of TV genres (cached for 24 hours)
   async getTVGenres(
     language: 'en-US' | 'ru-RU' = 'en-US'
   ): Promise<{ id: number; name: string }[]> {
+    const cacheKey = `tv:${language}`;
+    const cached = getCachedGenres(cacheKey);
+    if (cached) return cached;
+
     const data = await this.fetch<{ genres: { id: number; name: string }[] }>(
       '/genre/tv/list',
       { language }
     );
+    setCachedGenres(cacheKey, data.genres);
     return data.genres;
   }
 
