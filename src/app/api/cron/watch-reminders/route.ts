@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         listId: userMovieLists.id,
         userId: userMovieLists.userId,
         tmdbId: userMovieLists.tmdbId,
+        unifiedMovieId: userMovieLists.unifiedMovieId,
         watchStartedAt: userMovieLists.watchStartedAt,
         user: {
           telegramId: users.telegramId,
@@ -127,6 +128,13 @@ export async function GET(request: NextRequest) {
     const errors: string[] = [];
 
     for (const item of moviesToNotify) {
+      // Check if prompt already exists
+      const existingPrompt = existingPrompts.find(
+        (p) => p.userId === item.userId && p.tmdbId === item.tmdbId
+      );
+
+      let messageSent = false;
+
       try {
         const isRussian = item.user.languageCode === 'ru';
         const movieTitle =
@@ -146,20 +154,26 @@ export async function GET(request: NextRequest) {
           reply_markup: keyboard,
         });
 
-        // Create or update prompt record
-        const existingPrompt = existingPrompts.find(
-          (p) => p.userId === item.userId && p.tmdbId === item.tmdbId
-        );
+        messageSent = true;
+        sentCount++;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`User ${item.user.telegramId}: ${errorMsg}`);
+        console.error(`Failed to send reminder to ${item.user.telegramId}:`, error);
+      }
 
+      // Always create/update prompt record to prevent retry loops
+      // For failed sends, mark as 'send_failed' so we don't retry
+      try {
         if (existingPrompt) {
-          // Update existing prompt (re-send after snooze expired)
           await db
             .update(watchPrompts)
             .set({
               promptedAt: now,
-              respondedAt: null,
-              response: null,
+              respondedAt: messageSent ? null : now,
+              response: messageSent ? null : 'send_failed',
               snoozeUntil: null,
+              unifiedMovieId: item.unifiedMovieId,
             })
             .where(
               and(
@@ -168,19 +182,17 @@ export async function GET(request: NextRequest) {
               )
             );
         } else {
-          // Create new prompt
           await db.insert(watchPrompts).values({
             userId: item.userId,
             tmdbId: item.tmdbId,
+            unifiedMovieId: item.unifiedMovieId,
             promptedAt: now,
+            respondedAt: messageSent ? null : now,
+            response: messageSent ? null : 'send_failed',
           });
         }
-
-        sentCount++;
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`User ${item.user.telegramId}: ${errorMsg}`);
-        console.error(`Failed to send reminder to ${item.user.telegramId}:`, error);
+      } catch (dbError) {
+        console.error(`Failed to update watchPrompts for user ${item.userId}:`, dbError);
       }
     }
 

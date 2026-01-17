@@ -281,7 +281,7 @@ For the full experience, use the Mini App!`;
           )
         );
 
-      // Mark prompt as responded
+      // Mark prompt as responded (use tmdbId as primary key for watchPrompts)
       await db
         .update(watchPrompts)
         .set({
@@ -291,7 +291,7 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(watchPrompts.userId, user.id),
-            eq(watchPrompts.unifiedMovieId, movie.id)
+            eq(watchPrompts.tmdbId, tmdbId)
           )
         );
 
@@ -366,7 +366,7 @@ For the full experience, use the Mini App!`;
           )
         );
 
-      // Mark prompt as responded
+      // Mark prompt as responded (use tmdbId as primary key for watchPrompts)
       await db
         .update(watchPrompts)
         .set({
@@ -376,7 +376,7 @@ For the full experience, use the Mini App!`;
         .where(
           and(
             eq(watchPrompts.userId, user.id),
-            eq(watchPrompts.unifiedMovieId, movie.id)
+            eq(watchPrompts.tmdbId, tmdbId)
           )
         );
 
