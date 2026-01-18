@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { users, userMovieLists, rooms, userSessions } from '@/lib/db/schema';
+import { users } from '@/lib/db/schema';
 import { sql, desc, count, asc } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
@@ -107,11 +107,6 @@ export const GET = withAdmin(async (request: NextRequest) => {
   // Get total count
   const [totalResult] = await db.select({ count: count() }).from(users);
   const total = totalResult?.count ?? 0;
-
-  // Debug log
-  if (usersWithStats.length > 0) {
-    console.log('[admin/users] First user stats:', JSON.stringify(usersWithStats[0], null, 2));
-  }
 
   return success({
     data: usersWithStats,

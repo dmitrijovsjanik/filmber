@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { rooms, swipes } from '@/lib/db/schema';
+import { rooms } from '@/lib/db/schema';
 import { sql, and, gte, isNotNull, count } from 'drizzle-orm';
 import { withAdmin } from '@/lib/auth/admin';
 import { success } from '@/lib/auth/middleware';
@@ -52,26 +52,27 @@ export const GET = withAdmin(async () => {
       .where(gte(rooms.createdAt, range.from));
 
     // Get average swipes per room (for matched rooms)
+    const rangeFromIso = range.from.toISOString();
     const [swipeStats] = await db
       .select({
-        avgSwipesToMatch: sql<number>`
-          COALESCE(AVG(swipe_count)::numeric(10,1), 0)
+        avgSwipesToMatch: sql<number>`(
+          SELECT COALESCE(AVG(swipe_count)::numeric(10,1), 0)
           FROM (
             SELECT COUNT(*) as swipe_count
-            FROM ${swipes}
-            WHERE ${swipes.roomId} IN (
-              SELECT id FROM ${rooms}
-              WHERE ${rooms.status} = 'matched'
-              AND ${rooms.createdAt} >= ${range.from}
+            FROM swipes
+            WHERE room_id IN (
+              SELECT id FROM rooms
+              WHERE status = 'matched'
+              AND created_at >= ${rangeFromIso}::timestamptz
             )
-            GROUP BY ${swipes.roomId}
+            GROUP BY room_id
           ) sub
-        `,
+        )`,
         totalSwipes: sql<number>`(
           SELECT COUNT(*)
-          FROM ${swipes} s
-          JOIN ${rooms} r ON s.room_id = r.id
-          WHERE r.created_at >= ${range.from}
+          FROM swipes s
+          JOIN rooms r ON s.room_id = r.id
+          WHERE r.created_at >= ${rangeFromIso}::timestamptz
         )::int`,
       })
       .from(sql`(SELECT 1) as dummy`);
