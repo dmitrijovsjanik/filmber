@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { AuthGuard } from '@/components/auth';
 import { useUser } from '@/stores/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { ReferralSection } from '@/components/referral';
 import {
   NotificationsOverlay,
   DeckSettingsOverlay,
   WhatsNewOverlay,
 } from '@/components/profile';
-import { H3, Muted } from '@/components/ui/typography';
+import { H3, H4, Muted } from '@/components/ui/typography';
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon, SparklesIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, LanguageSquareIcon, Notification01Icon, Settings02Icon, Tick02Icon, FavouriteIcon, SparklesIcon, User03Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { FadeImage } from '@/components/ui/FadeImage';
 import { localeNames, type Locale } from '@/i18n/config';
@@ -26,8 +27,10 @@ import { useLocaleSwitch } from '@/contexts/LocaleSwitchContext';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
+  const tAuth = useTranslations('auth');
   const locale = useLocale();
   const user = useUser();
+  const { isAuthenticated } = useAuth();
   const { switchLocale: globalSwitchLocale } = useLocaleSwitch();
   const [isLanguageSheetOpen, setIsLanguageSheetOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -39,6 +42,103 @@ export default function ProfilePage() {
     globalSwitchLocale(newLocale as Locale);
     setIsLanguageSheetOpen(false);
   };
+
+  const openTelegramBot = () => {
+    const botUsername = 'filmberonline_bot';
+    const url = `https://t.me/${botUsername}`;
+    window.open(url, '_blank');
+  };
+
+  // Guest profile view
+  if (!isAuthenticated) {
+    return (
+      <AuthGuard>
+        <div className="flex-1 bg-background p-4 overflow-y-auto overscroll-contain">
+          <div className="mx-auto max-w-[280px]">
+            {/* Header */}
+            <header className="mb-8 text-center">
+              {/* Avatar */}
+              <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gray-400 to-gray-600">
+                <HugeiconsIcon icon={User03Icon} size={48} className="text-white" />
+              </div>
+
+              {/* Name */}
+              <H3 className="text-foreground">
+                {tAuth('guestProfile', { defaultValue: 'Guest' })}
+              </H3>
+              <Muted className="mt-2 max-w-xs">
+                {tAuth('guestProfileHint', {
+                  defaultValue: 'Log in to save your movies and sync across devices',
+                })}
+              </Muted>
+            </header>
+
+            {/* Login Button */}
+            <Button onClick={openTelegramBot} className="w-full mb-8" size="lg">
+              {tAuth('loginButton', { defaultValue: 'Log in with Telegram' })}
+            </Button>
+
+            {/* Menu - only language for guests */}
+            <div className="overflow-hidden rounded-xl bg-muted/50">
+              <button
+                onClick={() => setIsLanguageSheetOpen(true)}
+                className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+              >
+                <span className="text-muted-foreground">
+                  <HugeiconsIcon icon={LanguageSquareIcon} size={20} />
+                </span>
+                <span className="flex-1 font-medium text-foreground">
+                  {t('language', { defaultValue: 'Language' })}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {localeNames[locale as Locale]}
+                </span>
+                <HugeiconsIcon icon={ArrowRight01Icon} size={20} className="text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Version & Copyright */}
+            <p className="mt-8 text-center text-xs text-muted-foreground">
+              Filmber ver {process.env.NEXT_PUBLIC_BUILD_ID} • © {t('copyright')}
+              <br />
+              {t('madeWith')} ❤️{' '}
+              <a
+                href="https://t.me/ovsjanik"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                @ovsjanik
+              </a>
+            </p>
+          </div>
+        </div>
+
+        {/* Language Sheet */}
+        <Sheet open={isLanguageSheetOpen} onOpenChange={setIsLanguageSheetOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl">
+            <SheetHeader className="text-left">
+              <SheetTitle>{t('language', { defaultValue: 'Language' })}</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-1">
+              {Object.entries(localeNames).map(([loc, name]) => (
+                <button
+                  key={loc}
+                  onClick={() => handleLocaleChange(loc)}
+                  className="flex min-h-12 w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors hover:bg-accent"
+                >
+                  <span className="font-medium text-foreground">{name}</span>
+                  {locale === loc && (
+                    <HugeiconsIcon icon={Tick02Icon} size={20} className="text-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>

@@ -48,8 +48,9 @@ export function BottomNav() {
   const hideOnPaths = ['/swipe', '/room/'];
   const shouldHide = hideOnPaths.some((path) => pathname.includes(path));
 
-  // Hide navbar for unauthenticated users, while auth is initializing, or when keyboard is open
-  if (shouldHide || !isInitialized || !isAuthenticated || isKeyboardVisible) {
+  // Hide navbar while auth is initializing, on swipe pages, or when keyboard is open
+  // Note: We now show nav for unauthenticated users too
+  if (shouldHide || !isInitialized || isKeyboardVisible) {
     return null;
   }
 

@@ -26,7 +26,7 @@ export function MovieStack({
   const t = useTranslations('swipe');
   const locale = useLocale();
   const cardStackHeight = useCardStackHeight();
-  const { addSwipe } = useSwipeStore();
+  const { addSwipe, addLikedMovieDetails } = useSwipeStore();
   const { getVisibleMovies, consumeNext, currentIndex, queue, isInitialized, setAnimating, processPendingLikes } = useQueueStore();
   const { emitSwipe } = useSocket(roomCode, userSlot);
   const { trackSwipe } = useAnalytics();
@@ -42,10 +42,10 @@ export function MovieStack({
 
   // Refs to hold latest values for stable callback
   // This pattern intentionally omits dependencies to always capture latest values
-  const stateRef = useRef({ isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes });
+  const stateRef = useRef({ isAuthenticated, token, addSwipe, addLikedMovieDetails, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    stateRef.current = { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes };
+    stateRef.current = { isAuthenticated, token, addSwipe, addLikedMovieDetails, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes };
   });
 
   // Callback ref to ensure proper assignment
@@ -66,7 +66,7 @@ export function MovieStack({
       swipeLockRef.current = true;
       console.log('[SWIPE] Started', { movieId, direction, timestamp: Date.now() });
 
-      const { isAuthenticated, token, addSwipe, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes } = stateRef.current;
+      const { isAuthenticated, token, addSwipe, addLikedMovieDetails, emitSwipe, trackSwipe, consumeNext, setIsSwipeLocked, setAnimating, processPendingLikes } = stateRef.current;
       setIsSwipeLocked(true);
       setAnimating(true);
       console.log('[SWIPE] Locks set', { isSwipeLocked: true, isAnimating: true });
@@ -75,6 +75,20 @@ export function MovieStack({
       addSwipe(movieId, action === 'like');
       emitSwipe(movieId, action);
       trackSwipe(direction, movieId);
+
+      // If liked, store movie details for auth prompt (for unauthenticated users)
+      if (direction === 'right') {
+        const { queue } = useQueueStore.getState();
+        const movie = queue.find((item) => item.movie.tmdbId === movieId)?.movie;
+        if (movie) {
+          addLikedMovieDetails({
+            tmdbId: movie.tmdbId,
+            posterPath: movie.posterUrl,
+            title: movie.title,
+            mediaType: movie.mediaType || 'movie',
+          });
+        }
+      }
 
       // If authenticated and liked, save to "want to watch" list
       // Note: Only matched movies get "watching" status (with timer) - handled by match event

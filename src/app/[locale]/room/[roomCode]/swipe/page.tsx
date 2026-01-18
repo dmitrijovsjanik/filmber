@@ -6,10 +6,12 @@ import { useLocale, useTranslations } from 'next-intl';
 import { MovieStack } from '@/components/movie/MovieStack';
 import { WaitingRoom } from '@/components/room/WaitingRoom';
 import { MatchFound } from '@/components/room/MatchFound';
+import { MatchAuthPrompt } from '@/components/auth/MatchAuthPrompt';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
-import { useSwipeStore } from '@/stores/swipeStore';
+import { useSwipeStore, useLikedMoviesDetails } from '@/stores/swipeStore';
 import { useQueueStore, useShouldFetchMore, useQueueMeta } from '@/stores/queueStore';
+import { useIsAuthenticated } from '@/stores/authStore';
 import { useSocket } from '@/hooks/useSocket';
 import type { Movie } from '@/types/movie';
 
@@ -39,6 +41,8 @@ export default function SwipePage() {
   } = useRoomStore();
 
   const { reset: resetSwipe } = useSwipeStore();
+  const likedMoviesDetails = useLikedMoviesDetails();
+  const isAuthenticated = useIsAuthenticated();
   const { initializeQueue, appendMovies, setFetchingMore, reset: resetQueue, queue, currentIndex, isInitialized } = useQueueStore();
   const shouldFetchMore = useShouldFetchMore();
   const queueMeta = useQueueMeta();
@@ -48,6 +52,9 @@ export default function SwipePage() {
   const [error, setError] = useState('');
   const hasRefetchedForPartner = useRef(false);
   const [fetchedMatchMovie, setFetchedMatchMovie] = useState<Movie | null>(null);
+
+  // State for auth prompt modal
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   // Initialize socket connection
   const { disconnect } = useSocket(roomCode, userSlot);
@@ -206,6 +213,15 @@ export default function SwipePage() {
   // Combined movie for match display
   const displayMatchMovie = matchedMovie || fetchedMatchMovie;
 
+  // Show auth prompt for unauthenticated users on match (once per session)
+  const hasShownAuthPromptRef = useRef(false);
+  useEffect(() => {
+    if (isMatchFound && !isAuthenticated && !hasShownAuthPromptRef.current) {
+      hasShownAuthPromptRef.current = true;
+      setShowAuthPrompt(true);
+    }
+  }, [isMatchFound, isAuthenticated]);
+
   // Handle leave room
   const handleLeaveRoom = () => {
     disconnect();
@@ -226,6 +242,14 @@ export default function SwipePage() {
         >
           {t('common.backToHome')}
         </button>
+
+        {/* Auth prompt modal for unauthenticated users */}
+        <MatchAuthPrompt
+          isOpen={showAuthPrompt}
+          onClose={() => setShowAuthPrompt(false)}
+          onContinueWithoutSave={() => setShowAuthPrompt(false)}
+          likedMovies={likedMoviesDetails}
+        />
       </div>
     );
   }

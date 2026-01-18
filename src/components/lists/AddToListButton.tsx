@@ -8,6 +8,7 @@ import { Loading02Icon, CheckmarkCircle02Icon, Playlist01Icon, Tick02Icon, Add01
 import { useAuthToken, useIsAuthenticated } from '@/stores/authStore';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { Small } from '@/components/ui/typography';
+import { MatchAuthPrompt } from '@/components/auth/MatchAuthPrompt';
 
 interface AddToListButtonProps {
   tmdbId: number;
@@ -30,6 +31,7 @@ export function AddToListButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<MovieStatus | null>(currentStatus);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const sizeClasses = {
     sm: 'w-8 h-8 text-lg',
@@ -83,14 +85,19 @@ export function AddToListButton({
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const handleButtonClick = () => {
+    if (!isAuthenticated) {
+      setShowAuthPrompt(true);
+      return;
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
+    <>
     <div className="relative">
       <motion.button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleButtonClick}
         disabled={isLoading}
         className={`${sizeClasses[size]} flex items-center justify-center rounded-full transition-colors ${
           status
@@ -169,5 +176,14 @@ export function AddToListButton({
         )}
       </AnimatePresence>
     </div>
+
+    {/* Auth prompt for unauthenticated users */}
+    <MatchAuthPrompt
+      isOpen={showAuthPrompt}
+      onClose={() => setShowAuthPrompt(false)}
+      onContinueWithoutSave={() => setShowAuthPrompt(false)}
+      likedMovies={[]}
+    />
+    </>
   );
 }

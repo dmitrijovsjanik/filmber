@@ -6,9 +6,10 @@ import { useLocale, useTranslations } from 'next-intl';
 import { AnimatePresence } from 'framer-motion';
 import { MovieCard, MovieCardRef } from '@/components/movie/MovieCard';
 import { MatchFound } from '@/components/room/MatchFound';
+import { MatchAuthPrompt } from '@/components/auth/MatchAuthPrompt';
 import { Loader } from '@/components/ui/Loader';
 import { useRoomStore } from '@/stores/roomStore';
-import { useSwipeStore, useSwipeStoreHydrated } from '@/stores/swipeStore';
+import { useSwipeStore, useSwipeStoreHydrated, useLikedMoviesDetails } from '@/stores/swipeStore';
 import { useIsAuthenticated, useAuthToken } from '@/stores/authStore';
 import { useDeckSettingsStore } from '@/stores/deckSettingsStore';
 import { useCardStackHeight } from '@/hooks/useCardStackHeight';
@@ -30,10 +31,14 @@ export default function SoloSwipePage() {
     hasHydrated,
   } = useRoomStore();
 
-  const { addSwipe, swipedMovieIds, reset: resetSwipe } = useSwipeStore();
+  const { addSwipe, addLikedMovieDetails, swipedMovieIds, reset: resetSwipe } = useSwipeStore();
   const swipeStoreHydrated = useSwipeStoreHydrated();
+  const likedMoviesDetails = useLikedMoviesDetails();
   const { mediaTypeFilter, loadSettings, isLoaded } = useDeckSettingsStore();
   const cardStackHeight = useCardStackHeight();
+
+  // State for auth prompt modal
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
 
   // Auth state for saving liked movies
@@ -107,6 +112,19 @@ export default function SoloSwipePage() {
       // If authenticated and liked, save to list with watch timer
       if (isLike) {
         const { isAuthenticated, token } = authRef.current;
+
+        // Find movie details for storing
+        const movie = movies.find((m) => m.tmdbId === movieId);
+        if (movie) {
+          // Store movie details for auth prompt
+          addLikedMovieDetails({
+            tmdbId: movie.tmdbId,
+            posterPath: movie.posterUrl,
+            title: movie.title,
+            mediaType: movie.mediaType || 'movie',
+          });
+        }
+
         if (isAuthenticated && token) {
           fetch('/api/lists', {
             method: 'POST',
@@ -127,7 +145,7 @@ export default function SoloSwipePage() {
         setMatchedMovieId(movieId);
       }
     },
-    [addSwipe, setMatchFound, setMatchedMovieId]
+    [addSwipe, addLikedMovieDetails, movies, setMatchFound, setMatchedMovieId]
   );
 
   // Filter out already-swiped movies to restore progress on page reload
@@ -152,6 +170,15 @@ export default function SoloSwipePage() {
   // Find matched movie
   const matchedMovie = movies.find((m) => m.tmdbId === matchedMovieId);
 
+  // Show auth prompt for unauthenticated users on match (once per session)
+  const hasShownAuthPromptRef = useRef(false);
+  useEffect(() => {
+    if (isMatchFound && !isAuthenticated && !hasShownAuthPromptRef.current) {
+      hasShownAuthPromptRef.current = true;
+      setShowAuthPrompt(true);
+    }
+  }, [isMatchFound, isAuthenticated]);
+
   // Show match found screen
   if (isMatchFound && matchedMovie) {
     return (
@@ -163,6 +190,14 @@ export default function SoloSwipePage() {
         >
           {t('common.backToHome')}
         </button>
+
+        {/* Auth prompt modal for unauthenticated users */}
+        <MatchAuthPrompt
+          isOpen={showAuthPrompt}
+          onClose={() => setShowAuthPrompt(false)}
+          onContinueWithoutSave={() => setShowAuthPrompt(false)}
+          likedMovies={likedMoviesDetails}
+        />
       </div>
     );
   }

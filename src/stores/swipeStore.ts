@@ -9,10 +9,20 @@ interface AnonymousSwipe {
   timestamp: number;
 }
 
+interface LikedMovieDetails {
+  tmdbId: number;
+  posterPath: string | null;
+  title: string;
+  mediaType: 'movie' | 'tv';
+}
+
 interface SwipeState {
   // Note: currentIndex is now managed by queueStore
   swipedMovieIds: number[];
   likedMovieIds: number[];
+
+  // Details of liked movies for displaying in auth prompt
+  likedMoviesDetails: LikedMovieDetails[];
 
   // Anonymous swipes for import after login
   anonymousSwipes: AnonymousSwipe[];
@@ -21,14 +31,17 @@ interface SwipeState {
   hasHydrated: boolean;
 
   addSwipe: (movieId: number, liked: boolean) => void;
+  addLikedMovieDetails: (movie: LikedMovieDetails) => void;
   hasSwipedMovie: (movieId: number) => boolean;
   hasLikedMovie: (movieId: number) => boolean;
+  getLikedMoviesDetails: () => LikedMovieDetails[];
   reset: () => void;
   setHasHydrated: (hydrated: boolean) => void;
 
   // Anonymous swipe management
   getAnonymousSwipes: () => AnonymousSwipe[];
   clearAnonymousSwipes: () => void;
+  clearLikedMoviesDetails: () => void;
 }
 
 export const useSwipeStore = create<SwipeState>()(
@@ -36,6 +49,7 @@ export const useSwipeStore = create<SwipeState>()(
     (set, get) => ({
       swipedMovieIds: [],
       likedMovieIds: [],
+      likedMoviesDetails: [],
       anonymousSwipes: [],
       hasHydrated: false,
 
@@ -54,15 +68,28 @@ export const useSwipeStore = create<SwipeState>()(
           ],
         })),
 
+      addLikedMovieDetails: (movie) =>
+        set((state) => {
+          // Avoid duplicates
+          if (state.likedMoviesDetails.some((m) => m.tmdbId === movie.tmdbId)) {
+            return state;
+          }
+          return {
+            likedMoviesDetails: [...state.likedMoviesDetails, movie],
+          };
+        }),
+
       hasSwipedMovie: (movieId) => get().swipedMovieIds.includes(movieId),
 
       hasLikedMovie: (movieId) => get().likedMovieIds.includes(movieId),
+
+      getLikedMoviesDetails: () => get().likedMoviesDetails,
 
       reset: () =>
         set({
           swipedMovieIds: [],
           likedMovieIds: [],
-          // Keep anonymousSwipes for potential import
+          // Keep anonymousSwipes and likedMoviesDetails for potential import
         }),
 
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
@@ -73,6 +100,11 @@ export const useSwipeStore = create<SwipeState>()(
         set({
           anonymousSwipes: [],
         }),
+
+      clearLikedMoviesDetails: () =>
+        set({
+          likedMoviesDetails: [],
+        }),
     }),
     {
       name: 'filmber-swipes',
@@ -80,6 +112,7 @@ export const useSwipeStore = create<SwipeState>()(
       partialize: (state) => ({
         swipedMovieIds: state.swipedMovieIds,
         likedMovieIds: state.likedMovieIds,
+        likedMoviesDetails: state.likedMoviesDetails,
         anonymousSwipes: state.anonymousSwipes,
       }),
       onRehydrateStorage: () => (state) => {
@@ -94,3 +127,7 @@ export const useAnonymousSwipeCount = () => useSwipeStore((state) => state.anony
 export const useLikedMovieCount = () => useSwipeStore((state) => state.likedMovieIds.length);
 export const useSwipedMovieIds = () => useSwipeStore((state) => state.swipedMovieIds);
 export const useSwipeStoreHydrated = () => useSwipeStore((state) => state.hasHydrated);
+export const useLikedMoviesDetails = () => useSwipeStore((state) => state.likedMoviesDetails);
+
+// Export type for use in components
+export type { LikedMovieDetails };

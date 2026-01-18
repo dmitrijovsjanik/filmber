@@ -90,7 +90,16 @@
     "maybeLater": "Позже",
     "loginTitle": "Добро пожаловать в Filmber",
     "loginDescription": "Найдите фильм, который понравится обоим. Войдите через Telegram, чтобы сохранять выбор и синхронизировать между устройствами.",
-    "loginButton": "Войти через Telegram"
+    "loginButton": "Войти через Telegram",
+    "matchAuthTitle": "Фильм найден!",
+    "matchAuthSubtitle": "Сохраните ваши находки",
+    "matchBenefitSave": "Сохранение понравившихся фильмов",
+    "matchBenefitPersonal": "Персональные рекомендации",
+    "matchBenefitNotify": "Уведомления о новинках",
+    "continueWithoutSave": "Продолжить без сохранения",
+    "syncSuccess": "Сохранено {count} фильмов в ваш список",
+    "guestProfile": "Гость",
+    "guestProfileHint": "Войдите, чтобы сохранять фильмы и синхронизировать между устройствами"
   },
   "lists": {
     "myLists": "Мои списки фильмов",

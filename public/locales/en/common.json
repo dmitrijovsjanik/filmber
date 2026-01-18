@@ -90,7 +90,16 @@
     "maybeLater": "Maybe later",
     "loginTitle": "Welcome to Filmber",
     "loginDescription": "Find movies you both love. Log in via Telegram to save your picks and sync across devices.",
-    "loginButton": "Log in with Telegram"
+    "loginButton": "Log in with Telegram",
+    "matchAuthTitle": "Movie Found!",
+    "matchAuthSubtitle": "Save your picks",
+    "matchBenefitSave": "Save your favorite movies",
+    "matchBenefitPersonal": "Get personalized recommendations",
+    "matchBenefitNotify": "Get notified about new releases",
+    "continueWithoutSave": "Continue without saving",
+    "syncSuccess": "Saved {count} movies to your list",
+    "guestProfile": "Guest",
+    "guestProfileHint": "Log in to save your movies and sync across devices"
   },
   "lists": {
     "myLists": "My Movie Lists",

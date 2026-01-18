@@ -185,83 +185,6 @@ export default function HomePage() {
     );
   }
 
-  // Show login screen for unauthenticated users
-  if (!isAuthenticated) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        {/* Centered content group */}
-        <div className="flex flex-col items-center w-full max-w-[280px]">
-          {/* Logo and tagline */}
-          <div className="text-center mb-8">
-            <H1 className="text-5xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent mb-4">
-              {t('app.name')}
-            </H1>
-            <Lead className="whitespace-pre-line">
-              {t('app.tagline')}
-            </Lead>
-          </div>
-
-          {/* Mode selector and action button */}
-          <div className="w-full space-y-6">
-            {/* Mode selector */}
-            <div className="flex justify-center">
-              <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-                <TabsList className="grid grid-cols-2 auto-cols-max">
-                  <TabsTrigger value="pair">{t('home.modePair')}</TabsTrigger>
-                  <TabsTrigger value="solo">{t('home.modeSolo')}</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-
-            {/* Pick movie button */}
-            <Button
-              onClick={handlePickMovie}
-              disabled={isCreating}
-                            className="w-full"
-              size="lg"
-            >
-              {isCreating ? <Loader size="sm" className="mr-2" /> : null}
-              {t('home.pickMovie')}
-            </Button>
-
-            {/* Error message */}
-            {error && (
-              <p className="text-destructive text-center text-sm">{error}</p>
-            )}
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {t('auth.loginTitle')}
-                </span>
-              </div>
-            </div>
-
-            {/* Login button - Telegram brand blue */}
-            <button
-              onClick={handleTelegramLogin}
-              className="min-h-12 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium bg-[#0088cc] hover:bg-[#0077b5] transition-colors"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-              </svg>
-              {t('auth.loginButton')}
-            </button>
-          </div>
-
-          {/* Footer */}
-          <footer className="mt-8 text-center text-sm text-muted-foreground">
-            <p>{t('footer.madeWith')}</p>
-          </footer>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       {/* Centered content group */}
@@ -312,6 +235,34 @@ export default function HomePage() {
           {/* Error message */}
           {error && (
             <Muted className="text-destructive text-center">{error}</Muted>
+          )}
+
+          {/* Login section for unauthenticated users */}
+          {!isAuthenticated && (
+            <>
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    {t('auth.loginTitle')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Login button - Telegram brand blue */}
+              <button
+                onClick={handleTelegramLogin}
+                className="min-h-12 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium bg-[#0088cc] hover:bg-[#0077b5] transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+                {t('auth.loginButton')}
+              </button>
+            </>
           )}
         </div>
 

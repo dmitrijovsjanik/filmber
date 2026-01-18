@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { useAuth } from '@/hooks/useAuth';
+import { useSyncLikesOnAuth } from '@/hooks/useSyncLikesOnAuth';
 
 interface TelegramAuthProviderProps {
   children: React.ReactNode;
@@ -12,6 +13,9 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   const { isTelegramMiniApp, initData, isReady } = useTelegramWebApp();
   const { authenticateWithTelegram, isAuthenticated, isInitialized } = useAuth();
   const [authAttempted, setAuthAttempted] = useState(false);
+
+  // Sync locally stored likes when user authenticates
+  useSyncLikesOnAuth();
 
   useEffect(() => {
     // Only attempt auth once, when we're in Telegram Mini App and have initData

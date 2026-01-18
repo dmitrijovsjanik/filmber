@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Film02Icon } from '@hugeicons/core-free-icons';
 import { MovieListSearchBar } from '@/components/molecules/MovieListSearchBar';
 import { MovieListItem } from './MovieListItem';
 import { MovieListSkeleton } from './MovieListSkeleton';
@@ -15,7 +17,9 @@ import { MovieDetailModal } from './MovieDetailModal';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
 import { ScrollFadeContainer } from '@/components/ui/ScrollFadeContainer';
+import { H4, Muted } from '@/components/ui/typography';
 import { useMovieListLogic } from '@/hooks/useMovieListLogic';
+import { useAuth } from '@/hooks/useAuth';
 import type { MovieStatus } from '@/lib/db/schema';
 import type { SearchResult, SearchFilters as SearchFiltersType } from '@/types/movie';
 import type { ListItem } from '@/stores/listStore';
@@ -28,8 +32,10 @@ interface MovieListGridProps {
 
 export function MovieListGrid({ initialStatus = 'all', openMovieId, openMovieType }: MovieListGridProps) {
   const t = useTranslations('lists');
+  const tAuth = useTranslations('auth');
   const locale = useLocale();
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   // Shared movie modal state - using the same shape as MovieDetailModal expects
   interface SharedMovieData {
@@ -210,6 +216,9 @@ export function MovieListGrid({ initialStatus = 'all', openMovieId, openMovieTyp
             expandedResults={expandedResults}
             expandedQuery={expandedQuery}
           />
+        ) : !isAuthenticated ? (
+          // Guest view - show empty state with login prompt
+          <GuestListContent t={t} tAuth={tAuth} />
         ) : (
           // Local list
           <LocalListContent
@@ -493,6 +502,43 @@ function LocalListContent({
           priority={index === 0}
         />
       ))}
+    </div>
+  );
+}
+
+// Guest list content component
+function GuestListContent({
+  t,
+  tAuth,
+}: {
+  t: ReturnType<typeof useTranslations<'lists'>>;
+  tAuth: ReturnType<typeof useTranslations<'auth'>>;
+}) {
+  const openTelegramBot = () => {
+    const botUsername = 'filmberonline_bot';
+    const url = `https://t.me/${botUsername}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="mb-6 flex justify-center text-primary">
+        <HugeiconsIcon icon={Film02Icon} size={64} className="opacity-50" />
+      </div>
+
+      <H4 className="mb-2 text-foreground">
+        {t('emptyList', { defaultValue: 'Your list is empty' })}
+      </H4>
+
+      <Muted className="mb-6 max-w-sm">
+        {tAuth('guestProfileHint', {
+          defaultValue: 'Log in to save your movies and sync across devices',
+        })}
+      </Muted>
+
+      <Button onClick={openTelegramBot} size="lg">
+        {tAuth('loginButton', { defaultValue: 'Log in with Telegram' })}
+      </Button>
     </div>
   );
 }
