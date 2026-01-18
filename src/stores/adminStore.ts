@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+interface RetentionMetric {
+  cohort: number;
+  returned: number;
+  rate: number;
+}
+
 interface AdminStats {
   users: {
     total: number;
@@ -22,6 +28,43 @@ interface AdminStats {
   activity: {
     swipesToday: number;
     matchesToday: number;
+  };
+  // New analytics metrics
+  activeUsers: {
+    dau: number;
+    wau: number;
+    mau: number;
+  };
+  retention: {
+    d1: RetentionMetric;
+    d7: RetentionMetric;
+    d30: RetentionMetric;
+  };
+  virality: {
+    totalReferrals: number;
+    usersWithReferrals: number;
+    kFactor: number;
+  };
+  growth: {
+    daily: Array<{ date: string; count: number }>;
+  };
+  // Funnel conversion (guest to auth)
+  funnel: {
+    roomsWithConnection: number;
+    roomsWithOneAuth: number;
+    roomsWithBothAuth: number;
+    authRate: number;
+    bothAuthRate: number;
+    // Guest to auth conversion
+    usersWithSwipeSync: number;
+    guestToAuthRate: number;
+  };
+  // Session depth
+  sessionDepth: {
+    avgSwipesPerRoom: number;
+    avgSwipesPerUser: number;
+    totalRoomSwipes: number;
+    totalUserSwipes: number;
   };
   serverTime: string;
 }

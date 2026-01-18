@@ -13,7 +13,13 @@ import {
   Activity01Icon,
   Clock01Icon,
   HeartCheckIcon,
+  ChartLineData02Icon,
+  RefreshIcon,
+  UserSharingIcon,
+  FilterIcon,
+  SwipeLeft04Icon,
 } from '@hugeicons/core-free-icons';
+import { SimpleLineChart } from '@/components/admin';
 
 function StatCard({
   title,
@@ -160,6 +166,174 @@ export default function AdminDashboard() {
             icon={HeartCheckIcon}
           />
         </div>
+      </section>
+
+      {/* Active Users (DAU/WAU/MAU) */}
+      <section>
+        <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+          Active Users
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            title="DAU"
+            value={stats.activeUsers.dau}
+            subtitle="Daily active users"
+            icon={UserMultiple02Icon}
+          />
+          <StatCard
+            title="WAU"
+            value={stats.activeUsers.wau}
+            subtitle="Weekly active users"
+            icon={UserMultiple02Icon}
+          />
+          <StatCard
+            title="MAU"
+            value={stats.activeUsers.mau}
+            subtitle="Monthly active users"
+            icon={UserMultiple02Icon}
+          />
+        </div>
+      </section>
+
+      {/* Retention */}
+      <section>
+        <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+          Retention
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            title="D1 Retention"
+            value={`${stats.retention.d1.rate}%`}
+            subtitle={`${stats.retention.d1.returned}/${stats.retention.d1.cohort} users`}
+            icon={RefreshIcon}
+          />
+          <StatCard
+            title="D7 Retention"
+            value={`${stats.retention.d7.rate}%`}
+            subtitle={`${stats.retention.d7.returned}/${stats.retention.d7.cohort} users`}
+            icon={RefreshIcon}
+          />
+          <StatCard
+            title="D30 Retention"
+            value={`${stats.retention.d30.rate}%`}
+            subtitle={`${stats.retention.d30.returned}/${stats.retention.d30.cohort} users`}
+            icon={RefreshIcon}
+          />
+        </div>
+      </section>
+
+      {/* Virality */}
+      <section>
+        <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+          Virality
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            title="K-factor"
+            value={stats.virality.kFactor.toFixed(2)}
+            subtitle="Viral coefficient"
+            icon={UserSharingIcon}
+          />
+          <StatCard
+            title="Total Referrals"
+            value={stats.virality.totalReferrals}
+            subtitle="Users who were referred"
+            icon={UserSharingIcon}
+          />
+          <StatCard
+            title="Active Referrers"
+            value={stats.virality.usersWithReferrals}
+            subtitle="Users who referred others"
+            icon={UserSharingIcon}
+          />
+        </div>
+      </section>
+
+      {/* Funnel Conversion */}
+      <section>
+        <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+          Funnel Conversion
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            title="Rooms Connected"
+            value={stats.funnel.roomsWithConnection}
+            subtitle="At least one user joined"
+            icon={GridIcon}
+          />
+          <StatCard
+            title="One Auth (Rooms)"
+            value={stats.funnel.roomsWithOneAuth}
+            subtitle={`${stats.funnel.authRate}% of rooms`}
+            icon={FilterIcon}
+          />
+          <StatCard
+            title="Both Auth (Rooms)"
+            value={stats.funnel.roomsWithBothAuth}
+            subtitle={`${stats.funnel.bothAuthRate}% of rooms`}
+            icon={FilterIcon}
+          />
+          <StatCard
+            title="Guest→Auth Users"
+            value={stats.funnel.usersWithSwipeSync}
+            subtitle={`${stats.funnel.guestToAuthRate}% of users`}
+            icon={UserMultiple02Icon}
+          />
+          <StatCard
+            title="Guest→Auth Rate"
+            value={`${stats.funnel.guestToAuthRate}%`}
+            subtitle="Synced anonymous swipes"
+            icon={UserMultiple02Icon}
+          />
+        </div>
+      </section>
+
+      {/* Session Depth */}
+      <section>
+        <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+          Session Depth
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Avg Swipes/Room"
+            value={stats.sessionDepth.avgSwipesPerRoom}
+            subtitle="Pair mode depth"
+            icon={SwipeLeft04Icon}
+          />
+          <StatCard
+            title="Avg Swipes/User"
+            value={stats.sessionDepth.avgSwipesPerUser}
+            subtitle="Solo mode depth"
+            icon={SwipeLeft04Icon}
+          />
+          <StatCard
+            title="Total Room Swipes"
+            value={stats.sessionDepth.totalRoomSwipes}
+            subtitle="All time (pair mode)"
+            icon={Activity01Icon}
+          />
+          <StatCard
+            title="Total User Swipes"
+            value={stats.sessionDepth.totalUserSwipes}
+            subtitle="All time (solo mode)"
+            icon={Activity01Icon}
+          />
+        </div>
+      </section>
+
+      {/* User Growth Chart */}
+      <section>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              User Growth (Last 30 days)
+            </CardTitle>
+            <HugeiconsIcon icon={ChartLineData02Icon} size={18} className="text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <SimpleLineChart data={stats.growth.daily} height={200} />
+          </CardContent>
+        </Card>
       </section>
 
       {/* Server Info */}
