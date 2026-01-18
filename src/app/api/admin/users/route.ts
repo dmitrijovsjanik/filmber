@@ -35,7 +35,8 @@ export const GET = withAdmin(async (request: NextRequest) => {
     }
   })();
 
-  // Get users with comprehensive stats
+  // Get users with comprehensive stats using raw SQL subqueries
+  // Note: Using "users"."id" reference to correlate with outer query
   const usersWithStats = await db
     .select({
       id: users.id,
@@ -48,75 +49,54 @@ export const GET = withAdmin(async (request: NextRequest) => {
       createdAt: users.createdAt,
       // Movie list count
       movieCount: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${userMovieLists}
-        WHERE ${userMovieLists.userId} = ${users.id}
+        SELECT COUNT(*) FROM user_movie_lists WHERE user_id = "users"."id"
       )::int`.as('movie_count'),
       // Watching count
       watchingCount: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${userMovieLists}
-        WHERE ${userMovieLists.userId} = ${users.id}
-        AND ${userMovieLists.status} = 'watching'
+        SELECT COUNT(*) FROM user_movie_lists WHERE user_id = "users"."id" AND status = 'watching'
       )::int`,
       // Watched count
       watchedCount: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${userMovieLists}
-        WHERE ${userMovieLists.userId} = ${users.id}
-        AND ${userMovieLists.status} = 'watched'
+        SELECT COUNT(*) FROM user_movie_lists WHERE user_id = "users"."id" AND status = 'watched'
       )::int`,
       // Total rooms (as creator or participant)
       roomsTotal: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE ${rooms.userAId} = ${users.id} OR ${rooms.userBId} = ${users.id}
+        SELECT COUNT(*) FROM rooms WHERE user_a_id = "users"."id" OR user_b_id = "users"."id"
       )::int`.as('rooms_total'),
       // Rooms created (as user A - creator)
       roomsCreated: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE ${rooms.userAId} = ${users.id}
+        SELECT COUNT(*) FROM rooms WHERE user_a_id = "users"."id"
       )::int`,
       // Rooms joined (as user B)
       roomsJoined: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE ${rooms.userBId} = ${users.id}
+        SELECT COUNT(*) FROM rooms WHERE user_b_id = "users"."id"
       )::int`,
       // Matched rooms
       roomsMatched: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE (${rooms.userAId} = ${users.id} OR ${rooms.userBId} = ${users.id})
-        AND ${rooms.status} = 'matched'
+        SELECT COUNT(*) FROM rooms
+        WHERE (user_a_id = "users"."id" OR user_b_id = "users"."id") AND status = 'matched'
       )::int`,
       // Session count
       sessionCount: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${userSessions}
-        WHERE ${userSessions.userId} = ${users.id}
+        SELECT COUNT(*) FROM user_sessions WHERE user_id = "users"."id"
       )::int`,
       // Activity: last day
       activityDay: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE (${rooms.userAId} = ${users.id} OR ${rooms.userBId} = ${users.id})
-        AND ${rooms.createdAt} >= ${oneDayAgo}
+        SELECT COUNT(*) FROM rooms
+        WHERE (user_a_id = "users"."id" OR user_b_id = "users"."id")
+        AND created_at >= ${oneDayAgo}::timestamptz
       )::int`,
       // Activity: last week
       activityWeek: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE (${rooms.userAId} = ${users.id} OR ${rooms.userBId} = ${users.id})
-        AND ${rooms.createdAt} >= ${oneWeekAgo}
+        SELECT COUNT(*) FROM rooms
+        WHERE (user_a_id = "users"."id" OR user_b_id = "users"."id")
+        AND created_at >= ${oneWeekAgo}::timestamptz
       )::int`.as('activity_week'),
       // Activity: last month
       activityMonth: sql<number>`(
-        SELECT COUNT(*)
-        FROM ${rooms}
-        WHERE (${rooms.userAId} = ${users.id} OR ${rooms.userBId} = ${users.id})
-        AND ${rooms.createdAt} >= ${oneMonthAgo}
+        SELECT COUNT(*) FROM rooms
+        WHERE (user_a_id = "users"."id" OR user_b_id = "users"."id")
+        AND created_at >= ${oneMonthAgo}::timestamptz
       )::int`,
     })
     .from(users)
