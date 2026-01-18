@@ -256,9 +256,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Normalize ё -> е for Russian search queries
+    // Handle ё/е equivalence for Russian search queries
+    // If query has ё, also search with е (normalizedQuery)
+    // If query has е, also search with ё (yoQuery)
     const normalizedQuery = query.replace(/ё/g, 'е').replace(/Ё/g, 'Е');
+    const yoQuery = query.replace(/е/g, 'ё').replace(/Е/g, 'Ё');
     const hasYoChar = query !== normalizedQuery;
+    const hasYeChar = query !== yoQuery;
 
     // Search in parallel: local database + TMDB
     // Use timeout for TMDB to handle VPN/blocking issues
@@ -268,16 +272,20 @@ export async function GET(request: NextRequest) {
     const shouldSearchMovies = mediaTypeFilter === 'all' || mediaTypeFilter === 'movie';
     const shouldSearchTV = mediaTypeFilter === 'all' || mediaTypeFilter === 'tv';
 
+    // Determine if we need alternate queries (ё↔е)
+    const needsAlternateQuery = hasYoChar || hasYeChar;
+    const alternateQuery = hasYoChar ? normalizedQuery : yoQuery;
+
     const [
       localResults,
       tmdbMovieEnResult,
       tmdbMovieRuResult,
-      tmdbMovieEnNormResult,
-      tmdbMovieRuNormResult,
+      tmdbMovieEnAltResult,
+      tmdbMovieRuAltResult,
       tmdbTVEnResult,
       tmdbTVRuResult,
-      tmdbTVEnNormResult,
-      tmdbTVRuNormResult,
+      tmdbTVEnAltResult,
+      tmdbTVRuAltResult,
     ] = await Promise.all([
       db
         .select()
@@ -305,16 +313,17 @@ export async function GET(request: NextRequest) {
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      shouldSearchMovies && hasYoChar
+      // Alternate query (ё→е or е→ё) for Movies
+      shouldSearchMovies && needsAlternateQuery
         ? withTimeout(
-            tmdb.searchMovies(normalizedQuery, 'en-US', page),
+            tmdb.searchMovies(alternateQuery, 'en-US', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      shouldSearchMovies && hasYoChar
+      shouldSearchMovies && needsAlternateQuery
         ? withTimeout(
-            tmdb.searchMovies(normalizedQuery, 'ru-RU', page),
+            tmdb.searchMovies(alternateQuery, 'ru-RU', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
@@ -334,16 +343,17 @@ export async function GET(request: NextRequest) {
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      shouldSearchTV && hasYoChar
+      // Alternate query (ё→е or е→ё) for TV
+      shouldSearchTV && needsAlternateQuery
         ? withTimeout(
-            tmdb.searchTV(normalizedQuery, 'en-US', page),
+            tmdb.searchTV(alternateQuery, 'en-US', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      shouldSearchTV && hasYoChar
+      shouldSearchTV && needsAlternateQuery
         ? withTimeout(
-            tmdb.searchTV(normalizedQuery, 'ru-RU', page),
+            tmdb.searchTV(alternateQuery, 'ru-RU', page),
             TMDB_TIMEOUT,
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
@@ -353,12 +363,12 @@ export async function GET(request: NextRequest) {
     // Extract TMDB data and check availability
     const tmdbMovieDataEn = tmdbMovieEnResult.data;
     const tmdbMovieDataRu = tmdbMovieRuResult.data;
-    const tmdbMovieDataEnNorm = tmdbMovieEnNormResult.data;
-    const tmdbMovieDataRuNorm = tmdbMovieRuNormResult.data;
+    const tmdbMovieDataEnAlt = tmdbMovieEnAltResult.data;
+    const tmdbMovieDataRuAlt = tmdbMovieRuAltResult.data;
     const tmdbTVDataEn = tmdbTVEnResult.data;
     const tmdbTVDataRu = tmdbTVRuResult.data;
-    const tmdbTVDataEnNorm = tmdbTVEnNormResult.data;
-    const tmdbTVDataRuNorm = tmdbTVRuNormResult.data;
+    const tmdbTVDataEnAlt = tmdbTVEnAltResult.data;
+    const tmdbTVDataRuAlt = tmdbTVRuAltResult.data;
 
     // Create sets for deduplication
     const localTmdbIds = new Set(localResults.filter((m) => m.tmdbId).map((m) => m.tmdbId));
@@ -397,35 +407,35 @@ export async function GET(request: NextRequest) {
     const seenTmdbTVIds = new Set<number>();
 
     // Process MOVIES
-    const allMovieEnResults = [...tmdbMovieDataEn.results, ...tmdbMovieDataEnNorm.results].filter((r) => {
+    const allMovieEnResults = [...tmdbMovieDataEn.results, ...tmdbMovieDataEnAlt.results].filter((r) => {
       if (seenTmdbMovieIds.has(r.id)) return false;
       seenTmdbMovieIds.add(r.id);
       return true;
     });
-    const allMovieRuResults = [...tmdbMovieDataRu.results, ...tmdbMovieDataRuNorm.results].filter((r) => {
+    const allMovieRuResults = [...tmdbMovieDataRu.results, ...tmdbMovieDataRuAlt.results].filter((r) => {
       if (seenTmdbMovieIds.has(r.id)) return false;
       seenTmdbMovieIds.add(r.id);
       return true;
     });
     const movieRuDataMap = new Map(
-      [...tmdbMovieDataRu.results, ...tmdbMovieDataRuNorm.results].map((r) => [r.id, { title: r.title, overview: r.overview }])
+      [...tmdbMovieDataRu.results, ...tmdbMovieDataRuAlt.results].map((r) => [r.id, { title: r.title, overview: r.overview }])
     );
     const allUniqueMovies = [...allMovieEnResults, ...allMovieRuResults];
     const newTmdbMovies = allUniqueMovies.filter((r) => !localTmdbIds.has(r.id));
 
     // Process TV SERIES
-    const allTVEnResults = [...tmdbTVDataEn.results, ...tmdbTVDataEnNorm.results].filter((r) => {
+    const allTVEnResults = [...tmdbTVDataEn.results, ...tmdbTVDataEnAlt.results].filter((r) => {
       if (seenTmdbTVIds.has(r.id)) return false;
       seenTmdbTVIds.add(r.id);
       return true;
     });
-    const allTVRuResults = [...tmdbTVDataRu.results, ...tmdbTVDataRuNorm.results].filter((r) => {
+    const allTVRuResults = [...tmdbTVDataRu.results, ...tmdbTVDataRuAlt.results].filter((r) => {
       if (seenTmdbTVIds.has(r.id)) return false;
       seenTmdbTVIds.add(r.id);
       return true;
     });
     const tvRuDataMap = new Map(
-      [...tmdbTVDataRu.results, ...tmdbTVDataRuNorm.results].map((r) => [r.id, { name: r.name, overview: r.overview }])
+      [...tmdbTVDataRu.results, ...tmdbTVDataRuAlt.results].map((r) => [r.id, { name: r.name, overview: r.overview }])
     );
     const allUniqueTV = [...allTVEnResults, ...allTVRuResults];
     // Filter out TV series that already exist in local database
