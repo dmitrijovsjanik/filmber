@@ -1,88 +1,292 @@
 "use client"
 
 import * as React from "react"
-import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
+import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
-const Sheet = SheetPrimitive.Root
+// Context for sheet state
+interface SheetContextValue {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-const SheetTrigger = SheetPrimitive.Trigger
+const SheetContext = React.createContext<SheetContextValue | null>(null);
 
-const SheetClose = SheetPrimitive.Close
+const useSheetContext = () => {
+  const context = React.useContext(SheetContext);
+  if (!context) {
+    throw new Error("Sheet components must be used within a Sheet");
+  }
+  return context;
+};
 
-const SheetPortal = SheetPrimitive.Portal
+// Main Sheet component - handles state and animations
+interface SheetProps {
+  children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
 
-const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-300 data-[state=open]:duration-300",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
-SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
+const Sheet = ({ children, open: controlledOpen, onOpenChange }: SheetProps) => {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
 
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = React.useCallback((newOpen: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
+    onOpenChange?.(newOpen);
+  }, [isControlled, onOpenChange]);
+
+  return (
+    <SheetContext.Provider value={{ open, onOpenChange: handleOpenChange }}>
+      {children}
+    </SheetContext.Provider>
+  );
+};
+
+// Trigger button
+interface SheetTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+
+const SheetTrigger = React.forwardRef<HTMLButtonElement, SheetTriggerProps>(
+  ({ children, asChild, onClick, ...props }, ref) => {
+    const { onOpenChange } = useSheetContext();
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(e);
+      onOpenChange(true);
+    };
+
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<any>, {
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+          (children as React.ReactElement<any>).props.onClick?.(e);
+          onOpenChange(true);
+        },
+      });
+    }
+
+    return (
+      <button ref={ref} onClick={handleClick} {...props}>
+        {children}
+      </button>
+    );
+  }
+);
+SheetTrigger.displayName = "SheetTrigger";
+
+// Close button
+const SheetClose = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ onClick, ...props }, ref) => {
+  const { onOpenChange } = useSheetContext();
+
+  return (
+    <button
+      ref={ref}
+      onClick={(e) => {
+        onClick?.(e);
+        onOpenChange(false);
+      }}
+      {...props}
+    />
+  );
+});
+SheetClose.displayName = "SheetClose";
+
+// Sheet content variants
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition-transform duration-300",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-        bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-        right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+        top: "inset-x-0 top-0 border-b",
+        bottom: "inset-x-0 bottom-0 border-t",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
       },
     },
     defaultVariants: {
       side: "right",
     },
   }
-)
+);
+
+// Get transform for closed state
+const getClosedTransform = (side: "top" | "bottom" | "left" | "right") => {
+  switch (side) {
+    case "top": return "translateY(-100%)";
+    case "bottom": return "translateY(100%)";
+    case "left": return "translateX(-100%)";
+    case "right": return "translateX(100%)";
+  }
+};
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof sheetVariants> {
+  onClose?: () => void;
+}
 
-const SheetContent = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Content>,
-  SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => {
-  // Apply Telegram safe area insets based on sheet position
-  const safeAreaClass = side === "bottom"
-    ? "tg-safe-area-bottom"
-    : side === "top"
-    ? "tg-safe-area-top"
-    : "tg-safe-area-inset"; // left/right get both top and bottom
+const SheetContent = React.forwardRef<HTMLDivElement, SheetContentProps>(
+  ({ side = "right", className, children, onClose, ...props }, ref) => {
+    const { open, onOpenChange } = useSheetContext();
+    // State machine: hidden → entering → visible → exiting → hidden
+    const [renderState, setRenderState] = React.useState<'hidden' | 'entering' | 'visible' | 'exiting'>('hidden');
+    const [mounted, setMounted] = React.useState(false);
+    const contentRef = React.useRef<HTMLDivElement>(null);
 
-  return (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content
-        ref={ref}
-        className={cn(sheetVariants({ side }), safeAreaClass, className)}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        {...props}
-      >
-        <SheetPrimitive.Close className="absolute right-2 top-2 flex h-12 w-12 items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-          <X className="h-6 w-6" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
-        {children}
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  );
-})
-SheetContent.displayName = SheetPrimitive.Content.displayName
+    // Handle mount for portal
+    React.useEffect(() => {
+      setMounted(true);
+    }, []);
+
+    // Handle opening
+    React.useEffect(() => {
+      if (open && (renderState === 'hidden' || renderState === 'exiting')) {
+        setRenderState('entering');
+      }
+    }, [open, renderState]);
+
+    // Handle entering animation - use double rAF to ensure DOM is ready
+    React.useEffect(() => {
+      if (renderState === 'entering') {
+        const frameId = requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setRenderState('visible');
+          });
+        });
+        return () => cancelAnimationFrame(frameId);
+      }
+    }, [renderState]);
+
+    // Handle closing - trigger exit animation
+    // The key insight: we need to ensure the browser has painted the current (open) state
+    // before we apply the exit transform. We do this by:
+    // 1. First render cycle: detect close request, stay in 'visible' state
+    // 2. Next animation frame: browser has painted, now safe to transition
+    React.useEffect(() => {
+      if (!open && (renderState === 'visible' || renderState === 'entering')) {
+        // Schedule state change for next frame to ensure current state is painted
+        const frameId = requestAnimationFrame(() => {
+          // Double rAF ensures we're past the paint
+          requestAnimationFrame(() => {
+            setRenderState('exiting');
+          });
+        });
+        return () => cancelAnimationFrame(frameId);
+      }
+    }, [open, renderState]);
+
+    // Handle exiting animation complete
+    React.useEffect(() => {
+      if (renderState === 'exiting') {
+        const timer = setTimeout(() => {
+          setRenderState('hidden');
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }, [renderState]);
+
+    const handleClose = React.useCallback(() => {
+      onClose?.();
+      onOpenChange(false);
+    }, [onClose, onOpenChange]);
+
+    // Handle escape key
+    React.useEffect(() => {
+      if (!open) return;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          handleClose();
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [open, handleClose]);
+
+    // Lock body scroll when sheet is open
+    React.useEffect(() => {
+      if (renderState !== 'hidden') {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+          document.body.style.overflow = originalOverflow;
+        };
+      }
+    }, [renderState]);
+
+    // Apply Telegram safe area insets based on sheet position
+    const safeAreaClass = side === "bottom"
+      ? "tg-safe-area-bottom"
+      : side === "top"
+      ? "tg-safe-area-top"
+      : "tg-safe-area-inset";
+
+    // Don't render if hidden or not mounted
+    if (!mounted || renderState === 'hidden') return null;
+
+    // Determine visual state based on renderState
+    // Only 'visible' shows the open position, all other states show closed
+    const isAnimatedOpen = renderState === 'visible';
+    const overlayOpacity = isAnimatedOpen ? "opacity-100" : "opacity-0";
+    const contentTransform = isAnimatedOpen ? "translate(0, 0)" : getClosedTransform(side!);
+
+    const content = (
+      <>
+        {/* Overlay */}
+        <div
+          className={cn(
+            "fixed inset-0 z-50 bg-black/80 transition-opacity duration-300",
+            overlayOpacity
+          )}
+          onClick={handleClose}
+        />
+        {/* Content */}
+        <div
+          ref={(node) => {
+            // Handle both internal ref and forwarded ref
+            contentRef.current = node;
+            if (typeof ref === 'function') {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+          }}
+          className={cn(sheetVariants({ side }), safeAreaClass, "will-change-transform", className)}
+          style={{
+            transform: contentTransform,
+            transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+          {...props}
+        >
+          <button
+            type="button"
+            onClick={handleClose}
+            className="absolute right-2 top-2 flex h-12 w-12 items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <X className="h-6 w-6" />
+            <span className="sr-only">Close</span>
+          </button>
+          {children}
+        </div>
+      </>
+    );
+
+    return createPortal(content, document.body);
+  }
+);
+SheetContent.displayName = "SheetContent";
 
 const SheetHeader = ({
   className,
@@ -95,8 +299,8 @@ const SheetHeader = ({
     )}
     {...props}
   />
-)
-SheetHeader.displayName = "SheetHeader"
+);
+SheetHeader.displayName = "SheetHeader";
 
 const SheetFooter = ({
   className,
@@ -109,37 +313,39 @@ const SheetFooter = ({
     )}
     {...props}
   />
-)
-SheetFooter.displayName = "SheetFooter"
+);
+SheetFooter.displayName = "SheetFooter";
 
 const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
+  <h2
     ref={ref}
     className={cn("text-lg font-semibold text-foreground", className)}
     {...props}
   />
-))
-SheetTitle.displayName = SheetPrimitive.Title.displayName
+));
+SheetTitle.displayName = "SheetTitle";
 
 const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <SheetPrimitive.Description
+  <p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
-))
-SheetDescription.displayName = SheetPrimitive.Description.displayName
+));
+SheetDescription.displayName = "SheetDescription";
+
+// For backwards compatibility
+const SheetPortal = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 export {
   Sheet,
   SheetPortal,
-  SheetOverlay,
   SheetTrigger,
   SheetClose,
   SheetContent,
@@ -147,4 +353,4 @@ export {
   SheetFooter,
   SheetTitle,
   SheetDescription,
-}
+};

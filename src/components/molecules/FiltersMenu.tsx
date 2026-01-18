@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { FilterIcon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
@@ -9,20 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Small, XSmall, Muted } from '@/components/ui/typography';
+import { useGenresList } from '@/hooks/useGenresList';
 import type { SearchFilters, MediaTypeFilter, OriginalLanguage } from '@/types/movie';
 import { DEFAULT_LANGUAGES } from '@/types/movie';
-
-interface Genre {
-  id: number;
-  name: string;
-  nameRu: string;
-  type: 'movie' | 'tv';
-}
-
-interface GenresResponse {
-  movie: Genre[];
-  tv: Genre[];
-}
 
 // Popular genre IDs (TMDB)
 const POPULAR_MOVIE_GENRE_IDS = [28, 35, 18, 27, 878]; // Action, Comedy, Drama, Horror, Sci-Fi
@@ -69,50 +59,81 @@ interface FiltersMenuProps {
   disabled?: boolean;
 }
 
-export function FiltersMenu({
+export const FiltersMenu = memo(function FiltersMenu({
   filters,
   onFiltersChange,
   locale,
   disabled = false,
 }: FiltersMenuProps) {
   const t = useTranslations('search');
-  const [genresData, setGenresData] = useState<GenresResponse>({ movie: [], tv: [] });
-  const [isLoadingGenres, setIsLoadingGenres] = useState(false);
+  const { genresData, isLoading: isLoadingGenres } = useGenresList();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Animation state machine
+  const [renderState, setRenderState] = useState<'hidden' | 'entering' | 'visible' | 'exiting'>('hidden');
+  const [mounted, setMounted] = useState(false);
 
   // State for showing all options
   const [showAllMovieGenres, setShowAllMovieGenres] = useState(false);
   const [showAllTvGenres, setShowAllTvGenres] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
 
-  // Fetch genres on mount
+  // Handle mount for portal
   useEffect(() => {
-    const fetchGenres = async () => {
-      setIsLoadingGenres(true);
-      try {
-        const response = await fetch('/api/genres');
-        const data = await response.json();
-        setGenresData(data);
-      } catch (error) {
-        console.error('Failed to fetch genres:', error);
-      } finally {
-        setIsLoadingGenres(false);
-      }
-    };
-    fetchGenres();
+    setMounted(true);
   }, []);
+
+  // Handle opening
+  useEffect(() => {
+    if (isOpen && (renderState === 'hidden' || renderState === 'exiting')) {
+      setRenderState('entering');
+    }
+  }, [isOpen, renderState]);
+
+  // Handle entering animation
+  useEffect(() => {
+    if (renderState === 'entering') {
+      const frameId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setRenderState('visible');
+        });
+      });
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [renderState]);
+
+  // Handle closing - use double rAF to ensure browser has painted current state
+  useEffect(() => {
+    if (!isOpen && (renderState === 'visible' || renderState === 'entering')) {
+      const frameId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setRenderState('exiting');
+        });
+      });
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [isOpen, renderState]);
+
+  // Handle exiting animation
+  useEffect(() => {
+    if (renderState === 'exiting') {
+      const timer = setTimeout(() => {
+        setRenderState('hidden');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [renderState]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
+    if (renderState !== 'hidden') {
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  }, [renderState]);
 
   const movieGenres = useMemo(() => genresData.movie || [], [genresData.movie]);
   const tvGenres = useMemo(() => genresData.tv || [], [genresData.tv]);
@@ -258,39 +279,26 @@ export function FiltersMenu({
     ? LANGUAGES
     : visibleLanguages;
 
-  return (
-    <>
-      <Button
-        variant="outline"
-        size="icon"
-        disabled={disabled}
-        onClick={() => setIsOpen(true)}
-        className={`h-9 w-9 flex-shrink-0 ${
-          activeFiltersCount > 0
-            ? 'bg-pink-500 border-pink-500 hover:bg-pink-600 hover:border-pink-600'
-            : ''
-        }`}
-      >
-        <HugeiconsIcon
-          icon={FilterIcon}
-          size={18}
-          className={activeFiltersCount > 0 ? 'text-white' : ''}
-        />
-      </Button>
+  // Determine animation state
+  const isAnimatedOpen = renderState === 'visible';
+  const overlayOpacity = isAnimatedOpen ? 'opacity-100' : 'opacity-0';
+  const contentTransform = isAnimatedOpen ? 'translateX(0)' : 'translateX(100%)';
 
+  const modalContent = mounted && renderState !== 'hidden' ? createPortal(
+    <>
       {/* Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/80 transition-opacity duration-500 ease-in-out ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 z-50 bg-black/80 transition-opacity duration-500 ${overlayOpacity}`}
         onClick={() => setIsOpen(false)}
       />
 
       {/* Panel */}
       <div
-        className={`fixed inset-y-0 right-0 z-[100] w-full bg-background flex flex-col shadow-lg transition-transform duration-500 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className="fixed inset-y-0 right-0 z-50 w-full bg-background flex flex-col shadow-lg transition-transform duration-500 will-change-transform"
+        style={{
+          transform: contentTransform,
+          transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
       >
             {/* Header - with Telegram safe area for fullscreen mode */}
             <div className="flex items-center justify-between px-2 py-4 border-b tg-safe-area-top">
@@ -611,6 +619,30 @@ export function FiltersMenu({
               </div>
             </div>
       </div>
+    </>,
+    document.body
+  ) : null;
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={disabled}
+        onClick={() => setIsOpen(true)}
+        className={`h-9 w-9 flex-shrink-0 ${
+          activeFiltersCount > 0
+            ? 'bg-pink-500 border-pink-500 hover:bg-pink-600 hover:border-pink-600'
+            : ''
+        }`}
+      >
+        <HugeiconsIcon
+          icon={FilterIcon}
+          size={18}
+          className={activeFiltersCount > 0 ? 'text-white' : ''}
+        />
+      </Button>
+      {modalContent}
     </>
   );
-}
+});
