@@ -1,7 +1,7 @@
 'use client';
 
 import { QRCodeSVG } from 'qrcode.react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { H4, Muted } from '@/components/ui/typography';
 import { Loader } from '@/components/ui/Loader';
@@ -19,6 +19,7 @@ interface ShareLinkProps {
 export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const t = useTranslations('room');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const { trackShareRoom } = useAnalytics();
   const { webApp, isTelegramMiniApp } = useTelegramWebApp();
 
@@ -29,12 +30,22 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
   const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'app';
   const tgAppUrl = `https://t.me/${botUsername}/${miniAppName}?startapp=${startAppParam}`;
 
+  // Web link for non-Telegram users (direct room join)
+  // Use window.location.origin to work with any domain (localhost, tunnel, production)
+  // Note: room page at /room/CODE supports ?pin= param for auto-join
+  const webJoinUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/${locale}/room/${roomCode}?pin=${pin}`
+    : `/${locale}/room/${roomCode}?pin=${pin}`;
+
+  // Use TG link inside Telegram, web link otherwise
+  const shareUrl = isTelegramMiniApp ? tgAppUrl : webJoinUrl;
+
   const handleShare = async () => {
     trackShareRoom();
 
     // Build share URL with both message text and link
-    const shareText = `${t('shareMessage')}\n${tgAppUrl}`;
-    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(t('shareMessage'))}`;
+    const shareText = `${t('shareMessage')}\n${shareUrl}`;
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(t('shareMessage'))}`;
 
     // In Telegram Mini App, use openTelegramLink for native share dialog
     if (isTelegramMiniApp && webApp?.openTelegramLink) {
@@ -73,7 +84,7 @@ export function ShareLink({ roomCode, pin, onCancel }: ShareLinkProps) {
       {/* QR Code */}
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <QRCodeSVG
-          value={tgAppUrl}
+          value={shareUrl}
           size={200}
           level="M"
           fgColor="#ec4899"

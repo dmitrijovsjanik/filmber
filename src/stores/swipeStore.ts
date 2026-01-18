@@ -13,7 +13,15 @@ interface LikedMovieDetails {
   tmdbId: number;
   posterPath: string | null;
   title: string;
+  titleRu: string | null;
   mediaType: 'movie' | 'tv';
+}
+
+interface PendingRating {
+  tmdbId: number;
+  rating: number;
+  mediaType: 'movie' | 'tv';
+  timestamp: number;
 }
 
 interface SwipeState {
@@ -26,6 +34,9 @@ interface SwipeState {
 
   // Anonymous swipes for import after login
   anonymousSwipes: AnonymousSwipe[];
+
+  // Pending rating for sync after auth
+  pendingRating: PendingRating | null;
 
   // Hydration state
   hasHydrated: boolean;
@@ -42,6 +53,11 @@ interface SwipeState {
   getAnonymousSwipes: () => AnonymousSwipe[];
   clearAnonymousSwipes: () => void;
   clearLikedMoviesDetails: () => void;
+
+  // Pending rating management
+  setPendingRating: (tmdbId: number, rating: number, mediaType: 'movie' | 'tv') => void;
+  getPendingRating: () => PendingRating | null;
+  clearPendingRating: () => void;
 }
 
 export const useSwipeStore = create<SwipeState>()(
@@ -51,6 +67,7 @@ export const useSwipeStore = create<SwipeState>()(
       likedMovieIds: [],
       likedMoviesDetails: [],
       anonymousSwipes: [],
+      pendingRating: null,
       hasHydrated: false,
 
       addSwipe: (movieId, liked) =>
@@ -89,7 +106,8 @@ export const useSwipeStore = create<SwipeState>()(
         set({
           swipedMovieIds: [],
           likedMovieIds: [],
-          // Keep anonymousSwipes and likedMoviesDetails for potential import
+          likedMoviesDetails: [],
+          // Keep anonymousSwipes for potential import after auth
         }),
 
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
@@ -105,6 +123,23 @@ export const useSwipeStore = create<SwipeState>()(
         set({
           likedMoviesDetails: [],
         }),
+
+      setPendingRating: (tmdbId, rating, mediaType) =>
+        set({
+          pendingRating: {
+            tmdbId,
+            rating,
+            mediaType,
+            timestamp: Date.now(),
+          },
+        }),
+
+      getPendingRating: () => get().pendingRating,
+
+      clearPendingRating: () =>
+        set({
+          pendingRating: null,
+        }),
     }),
     {
       name: 'filmber-swipes',
@@ -114,6 +149,7 @@ export const useSwipeStore = create<SwipeState>()(
         likedMovieIds: state.likedMovieIds,
         likedMoviesDetails: state.likedMoviesDetails,
         anonymousSwipes: state.anonymousSwipes,
+        pendingRating: state.pendingRating,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
@@ -128,6 +164,7 @@ export const useLikedMovieCount = () => useSwipeStore((state) => state.likedMovi
 export const useSwipedMovieIds = () => useSwipeStore((state) => state.swipedMovieIds);
 export const useSwipeStoreHydrated = () => useSwipeStore((state) => state.hasHydrated);
 export const useLikedMoviesDetails = () => useSwipeStore((state) => state.likedMoviesDetails);
+export const usePendingRating = () => useSwipeStore((state) => state.pendingRating);
 
 // Export type for use in components
-export type { LikedMovieDetails };
+export type { LikedMovieDetails, PendingRating };

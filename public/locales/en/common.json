@@ -93,7 +93,9 @@
     "loginButton": "Log in with Telegram",
     "matchAuthTitle": "Movie Found!",
     "matchAuthSubtitle": "Save your picks",
-    "matchBenefitSave": "Save your favorite movies",
+    "ratingAuthTitle": "Rate Movies",
+    "ratingAuthSubtitle": "Log in to save your ratings",
+    "matchBenefitSave": "Save movies",
     "matchBenefitPersonal": "Get personalized recommendations",
     "matchBenefitNotify": "Get notified about new releases",
     "continueWithoutSave": "Continue without saving",
@@ -147,7 +149,8 @@
     "back": "Back",
     "yesWatched": "Yes, watched!",
     "notYet": "Not yet",
-    "notFinished": "Didn't finish"
+    "notFinished": "Didn't finish",
+    "ratingSaved": "Your rating has been saved"
   },
   "profile": {
     "wantToWatch": "Plans",

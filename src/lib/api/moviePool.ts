@@ -179,6 +179,9 @@ export async function generateMoviePool(
   return enhanced.filter((m): m is Movie => m !== null);
 }
 
+// Pattern to detect collections (franchise bundles, not actual movies)
+const COLLECTION_PATTERN = /\((?:Коллекция|Collection)\)/i;
+
 export async function enhanceMovieData(
   tmdbId: number,
   locale: SupportedLocale = 'en'
@@ -192,6 +195,11 @@ export async function enhanceMovieData(
       .where(eq(movies.tmdbId, tmdbId));
 
     if (cached && isRecentCache(cached.cachedAt)) {
+      // Filter out collections (franchise bundles) - they're not actual movies
+      if (COLLECTION_PATTERN.test(cached.title) || COLLECTION_PATTERN.test(cached.titleRu || '')) {
+        return null;
+      }
+
       // Check if we have the requested locale
       const hasRequestedLocale =
         locale === 'en' ? cached.title : cached.titleRu;
@@ -228,6 +236,12 @@ export async function enhanceMovieData(
         if (existingCached) {
           return formatCachedMovie(existingCached);
         }
+        return null;
+      }
+
+      // Filter out collections (franchise bundles) - they're not actual movies
+      if (COLLECTION_PATTERN.test(details.title)) {
+        console.warn(`Skipping collection ${tmdbId}: ${details.title}`);
         return null;
       }
 

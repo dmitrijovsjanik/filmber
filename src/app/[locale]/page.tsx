@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Settings01Icon } from '@hugeicons/core-free-icons';
+import { Settings01Icon, FavouriteIcon, SparklesIcon, Notification01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/Loader';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -240,18 +240,6 @@ export default function HomePage() {
           {/* Login section for unauthenticated users */}
           {!isAuthenticated && (
             <>
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    {t('auth.loginTitle')}
-                  </span>
-                </div>
-              </div>
-
               {/* Login button - Telegram brand blue */}
               <button
                 onClick={handleTelegramLogin}
@@ -262,6 +250,28 @@ export default function HomePage() {
                 </svg>
                 {t('auth.loginButton')}
               </button>
+
+              {/* Auth benefits list */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <HugeiconsIcon icon={FavouriteIcon} size={18} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {t('auth.matchBenefitSave')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <HugeiconsIcon icon={SparklesIcon} size={18} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {t('auth.matchBenefitPersonal')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <HugeiconsIcon icon={Notification01Icon} size={18} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {t('auth.matchBenefitNotify')}
+                  </span>
+                </div>
+              </div>
             </>
           )}
         </div>

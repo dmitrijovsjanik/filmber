@@ -121,6 +121,7 @@ export default function SoloSwipePage() {
             tmdbId: movie.tmdbId,
             posterPath: movie.posterUrl,
             title: movie.title,
+            titleRu: movie.titleRu,
             mediaType: movie.mediaType || 'movie',
           });
         }

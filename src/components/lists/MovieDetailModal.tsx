@@ -35,8 +35,10 @@ import { Button } from '@/components/ui/button';
 import { RatingStars } from './RatingStars';
 import { SeasonsAccordion } from '@/components/movie/SeasonsAccordion';
 import { TrailerModal } from '@/components/movie/TrailerModal';
+import { RatingAuthPrompt } from '@/components/auth/RatingAuthPrompt';
 import { MOVIE_STATUS, type MovieStatus } from '@/lib/db/schema';
 import { useAuthToken } from '@/stores/authStore';
+import { useSwipeStore } from '@/stores/swipeStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface MovieData {
@@ -94,11 +96,14 @@ export function MovieDetailModal({
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const token = useAuthToken();
+  const setPendingRatingInStore = useSwipeStore((state) => state.setPendingRating);
   const { trackMovieDetailsOpened, trackMovieAddedToWatchlist, trackMovieRated } = useAnalytics();
   const [isLoading, setIsLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState<MovieStatus | null>(status ?? null);
   const [localRating, setLocalRating] = useState<number | null>(rating ?? null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRatingAuthPrompt, setShowRatingAuthPrompt] = useState(false);
+  const [pendingRatingLocal, setPendingRatingLocal] = useState<number | null>(null);
   const [hasTrackedOpen, setHasTrackedOpen] = useState(false);
 
   // Swipe-to-close state
@@ -192,20 +197,20 @@ export function MovieDetailModal({
   const handleShare = useCallback(async () => {
     if (!tmdbId) return;
 
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'filmberonline_bot';
-    const miniAppName = process.env.NEXT_PUBLIC_TELEGRAM_MINI_APP_NAME || 'app';
     const mediaType = movie?.mediaType || 'movie';
-    const startAppParam = `${mediaType}_${tmdbId}`;
-    const tgAppUrl = `https://t.me/${botUsername}/${miniAppName}?startapp=${startAppParam}`;
-
     const title = movie?.titleRu || movie?.title || `Movie #${tmdbId}`;
+
+    // Use smart share URL that redirects based on user's platform
+    // Opens Telegram Mini App for TG users, web page for others
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const shareUrl = `${appUrl}/share/${mediaType}/${tmdbId}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title,
           text: title,
-          url: tgAppUrl,
+          url: shareUrl,
         });
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
@@ -213,9 +218,9 @@ export function MovieDetailModal({
         }
       }
     } else {
-      // Fallback: open Telegram share
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(tgAppUrl)}&text=${encodeURIComponent(title)}`;
-      window.open(shareUrl, '_blank');
+      // Fallback: open Telegram share dialog
+      const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`;
+      window.open(tgShareUrl, '_blank');
     }
   }, [tmdbId, movie?.mediaType, movie?.titleRu, movie?.title]);
 
@@ -455,6 +460,12 @@ export function MovieDetailModal({
   }, [token, tmdbId, trackMovieRated, onAddedToList, rating, status, movie?.mediaType]);
 
   const handleStatusClick = (newStatus: MovieStatus) => {
+    // Check if user is not authenticated
+    if (!token) {
+      setShowRatingAuthPrompt(true);
+      return;
+    }
+
     if (isSearchMode) {
       addToList(newStatus);
     } else {
@@ -476,6 +487,16 @@ export function MovieDetailModal({
   };
 
   const handleRatingClick = async (selectedRating: number) => {
+    // Check if user is not authenticated
+    if (!token) {
+      setPendingRatingLocal(selectedRating);
+      // Save to store for sync after auth
+      const mediaType = movie?.mediaType || 'movie';
+      setPendingRatingInStore(tmdbId, selectedRating, mediaType);
+      setShowRatingAuthPrompt(true);
+      return;
+    }
+
     if (isSearchMode) {
       addToListWithRating(selectedRating);
     } else {
@@ -488,6 +509,14 @@ export function MovieDetailModal({
         trackMovieRated(tmdbId, selectedRating);
       }
       onRatingChange?.(selectedRating);
+    }
+  };
+
+  const handleRatingAuthContinue = () => {
+    // User chose to continue without saving - just show the rating visually
+    if (pendingRatingLocal !== null) {
+      setLocalRating(pendingRatingLocal);
+      setPendingRatingLocal(null);
     }
   };
 
@@ -817,6 +846,16 @@ export function MovieDetailModal({
         videoKey={trailerKey}
         videoSite={trailerSite}
         title={displayTitle}
+      />
+
+      {/* Rating auth prompt for unauthenticated users */}
+      <RatingAuthPrompt
+        isOpen={showRatingAuthPrompt}
+        onClose={() => {
+          setShowRatingAuthPrompt(false);
+          setPendingRatingLocal(null);
+        }}
+        onContinueWithoutSave={handleRatingAuthContinue}
       />
     </>
   );

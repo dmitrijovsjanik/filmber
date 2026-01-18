@@ -519,6 +519,25 @@ export async function GET(request: NextRequest) {
 
     let allTmdbResults = [...localSearchResults, ...tmdbSearchResults];
 
+    // Filter out Talk Shows (10767) and Reality TV (10764) - always exclude these genres
+    const EXCLUDED_TV_GENRES = [10767, 10764]; // Talk, Reality
+    allTmdbResults = allTmdbResults.filter((m) => {
+      if (m.mediaType !== 'tv') return true; // Keep all movies
+      // Check if TV show has excluded genres
+      if (m.genreIds && m.genreIds.length > 0) {
+        return !m.genreIds.some((gId) => EXCLUDED_TV_GENRES.includes(gId));
+      }
+      return true; // Keep if no genre info
+    });
+
+    // Filter out collections (franchise bundles) - they have "(Коллекция)" or "(Collection)" in title
+    const collectionPattern = /\((?:Коллекция|Collection)\)/i;
+    allTmdbResults = allTmdbResults.filter((m) => {
+      const title = m.title || '';
+      const titleRu = m.titleRu || '';
+      return !collectionPattern.test(title) && !collectionPattern.test(titleRu);
+    });
+
     // Apply mediaType filter (filter out results that don't match)
     if (mediaTypeFilter !== 'all') {
       allTmdbResults = allTmdbResults.filter((m) => m.mediaType === mediaTypeFilter);

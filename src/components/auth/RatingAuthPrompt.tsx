@@ -1,13 +1,12 @@
 'use client';
 
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import {
   Cancel01Icon,
   FavouriteIcon,
   Notification01Icon,
   SparklesIcon,
-  Film02Icon,
 } from '@hugeicons/core-free-icons';
 import {
   AlertDialog,
@@ -15,39 +14,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { H4, Muted, Small } from '@/components/ui/typography';
-import { FadeImage } from '@/components/ui/FadeImage';
 
-interface LikedMovie {
-  tmdbId: number;
-  posterPath: string | null;
-  title: string;
-  titleRu: string | null;
-  mediaType: 'movie' | 'tv';
-}
-
-interface MatchAuthPromptProps {
+interface RatingAuthPromptProps {
   isOpen: boolean;
   onClose: () => void;
   onContinueWithoutSave: () => void;
-  likedMovies: LikedMovie[];
 }
 
-export function MatchAuthPrompt({
+export function RatingAuthPrompt({
   isOpen,
   onClose,
   onContinueWithoutSave,
-  likedMovies,
-}: MatchAuthPromptProps) {
+}: RatingAuthPromptProps) {
   const t = useTranslations('auth');
-  const locale = useLocale();
-
-  // Get localized title based on current locale
-  const getLocalizedTitle = (movie: LikedMovie) => {
-    if (locale === 'ru' && movie.titleRu) {
-      return movie.titleRu;
-    }
-    return movie.title;
-  };
 
   const openTelegramBot = () => {
     const botUsername = 'filmberonline_bot';
@@ -63,7 +42,7 @@ export function MatchAuthPrompt({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-md rounded-2xl">
+      <AlertDialogContent className="max-w-md rounded-2xl z-[100]">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -75,54 +54,18 @@ export function MatchAuthPrompt({
 
         {/* Visually hidden title for accessibility */}
         <AlertDialogTitle className="sr-only">
-          {t('matchAuthTitle', { defaultValue: 'Movie Found!' })}
+          {t('ratingAuthTitle', { defaultValue: 'Rate Movies' })}
         </AlertDialogTitle>
 
         {/* Compact header: title + subtitle */}
         <div className="flex flex-col items-center gap-1 mb-4">
           <H4 className="text-center text-foreground">
-            {t('matchAuthTitle', { defaultValue: 'Movie Found!' })}
+            {t('ratingAuthTitle', { defaultValue: 'Rate Movies' })}
           </H4>
           <Muted className="text-center text-sm">
-            {t('matchAuthSubtitle', { defaultValue: 'Save your picks' })}
+            {t('ratingAuthSubtitle', { defaultValue: 'Log in to save your ratings' })}
           </Muted>
         </div>
-
-        {/* Liked movies preview */}
-        {likedMovies.length > 0 && (
-          <div className="mb-6 flex justify-center gap-3 overflow-x-auto py-2">
-            {likedMovies.slice(0, 5).map((movie) => (
-              <div
-                key={movie.tmdbId}
-                className="flex flex-col items-center w-[72px] flex-shrink-0"
-              >
-                <div className="relative w-16 h-24 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
-                  {movie.posterPath ? (
-                    <FadeImage
-                      src={movie.posterPath}
-                      alt={movie.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <HugeiconsIcon icon={Film02Icon} size={28} className="text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <Small className="mt-1 text-center text-muted-foreground line-clamp-2 text-xs leading-tight">
-                  {getLocalizedTitle(movie)}
-                </Small>
-              </div>
-            ))}
-            {likedMovies.length > 5 && (
-              <div className="flex flex-col items-center justify-center w-16">
-                <div className="w-16 h-24 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <Small className="text-muted-foreground text-sm">+{likedMovies.length - 5}</Small>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Features list */}
         <div className="mb-6 space-y-3">

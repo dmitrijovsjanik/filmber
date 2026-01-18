@@ -38,6 +38,9 @@ const QUICK_FILTER_LANGUAGES: { code: OriginalLanguage; labelEn: string; labelRu
   { code: 'tr', labelEn: 'Turkish', labelRu: 'Турецкий' },
 ];
 
+// TV genres to hide from filters (Talk Shows, Reality TV)
+const HIDDEN_TV_GENRE_IDS = [10767, 10764]; // Talk, Reality
+
 // Check if languages array equals default
 const isDefaultLanguages = (langs: OriginalLanguage[]): boolean => {
   if (langs.length !== DEFAULT_LANGUAGES.length) return false;
@@ -134,11 +137,14 @@ export function QuickFilters({
   }, [genresData.movie, locale]);
 
   const tvGenres = useMemo(() => {
-    return (genresData.tv || []).sort((a, b) => {
-      const nameA = locale === 'ru' ? a.nameRu : a.name;
-      const nameB = locale === 'ru' ? b.nameRu : b.name;
-      return nameA.localeCompare(nameB);
-    });
+    // Filter out hidden genres (Talk Shows, Reality TV)
+    return (genresData.tv || [])
+      .filter((g) => !HIDDEN_TV_GENRE_IDS.includes(g.id))
+      .sort((a, b) => {
+        const nameA = locale === 'ru' ? a.nameRu : a.name;
+        const nameB = locale === 'ru' ? b.nameRu : b.name;
+        return nameA.localeCompare(nameB);
+      });
   }, [genresData.tv, locale]);
 
   // Determine which genre sections to show based on mediaType

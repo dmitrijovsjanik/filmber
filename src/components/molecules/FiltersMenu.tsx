@@ -28,6 +28,9 @@ interface GenresResponse {
 const POPULAR_MOVIE_GENRE_IDS = [28, 35, 18, 27, 878]; // Action, Comedy, Drama, Horror, Sci-Fi
 const POPULAR_TV_GENRE_IDS = [18, 35, 10759, 80, 10765]; // Drama, Comedy, Action & Adventure, Crime, Sci-Fi & Fantasy
 
+// TV genres to hide from filters (Talk Shows, Reality TV)
+const HIDDEN_TV_GENRE_IDS = [10767, 10764]; // Talk, Reality
+
 // Default languages shown (EN, RU, KO, JA, TR)
 const DEFAULT_VISIBLE_LANGUAGES: OriginalLanguage[] = ['en', 'ru', 'ko', 'ja', 'tr'];
 
@@ -126,8 +129,10 @@ export function FiltersMenu({
   }, [movieGenres]);
 
   const { popularTvGenres, otherTvGenres } = useMemo(() => {
-    const popular = tvGenres.filter((g) => POPULAR_TV_GENRE_IDS.includes(g.id));
-    const other = tvGenres.filter((g) => !POPULAR_TV_GENRE_IDS.includes(g.id));
+    // Filter out hidden genres (Talk Shows, Reality TV)
+    const filteredTvGenres = tvGenres.filter((g) => !HIDDEN_TV_GENRE_IDS.includes(g.id));
+    const popular = filteredTvGenres.filter((g) => POPULAR_TV_GENRE_IDS.includes(g.id));
+    const other = filteredTvGenres.filter((g) => !POPULAR_TV_GENRE_IDS.includes(g.id));
     // Sort popular by the order in POPULAR_TV_GENRE_IDS
     popular.sort((a, b) =>
       POPULAR_TV_GENRE_IDS.indexOf(a.id) - POPULAR_TV_GENRE_IDS.indexOf(b.id)

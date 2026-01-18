@@ -93,7 +93,9 @@
     "loginButton": "Войти через Telegram",
     "matchAuthTitle": "Фильм найден!",
     "matchAuthSubtitle": "Сохраните ваши находки",
-    "matchBenefitSave": "Сохранение понравившихся фильмов",
+    "ratingAuthTitle": "Оценить фильм",
+    "ratingAuthSubtitle": "Войдите, чтобы сохранить оценку",
+    "matchBenefitSave": "Сохранение фильмов",
     "matchBenefitPersonal": "Персональные рекомендации",
     "matchBenefitNotify": "Уведомления о новинках",
     "continueWithoutSave": "Продолжить без сохранения",
@@ -147,7 +149,8 @@
     "back": "Назад",
     "yesWatched": "Да, посмотрел!",
     "notYet": "Ещё нет",
-    "notFinished": "Не досмотрел"
+    "notFinished": "Не досмотрел",
+    "ratingSaved": "Ваша оценка сохранена"
   },
   "profile": {
     "wantToWatch": "В планах",
