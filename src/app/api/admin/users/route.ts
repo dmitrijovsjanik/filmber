@@ -128,6 +128,11 @@ export const GET = withAdmin(async (request: NextRequest) => {
   const [totalResult] = await db.select({ count: count() }).from(users);
   const total = totalResult?.count ?? 0;
 
+  // Debug log
+  if (usersWithStats.length > 0) {
+    console.log('[admin/users] First user stats:', JSON.stringify(usersWithStats[0], null, 2));
+  }
+
   return success({
     data: usersWithStats,
     pagination: {
