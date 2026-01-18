@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import { SortMenu } from '@/components/molecules/SortMenu';
 import { FiltersMenu } from '@/components/molecules/FiltersMenu';
 import { QuickFilters } from '@/components/molecules/QuickFilters';
@@ -13,7 +13,7 @@ interface SearchFiltersProps {
   disabled?: boolean;
 }
 
-export function SearchFilters({
+export const SearchFilters = memo(function SearchFilters({
   filters,
   onFiltersChange,
   locale,
@@ -47,4 +47,4 @@ export function SearchFilters({
       />
     </div>
   );
-}
+});

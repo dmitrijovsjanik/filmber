@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowUpDownIcon, Tick02Icon } from '@hugeicons/core-free-icons';
@@ -22,9 +22,13 @@ interface SortMenuProps {
   disabled?: boolean;
 }
 
-export function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
+export const SortMenu = memo(function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
   const t = useTranslations('search');
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    setIsOpen(open);
+  }, []);
 
   const handleChange = useCallback(
     (option: SortOption) => {
@@ -46,7 +50,7 @@ export function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button
           variant="outline"
@@ -89,4 +93,4 @@ export function SortMenu({ value, onChange, disabled = false }: SortMenuProps) {
       </SheetContent>
     </Sheet>
   );
-}
+});

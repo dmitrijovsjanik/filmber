@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import { useGenres } from '@/hooks/useGenres';
 import { getPosterUrl } from '@/lib/api/poster';
@@ -98,6 +99,11 @@ export function MovieDetailModal({
   const token = useAuthToken();
   const setPendingRatingInStore = useSwipeStore((state) => state.setPendingRating);
   const { trackMovieDetailsOpened, trackMovieAddedToWatchlist, trackMovieRated } = useAnalytics();
+
+  // Animation state machine
+  const [renderState, setRenderState] = useState<'hidden' | 'entering' | 'visible' | 'exiting'>('hidden');
+  const [mounted, setMounted] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState<MovieStatus | null>(status ?? null);
   const [localRating, setLocalRating] = useState<number | null>(rating ?? null);
@@ -126,6 +132,47 @@ export function MovieDetailModal({
     const saved = localStorage.getItem('filmber-expanded-poster');
     return saved !== 'false'; // Default to true (expanded)
   });
+
+  // Handle mount for portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Handle opening
+  useEffect(() => {
+    if (isOpen && (renderState === 'hidden' || renderState === 'exiting')) {
+      setRenderState('entering');
+    }
+  }, [isOpen, renderState]);
+
+  // Handle entering animation
+  useEffect(() => {
+    if (renderState === 'entering') {
+      const frameId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setRenderState('visible');
+        });
+      });
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [renderState]);
+
+  // Handle closing
+  useEffect(() => {
+    if (!isOpen && (renderState === 'visible' || renderState === 'entering')) {
+      setRenderState('exiting');
+    }
+  }, [isOpen, renderState]);
+
+  // Handle exiting animation
+  useEffect(() => {
+    if (renderState === 'exiting') {
+      const timer = setTimeout(() => {
+        setRenderState('hidden');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [renderState]);
 
   // Sync expanded state from localStorage when modal opens
   // This ensures all modals share the same preference
@@ -247,15 +294,14 @@ export function MovieDetailModal({
 
   // Lock body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
+    if (renderState !== 'hidden') {
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  }, [renderState]);
 
   // Handle escape key
   useEffect(() => {
@@ -531,12 +577,19 @@ export function MovieDetailModal({
       )
     : null;
 
-  return (
+  // Don't render if hidden or not mounted
+  if (!mounted || renderState === 'hidden') return null;
+
+  // Determine animation state
+  const isAnimationOpen = renderState === 'visible';
+  const panelTransform = isAnimationOpen ? `translateY(${dragY}px)` : 'translateY(100%)';
+
+  const content = (
     <>
       {/* Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/80 transition-opacity duration-500 ease-in-out ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`fixed inset-0 z-[60] bg-black/80 transition-opacity duration-500 ${
+          isAnimationOpen ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
       />
@@ -547,11 +600,12 @@ export function MovieDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`fixed inset-0 z-[60] bg-black dark flex flex-col ease-in-out will-change-transform ${
-          isOpen ? '' : 'translate-y-full'
-        } ${isDragging ? '' : 'transition-transform duration-500'}`}
+        className={`fixed inset-0 z-[60] bg-black dark flex flex-col will-change-transform ${
+          isDragging ? '' : 'transition-transform duration-500'
+        }`}
         style={{
-          transform: isOpen ? `translateY(${dragY}px)` : undefined,
+          transform: panelTransform,
+          transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -859,4 +913,6 @@ export function MovieDetailModal({
       />
     </>
   );
+
+  return createPortal(content, document.body);
 }

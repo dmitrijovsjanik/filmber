@@ -280,11 +280,9 @@ export async function GET(request: NextRequest) {
       localResults,
       tmdbMovieEnResult,
       tmdbMovieRuResult,
-      tmdbMovieEnAltResult,
       tmdbMovieRuAltResult,
       tmdbTVEnResult,
       tmdbTVRuResult,
-      tmdbTVEnAltResult,
       tmdbTVRuAltResult,
     ] = await Promise.all([
       db
@@ -313,14 +311,7 @@ export async function GET(request: NextRequest) {
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      // Alternate query (ё→е or е→ё) for Movies
-      shouldSearchMovies && needsAlternateQuery
-        ? withTimeout(
-            tmdb.searchMovies(alternateQuery, 'en-US', page),
-            TMDB_TIMEOUT,
-            { results: [], totalResults: 0 }
-          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
-        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      // Alternate query (ё→е or е→ё) for Movies - only RU locale
       shouldSearchMovies && needsAlternateQuery
         ? withTimeout(
             tmdb.searchMovies(alternateQuery, 'ru-RU', page),
@@ -343,14 +334,7 @@ export async function GET(request: NextRequest) {
             { results: [], totalResults: 0 }
           ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
         : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
-      // Alternate query (ё→е or е→ё) for TV
-      shouldSearchTV && needsAlternateQuery
-        ? withTimeout(
-            tmdb.searchTV(alternateQuery, 'en-US', page),
-            TMDB_TIMEOUT,
-            { results: [], totalResults: 0 }
-          ).catch(() => ({ data: { results: [], totalResults: 0 }, timedOut: true }))
-        : Promise.resolve({ data: { results: [], totalResults: 0 }, timedOut: false }),
+      // Alternate query (ё→е or е→ё) for TV - only RU locale
       shouldSearchTV && needsAlternateQuery
         ? withTimeout(
             tmdb.searchTV(alternateQuery, 'ru-RU', page),
@@ -363,11 +347,9 @@ export async function GET(request: NextRequest) {
     // Extract TMDB data and check availability
     const tmdbMovieDataEn = tmdbMovieEnResult.data;
     const tmdbMovieDataRu = tmdbMovieRuResult.data;
-    const tmdbMovieDataEnAlt = tmdbMovieEnAltResult.data;
     const tmdbMovieDataRuAlt = tmdbMovieRuAltResult.data;
     const tmdbTVDataEn = tmdbTVEnResult.data;
     const tmdbTVDataRu = tmdbTVRuResult.data;
-    const tmdbTVDataEnAlt = tmdbTVEnAltResult.data;
     const tmdbTVDataRuAlt = tmdbTVRuAltResult.data;
 
     // Create sets for deduplication
@@ -407,7 +389,7 @@ export async function GET(request: NextRequest) {
     const seenTmdbTVIds = new Set<number>();
 
     // Process MOVIES
-    const allMovieEnResults = [...tmdbMovieDataEn.results, ...tmdbMovieDataEnAlt.results].filter((r) => {
+    const allMovieEnResults = tmdbMovieDataEn.results.filter((r) => {
       if (seenTmdbMovieIds.has(r.id)) return false;
       seenTmdbMovieIds.add(r.id);
       return true;
@@ -424,7 +406,7 @@ export async function GET(request: NextRequest) {
     const newTmdbMovies = allUniqueMovies.filter((r) => !localTmdbIds.has(r.id));
 
     // Process TV SERIES
-    const allTVEnResults = [...tmdbTVDataEn.results, ...tmdbTVDataEnAlt.results].filter((r) => {
+    const allTVEnResults = tmdbTVDataEn.results.filter((r) => {
       if (seenTmdbTVIds.has(r.id)) return false;
       seenTmdbTVIds.add(r.id);
       return true;

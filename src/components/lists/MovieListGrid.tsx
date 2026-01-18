@@ -191,7 +191,7 @@ export function MovieListGrid({ initialStatus = 'all', openMovieId, openMovieTyp
           filters={searchFilters}
           onFiltersChange={setSearchFilters}
           locale={locale}
-          disabled={isSearching}
+          disabled={false}
         />
       </div>
 
